@@ -675,15 +675,6 @@ class Games(commands.Cog):
             await game.finish()
         except Exception:
             self.bot.game_sessions.end(ctx.channel.id)
-        for msg in (getattr(game, "message", None), getattr(game, "menu_message", None)):
-            if msg is None:
-                continue
-            try:
-                await msg.delete()
-            except discord.NotFound:
-                pass
-            except discord.HTTPException:
-                pass
         await ctx.send(embed=make_embed("Game ended", "The channel is free — you can start a new game.", color=SUCCESS))
 
 
