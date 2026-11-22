@@ -259,8 +259,18 @@ class Database:
                 "UPDATE members SET xp = xp + ? WHERE guild_id = ? AND user_id = ?",
                 (amount, guild_id, user_id),
             )
+    async def set_xp(self, guild_id: int, user_id: int, xp: int) -> tuple[int, int]:
+        """Set XP to an exact value (clamped at 0) and return (old_xp, new_xp)."""
+        await self.ensure_member(guild_id, user_id)
+        row = await self.get_member(guild_id, user_id)
+        old = int(row["xp"])
+        new = max(0, int(xp))
+        await self.db.execute(
+            "UPDATE members SET xp = ? WHERE guild_id = ? AND user_id = ?",
+            (new, guild_id, user_id),
+        )
         await self.db.commit()
-        return old, old + amount
+        return old, new
 
     async def add_voice_seconds(self, guild_id: int, user_id: int, seconds: int) -> int:
         await self.ensure_member(guild_id, user_id)
