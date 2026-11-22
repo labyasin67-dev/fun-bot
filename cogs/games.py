@@ -13,6 +13,8 @@ from discord.ext import commands
 
 from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
 
+from cogs.sessions import end_game_message
+
 if TYPE_CHECKING:
     from main import SocializeBot
 
@@ -198,8 +200,9 @@ class RPSView(discord.ui.View):
             for child in self.children:
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
-            await interaction.response.edit_message(embed=make_embed(title, text, color=color), view=self)
             self.stop()
+            await interaction.response.defer()
+            await end_game_message(self.message, make_embed(title, text, color=color), self)
             return
 
         if user.id not in (self.challenger.id, self.opponent.id):
@@ -225,10 +228,7 @@ class RPSView(discord.ui.View):
             if isinstance(child, discord.ui.Button):
                 child.disabled = True
         if self.message:
-            try:
-                await self.message.edit(embed=make_embed(title, text, color=color), view=self)
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, make_embed(title, text, color=color), self)
         self.stop()
 
     @discord.ui.button(label="Rock", emoji="🪨", style=discord.ButtonStyle.secondary)
@@ -271,13 +271,7 @@ class TriviaView(discord.ui.View):
                 if child.label == self.correct:
                     child.style = discord.ButtonStyle.success
         if self.message:
-            try:
-                await self.message.edit(
-                    embed=make_embed("Time's up!", f"The answer was **{self.correct}**.", color=WARNING),
-                    view=self,
-                )
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, make_embed("Time's up!", f"The answer was **{self.correct}**.", color=WARNING), self)
 
 
 class TriviaButton(discord.ui.Button):
@@ -306,7 +300,8 @@ class TriviaButton(discord.ui.Button):
             e = make_embed("Correct!", f"**{self.label}** is the right answer.", color=SUCCESS)
         else:
             e = make_embed("Not quite.", f"You picked **{self.label}**. The answer was **{view.correct}**.", color=DANGER)
-        await interaction.response.edit_message(embed=e, view=view)
+        await interaction.response.defer()
+        await end_game_message(view.message, e, view)
         view.stop()
 
 

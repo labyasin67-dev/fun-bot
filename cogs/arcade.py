@@ -20,6 +20,7 @@ from cogs.sessions import (
     answers_match,
     award_xp,
     dest_user,
+    end_game_message,
     launch_channel_game,
     normalize_answer,
     send_dest,
@@ -205,10 +206,7 @@ class ChatGuessGame(ChannelGame):
             if self.finished:
                 return
             if self.message:
-                try:
-                    await self.message.edit(embed=self._embed(phase="timeout"))
-                except discord.HTTPException:
-                    pass
+                await end_game_message(self.message, self._embed(phase="timeout"))
             await self.finish(result=f"⏰ Time's up! The answer was **{self.reveal}**.")
         except asyncio.CancelledError:
             return
@@ -225,10 +223,7 @@ class ChatGuessGame(ChannelGame):
             self.task.cancel()
         await award_xp(self.bot, message.author, message.channel, self.xp)
         if self.message:
-            try:
-                await self.message.edit(embed=self._embed(phase="win", winner=message.author))
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, self._embed(phase="win", winner=message.author))
         else:
             try:
                 await message.channel.send(embed=self._embed(phase="win", winner=message.author))
@@ -279,10 +274,7 @@ class WordRuleGame(ChannelGame):
             if self.finished:
                 return
             if self.message:
-                try:
-                    await self.message.edit(embed=make_embed("Time's up!", "Nobody found a word that fits.", color=WARNING))
-                except discord.HTTPException:
-                    pass
+                await end_game_message(self.message, make_embed("Time's up!", "Nobody found a word that fits.", color=WARNING))
             await self.finish(result="⏰ Time's up! Nobody found a word that fits.")
         except asyncio.CancelledError:
             return
@@ -299,10 +291,7 @@ class WordRuleGame(ChannelGame):
         await award_xp(self.bot, message.author, message.channel, DEFAULT_WIN_XP)
         e = make_embed("Correct!", f"{message.author.mention} played **{word}**.\n+{DEFAULT_WIN_XP} XP", color=SUCCESS)
         if self.message:
-            try:
-                await self.message.edit(embed=e)
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, e)
         await self.finish(result=f"🏆 {message.author.mention} won Word! Answer: **{word}** (+{DEFAULT_WIN_XP} XP)")
         return True
 
@@ -367,7 +356,8 @@ class ButtonHuntGame(ChannelGame):
             self.view.stop()
         await award_xp(self.bot, interaction.user, self.channel, DEFAULT_WIN_XP)
         e = make_embed("Button Hunt", f"{interaction.user.mention} found the right button!\n+{DEFAULT_WIN_XP} XP", color=SUCCESS)
-        await interaction.response.edit_message(embed=e, view=self.view)
+        await interaction.response.defer()
+        await end_game_message(self.message, e, self.view)
         await self.finish(result=f"🏆 {interaction.user.mention} won Button Hunt! (+{DEFAULT_WIN_XP} XP)")
 
     async def timed_out(self) -> None:
@@ -378,10 +368,7 @@ class ButtonHuntGame(ChannelGame):
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
         if self.message:
-            try:
-                await self.message.edit(embed=make_embed("Time's up!", "Nobody found the right button.", color=WARNING), view=self.view)
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, make_embed("Time's up!", "Nobody found the right button.", color=WARNING), self.view)
         await self.finish(result="⏰ Time's up! Nobody found the right button.")
 
 
@@ -449,10 +436,7 @@ class DiceDuelGame(ChannelGame):
             color=SUCCESS,
         )
         if self.message:
-            try:
-                await self.message.edit(embed=e, view=self.view)
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, e, self.view)
         await self.finish(result=f"🏆 {winner.mention} won Dice Roll Duel! {wr}–{lr} (+{DEFAULT_WIN_XP} XP)")
 
     async def timed_out(self) -> None:
@@ -463,10 +447,7 @@ class DiceDuelGame(ChannelGame):
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
         if self.message:
-            try:
-                await self.message.edit(embed=make_embed("Dice Roll Duel", "Not enough players joined.", color=WARNING), view=self.view)
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, make_embed("Dice Roll Duel", "Not enough players joined.", color=WARNING), self.view)
         await self.finish(result="⏰ Dice Roll Duel ended — not enough players joined.")
 
 
@@ -540,7 +521,8 @@ class ColorHuntGame(ChannelGame):
             self.view.stop()
         await award_xp(self.bot, interaction.user, self.channel, DEFAULT_WIN_XP)
         e = make_embed("Color Hunt", f"{interaction.user.mention} clicked the right colour!\n+{DEFAULT_WIN_XP} XP", color=SUCCESS)
-        await interaction.response.edit_message(embed=e, view=self.view)
+        await interaction.response.defer()
+        await end_game_message(self.message, e, self.view)
         await self.finish(result=f"🏆 {interaction.user.mention} won Color Hunt! (+{DEFAULT_WIN_XP} XP)")
 
     async def timed_out(self) -> None:
@@ -551,10 +533,7 @@ class ColorHuntGame(ChannelGame):
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
         if self.message:
-            try:
-                await self.message.edit(embed=make_embed("Time's up!", "Nobody clicked the right colour.", color=WARNING), view=self.view)
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, make_embed("Time's up!", "Nobody clicked the right colour.", color=WARNING), self.view)
         await self.finish(result="⏰ Time's up! Nobody clicked the right colour.")
 
 
@@ -607,10 +586,7 @@ class ReactionGame(ChannelGame):
                             child.disabled = True
                     self.view.stop()
                 if self.message:
-                    try:
-                        await self.message.edit(embed=make_embed("Too slow!", "Nobody reacted in time.", color=WARNING), view=self.view)
-                    except discord.HTTPException:
-                        pass
+                    await end_game_message(self.message, make_embed("Too slow!", "Nobody reacted in time.", color=WARNING), self.view)
                 await self.finish(result="⏰ Too slow! Nobody reacted in time.")
         except asyncio.CancelledError:
             return
@@ -642,12 +618,9 @@ class ReactionGame(ChannelGame):
         await award_xp(self.bot, user, self.channel, DEFAULT_WIN_XP)
         e = make_embed("Reaction", f"{user.mention} was first!\n+{DEFAULT_WIN_XP} XP", color=SUCCESS)
         if interaction is not None:
-            await interaction.response.edit_message(embed=e, view=self.view)
-        elif self.message:
-            try:
-                await self.message.edit(embed=e, view=self.view)
-            except discord.HTTPException:
-                pass
+            await interaction.response.defer()
+        if self.message:
+            await end_game_message(self.message, e, self.view)
         await self.finish(result=f"🏆 {user.mention} won Reaction! (+{DEFAULT_WIN_XP} XP)")
 
     async def on_message(self, message: discord.Message) -> bool:
@@ -759,7 +732,8 @@ class SequenceHuntGame(ChannelGame):
             self.view.stop()
         await award_xp(self.bot, interaction.user, self.channel, DEFAULT_WIN_XP)
         e = make_embed("Sequence Hunt", f"{interaction.user.mention} repeated the sequence!\n{self._seq_text()}\n+{DEFAULT_WIN_XP} XP", color=SUCCESS)
-        await interaction.response.edit_message(embed=e, view=self.view)
+        await interaction.response.defer()
+        await end_game_message(self.message, e, self.view)
         await self.finish(result=f"🏆 {interaction.user.mention} won Sequence Hunt! (+{DEFAULT_WIN_XP} XP)")
 
     async def timed_out(self) -> None:
@@ -770,13 +744,7 @@ class SequenceHuntGame(ChannelGame):
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
         if self.message:
-            try:
-                await self.message.edit(
-                    embed=make_embed("Time's up!", f"The sequence was {self._seq_text()}.", color=WARNING),
-                    view=self.view,
-                )
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, make_embed("Time's up!", f"The sequence was {self._seq_text()}.", color=WARNING), self.view)
         await self.finish(result=f"⏰ Time's up! The sequence was {self._seq_text()}.")
 
 
@@ -846,7 +814,8 @@ class HiLoGame(ChannelGame):
             if self.streak:
                 extra = f" The streak ended at **{self.streak}**."
             e = self._embed(over=True, wrong=f"{interaction.user.mention} guessed **{choice}** — not quite.{extra}")
-            await interaction.response.edit_message(embed=e, view=self.view)
+            await interaction.response.defer()
+            await end_game_message(self.message, e, self.view)
             await self.finish(result=f"HILO ended — the streak stopped at **{self.streak}**.")
             return
         self.streak += 1
@@ -864,7 +833,8 @@ class HiLoGame(ChannelGame):
                 f"Streak of **{self.streak}**! That's the limit.\n+10 XP for that step.",
                 color=SUCCESS,
             )
-            await interaction.response.edit_message(embed=e, view=self.view)
+            await interaction.response.defer()
+            await end_game_message(self.message, e, self.view)
             await self.finish(result=f"🏆 {interaction.user.mention} won HILO with a streak of **{self.streak}**! (+10 XP)")
             return
         self.current = self.next_number
@@ -884,10 +854,7 @@ class HiLoGame(ChannelGame):
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
         if self.message:
-            try:
-                await self.message.edit(embed=self._embed(over=True, title="HILO timed out"), view=self.view)
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, self._embed(over=True, title="HILO timed out"), self.view)
         await self.finish(result=f"⏰ HILO timed out. The streak ended at **{self.streak}**.")
 
 
@@ -952,7 +919,8 @@ class TriviaGame(ChannelGame):
             self.view.stop()
         await award_xp(self.bot, interaction.user, self.channel, DEFAULT_WIN_XP)
         e = make_embed("Correct!", f"{interaction.user.mention} answered **{self.correct}**.\n+{DEFAULT_WIN_XP} XP", color=SUCCESS)
-        await interaction.response.edit_message(embed=e, view=self.view)
+        await interaction.response.defer()
+        await end_game_message(self.message, e, self.view)
         await self.finish(result=f"🏆 {interaction.user.mention} won Trivia! Answer: **{self.correct}** (+{DEFAULT_WIN_XP} XP)")
 
     async def timed_out(self) -> None:
@@ -965,13 +933,7 @@ class TriviaGame(ChannelGame):
                     if child.is_correct:
                         child.style = discord.ButtonStyle.success
         if self.message:
-            try:
-                await self.message.edit(
-                    embed=make_embed("Time's up!", f"The answer was **{self.correct}**.", color=WARNING),
-                    view=self.view,
-                )
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, make_embed("Time's up!", f"The answer was **{self.correct}**.", color=WARNING), self.view)
         await self.finish(result=f"⏰ Time's up! The answer was **{self.correct}**.")
 
 
@@ -1067,10 +1029,7 @@ class RedLightGame(ChannelGame):
             )
             result = f"🏆 {mentions} won Red Light Green Light with **{best}** point{'s' if best != 1 else ''}! (+{DEFAULT_WIN_XP} XP)"
         if self.message:
-            try:
-                await self.message.edit(embed=e)
-            except discord.HTTPException:
-                pass
+            await end_game_message(self.message, e)
         await self.finish(result=result)
 
 

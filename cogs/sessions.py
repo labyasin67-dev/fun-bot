@@ -162,8 +162,27 @@ async def refuse_if_busy(ctx: discord.Interaction | Any, bot: SocializeBot) -> b
     return True
 
 
-\n\nasync def end_game_message(message, result_embed, view=None) -> None:\n    \"\"\"Keep the original game embed, disable its controls, and post the result separately.\"\"\"\n    if view is not None:\n        for child in getattr(view, "children", []):\n            try:\n                child.disabled = True\n            except Exception:\n                pass\n        try:\n            await message.edit(view=view)\n        except Exception:\n            pass\n    try:\n        await message.channel.send(embed=result_embed)\n    except Exception:\n        pass\n
+
+def dest_user(dest: discord.Interaction | Any) -> discord.abc.User:
     return dest.user if isinstance(dest, discord.Interaction) else dest.author
+
+
+async def end_game_message(message, result_embed, view=None) -> None:
+    """Keep the original game embed, disable its controls, and post the result separately."""
+    if view is not None:
+        for child in getattr(view, "children", []):
+            try:
+                child.disabled = True
+            except Exception:
+                pass
+        try:
+            await message.edit(view=view)
+        except Exception:
+            pass
+    try:
+        await message.channel.send(embed=result_embed)
+    except Exception:
+        pass
 
 
 async def send_dest(dest: discord.Interaction | Any, **kwargs) -> discord.Message | None:
