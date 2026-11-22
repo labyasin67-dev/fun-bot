@@ -1,0 +1,480 @@
+[
+  {
+    "name": "Eiffel Tower",
+    "aliases": [
+      "La Tour Eiffel",
+      "Tour Eiffel"
+    ],
+    "country": "France",
+    "location": "Paris",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/960px-Tour_Eiffel_Wikimedia_Commons.jpg"
+  },
+  {
+    "name": "Statue of Liberty",
+    "aliases": [
+      "Lady Liberty"
+    ],
+    "country": "United States",
+    "location": "New York City",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Statue_of_Liberty_7.jpg/960px-Statue_of_Liberty_7.jpg"
+  },
+  {
+    "name": "Taj Mahal",
+    "aliases": [],
+    "country": "India",
+    "location": "Agra",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Taj_Mahal_%28Edited%29.jpeg/960px-Taj_Mahal_%28Edited%29.jpeg"
+  },
+  {
+    "name": "Colosseum",
+    "aliases": [
+      "Coliseum",
+      "Colosseo",
+      "Flavian Amphitheatre"
+    ],
+    "country": "Italy",
+    "location": "Rome",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Colosseo_2020.jpg/960px-Colosseo_2020.jpg"
+  },
+  {
+    "name": "Great Wall of China",
+    "aliases": [
+      "The Great Wall",
+      "Great Wall"
+    ],
+    "country": "China",
+    "location": "Jinshanling",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/The_Great_Wall_of_China_at_Jinshanling-edit.jpg/960px-The_Great_Wall_of_China_at_Jinshanling-edit.jpg"
+  },
+  {
+    "name": "Machu Picchu",
+    "aliases": [
+      "Machu Pichu"
+    ],
+    "country": "Peru",
+    "location": "Cusco Region",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Machu_Picchu%2C_Peru.jpg/960px-Machu_Picchu%2C_Peru.jpg"
+  },
+  {
+    "name": "Christ the Redeemer",
+    "aliases": [
+      "Cristo Redentor",
+      "Christ Redeemer"
+    ],
+    "country": "Brazil",
+    "location": "Rio de Janeiro",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Cristo_Redentor_-_Rio_de_Janeiro%2C_Brasil.jpg/960px-Cristo_Redentor_-_Rio_de_Janeiro%2C_Brasil.jpg"
+  },
+  {
+    "name": "Petra",
+    "aliases": [
+      "Al Khazneh",
+      "The Treasury",
+      "Treasury at Petra"
+    ],
+    "country": "Jordan",
+    "location": "Ma'an Governorate",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Al_Khazneh.jpg/960px-Al_Khazneh.jpg"
+  },
+  {
+    "name": "Big Ben",
+    "aliases": [
+      "Elizabeth Tower",
+      "Clock Tower Westminster"
+    ],
+    "country": "United Kingdom",
+    "location": "London",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Clock_Tower_-_Palace_of_Westminster%2C_London_-_May_2007.jpg/960px-Clock_Tower_-_Palace_of_Westminster%2C_London_-_May_2007.jpg"
+  },
+  {
+    "name": "Sydney Opera House",
+    "aliases": [
+      "Opera House Sydney",
+      "Sydney Opera"
+    ],
+    "country": "Australia",
+    "location": "Sydney",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Sydney_Opera_House_-_Dec_2008.jpg/960px-Sydney_Opera_House_-_Dec_2008.jpg"
+  },
+  {
+    "name": "Pyramids of Giza",
+    "aliases": [
+      "Great Pyramid",
+      "Great Pyramid of Giza",
+      "Giza Pyramids",
+      "Egyptian pyramids"
+    ],
+    "country": "Egypt",
+    "location": "Giza",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/All_Gizah_Pyramids.jpg/960px-All_Gizah_Pyramids.jpg"
+  },
+  {
+    "name": "Leaning Tower of Pisa",
+    "aliases": [
+      "Tower of Pisa",
+      "Pisa Tower",
+      "Leaning Tower"
+    ],
+    "country": "Italy",
+    "location": "Pisa",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/The_Leaning_Tower_of_Pisa_SB.jpeg/960px-The_Leaning_Tower_of_Pisa_SB.jpeg"
+  },
+  {
+    "name": "Stonehenge",
+    "aliases": [],
+    "country": "United Kingdom",
+    "location": "Wiltshire",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Stonehenge2007_07_30.jpg/960px-Stonehenge2007_07_30.jpg"
+  },
+  {
+    "name": "Golden Gate Bridge",
+    "aliases": [
+      "Golden Gate"
+    ],
+    "country": "United States",
+    "location": "San Francisco",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/GoldenGateBridge-001.jpg/960px-GoldenGateBridge-001.jpg"
+  },
+  {
+    "name": "Sagrada Familia",
+    "aliases": [
+      "Sagrada Fam\u00edlia",
+      "La Sagrada Familia"
+    ],
+    "country": "Spain",
+    "location": "Barcelona",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Sagrada_Familia_01.jpg/960px-Sagrada_Familia_01.jpg"
+  },
+  {
+    "name": "Parthenon",
+    "aliases": [
+      "Acropolis",
+      "Acropolis of Athens",
+      "The Parthenon"
+    ],
+    "country": "Greece",
+    "location": "Athens",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/The_Parthenon_in_Athens.jpg/960px-The_Parthenon_in_Athens.jpg"
+  },
+  {
+    "name": "Neuschwanstein Castle",
+    "aliases": [
+      "Schloss Neuschwanstein",
+      "Neuschwanstein"
+    ],
+    "country": "Germany",
+    "location": "Bavaria",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Schloss_Neuschwanstein_2013.jpg/960px-Schloss_Neuschwanstein_2013.jpg"
+  },
+  {
+    "name": "Angkor Wat",
+    "aliases": [
+      "Angkor",
+      "Ankor Wat"
+    ],
+    "country": "Cambodia",
+    "location": "Siem Reap",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Ankor_Wat_temple.jpg/960px-Ankor_Wat_temple.jpg"
+  },
+  {
+    "name": "Chichen Itza",
+    "aliases": [
+      "Chich\u00e9n Itz\u00e1",
+      "El Castillo",
+      "Temple of Kukulcan"
+    ],
+    "country": "Mexico",
+    "location": "Yucat\u00e1n",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Chichen_Itza_3.jpg/960px-Chichen_Itza_3.jpg"
+  },
+  {
+    "name": "Mount Everest",
+    "aliases": [
+      "Everest",
+      "Mt Everest",
+      "Sagarmatha",
+      "Chomolungma"
+    ],
+    "country": "Nepal",
+    "location": "Mahalangur Himal",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Mount_Everest_as_seen_from_Drukair2_PLW_edit.jpg/960px-Mount_Everest_as_seen_from_Drukair2_PLW_edit.jpg"
+  },
+  {
+    "name": "Empire State Building",
+    "aliases": [
+      "Empire State"
+    ],
+    "country": "United States",
+    "location": "New York City",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/1/10/Empire_State_Building_%28aerial_view%29.jpg"
+  },
+  {
+    "name": "Tower Bridge",
+    "aliases": [
+      "London Tower Bridge"
+    ],
+    "country": "United Kingdom",
+    "location": "London",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Tower_Bridge_from_Shad_Thames.jpg/960px-Tower_Bridge_from_Shad_Thames.jpg"
+  },
+  {
+    "name": "Brandenburg Gate",
+    "aliases": [
+      "Brandenburger Tor"
+    ],
+    "country": "Germany",
+    "location": "Berlin",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Brandenburger_Tor_abends.jpg/960px-Brandenburger_Tor_abends.jpg"
+  },
+  {
+    "name": "Saint Basil's Cathedral",
+    "aliases": [
+      "St Basil's Cathedral",
+      "St Basils Cathedral",
+      "Saint Basils",
+      "Pokrovsky Cathedral"
+    ],
+    "country": "Russia",
+    "location": "Moscow",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Saint_Basil%27s_Cathedral_in_Moscow.jpg/960px-Saint_Basil%27s_Cathedral_in_Moscow.jpg"
+  },
+  {
+    "name": "Moai",
+    "aliases": [
+      "Easter Island statues",
+      "Easter Island heads",
+      "Ahu Tongariki",
+      "Moai statues"
+    ],
+    "country": "Chile",
+    "location": "Easter Island",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Ahu_Tongariki.jpg/960px-Ahu_Tongariki.jpg"
+  },
+  {
+    "name": "Grand Canyon",
+    "aliases": [
+      "Grand Canyon National Park"
+    ],
+    "country": "United States",
+    "location": "Arizona",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Grand_Canyon_Hopi_Point.jpg/960px-Grand_Canyon_Hopi_Point.jpg"
+  },
+  {
+    "name": "Uluru",
+    "aliases": [
+      "Ayers Rock",
+      "Ayersrock"
+    ],
+    "country": "Australia",
+    "location": "Northern Territory",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Uluru_%28Helicopter_view%29-crop.jpg/960px-Uluru_%28Helicopter_view%29-crop.jpg"
+  },
+  {
+    "name": "Space Needle",
+    "aliases": [
+      "Seattle Space Needle"
+    ],
+    "country": "United States",
+    "location": "Seattle",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Space_Needle_from_Kerry_Park.jpg/960px-Space_Needle_from_Kerry_Park.jpg"
+  },
+  {
+    "name": "Mount Rushmore",
+    "aliases": [
+      "Rushmore",
+      "Mt Rushmore",
+      "Mount Rushmore National Memorial"
+    ],
+    "country": "United States",
+    "location": "South Dakota",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Mount_Rushmore_National_Memorial.jpg/960px-Mount_Rushmore_National_Memorial.jpg"
+  },
+  {
+    "name": "Trevi Fountain",
+    "aliases": [
+      "Fontana di Trevi"
+    ],
+    "country": "Italy",
+    "location": "Rome",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Trevi_Fountain_Rome.jpg/960px-Trevi_Fountain_Rome.jpg"
+  },
+  {
+    "name": "Louvre Pyramid",
+    "aliases": [
+      "Louvre",
+      "Louvre Museum",
+      "Pyramide du Louvre",
+      "The Louvre"
+    ],
+    "country": "France",
+    "location": "Paris",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Louvre_Museum_Wikimedia_Commons.jpg/960px-Louvre_Museum_Wikimedia_Commons.jpg"
+  },
+  {
+    "name": "Buckingham Palace",
+    "aliases": [
+      "Buckingham"
+    ],
+    "country": "United Kingdom",
+    "location": "London",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Buckingham_Palace_from_gardens%2C_London%2C_UK_-_Diliff.jpg/960px-Buckingham_Palace_from_gardens%2C_London%2C_UK_-_Diliff.jpg"
+  },
+  {
+    "name": "Hagia Sophia",
+    "aliases": [
+      "Aya Sofya",
+      "Ayasofya",
+      "Hagia Sofia"
+    ],
+    "country": "Turkey",
+    "location": "Istanbul",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Hagia_Sophia_Mars_2013.jpg/960px-Hagia_Sophia_Mars_2013.jpg"
+  },
+  {
+    "name": "Matterhorn",
+    "aliases": [
+      "Monte Cervino",
+      "Mont Cervin"
+    ],
+    "country": "Switzerland",
+    "location": "Pennine Alps",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Matterhorn_from_Domh%C3%BCtte_-_2.jpg/960px-Matterhorn_from_Domh%C3%BCtte_-_2.jpg"
+  },
+  {
+    "name": "Hollywood Sign",
+    "aliases": [
+      "The Hollywood Sign"
+    ],
+    "country": "United States",
+    "location": "Los Angeles",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Hollywood_Sign.jpg/960px-Hollywood_Sign.jpg"
+  },
+  {
+    "name": "Gateway Arch",
+    "aliases": [
+      "Gateway Arch St Louis",
+      "St Louis Arch"
+    ],
+    "country": "United States",
+    "location": "St. Louis",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Gateway_Arch_St_Louis.jpg/960px-Gateway_Arch_St_Louis.jpg"
+  },
+  {
+    "name": "Notre-Dame",
+    "aliases": [
+      "Notre Dame",
+      "Notre-Dame de Paris",
+      "Notre Dame Cathedral"
+    ],
+    "country": "France",
+    "location": "Paris",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Notre-Dame_de_Paris_2013-07-24.jpg/960px-Notre-Dame_de_Paris_2013-07-24.jpg"
+  },
+  {
+    "name": "Mont-Saint-Michel",
+    "aliases": [
+      "Mont Saint Michel",
+      "Mont St Michel"
+    ],
+    "country": "France",
+    "location": "Normandy",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Mont_Saint-Michel_03.jpg/960px-Mont_Saint-Michel_03.jpg"
+  },
+  {
+    "name": "London Eye",
+    "aliases": [
+      "The London Eye",
+      "Millennium Wheel"
+    ],
+    "country": "United Kingdom",
+    "location": "London",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/London_Eye_at_night.jpg/960px-London_Eye_at_night.jpg"
+  },
+  {
+    "name": "Atomium",
+    "aliases": [
+      "The Atomium"
+    ],
+    "country": "Belgium",
+    "location": "Brussels",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Atomium_Brussels.jpg/960px-Atomium_Brussels.jpg"
+  },
+  {
+    "name": "Potala Palace",
+    "aliases": [
+      "The Potala",
+      "Potala"
+    ],
+    "country": "China",
+    "location": "Lhasa, Tibet",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/f/f6/Potala_Palace.jpg"
+  },
+  {
+    "name": "Tokyo Tower",
+    "aliases": [],
+    "country": "Japan",
+    "location": "Tokyo",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Tokyo_Tower_and_around_Skyscrapers.jpg/960px-Tokyo_Tower_and_around_Skyscrapers.jpg"
+  },
+  {
+    "name": "Tower of London",
+    "aliases": [
+      "The Tower of London",
+      "London Tower"
+    ],
+    "country": "United Kingdom",
+    "location": "London",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Tower_of_London_viewed_from_the_River_Thames.jpg/960px-Tower_of_London_viewed_from_the_River_Thames.jpg"
+  },
+  {
+    "name": "Edinburgh Castle",
+    "aliases": [],
+    "country": "United Kingdom",
+    "location": "Edinburgh",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Edinburgh_Castle_from_the_south_east.JPG/960px-Edinburgh_Castle_from_the_south_east.JPG"
+  },
+  {
+    "name": "Sydney Harbour Bridge",
+    "aliases": [
+      "Harbour Bridge",
+      "The Coathanger",
+      "Harbor Bridge Sydney"
+    ],
+    "country": "Australia",
+    "location": "Sydney",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Sydney_Harbour_Bridge_from_Circular_Quay.jpg/960px-Sydney_Harbour_Bridge_from_Circular_Quay.jpg"
+  },
+  {
+    "name": "Acropolis of Athens",
+    "aliases": [
+      "Acropolis"
+    ],
+    "country": "Greece",
+    "location": "Athens",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Acropolis.JPG/960px-Acropolis.JPG"
+  },
+  {
+    "name": "Mount Kilimanjaro",
+    "aliases": [
+      "Kilimanjaro",
+      "Mt Kilimanjaro"
+    ],
+    "country": "Tanzania",
+    "location": "Kilimanjaro Region",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Mount_Kilimanjaro.jpg/960px-Mount_Kilimanjaro.jpg"
+  },
+  {
+    "name": "Statue of Unity",
+    "aliases": [],
+    "country": "India",
+    "location": "Gujarat",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Statue_of_Unity.jpg/960px-Statue_of_Unity.jpg"
+  },
+  {
+    "name": "Brooklyn Bridge",
+    "aliases": [],
+    "country": "United States",
+    "location": "New York City",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Brooklyn_Bridge_Manhattan.jpg/960px-Brooklyn_Bridge_Manhattan.jpg"
+  }
+]

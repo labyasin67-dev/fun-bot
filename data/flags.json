@@ -1,0 +1,440 @@
+[
+  {
+    "name": "United States",
+    "aliases": [
+      "USA",
+      "US",
+      "America",
+      "United States of America"
+    ],
+    "code": "us",
+    "url": "https://flagcdn.com/w320/us.png"
+  },
+  {
+    "name": "United Kingdom",
+    "aliases": [
+      "UK",
+      "Great Britain",
+      "Britain",
+      "England"
+    ],
+    "code": "gb",
+    "url": "https://flagcdn.com/w320/gb.png"
+  },
+  {
+    "name": "France",
+    "aliases": [
+      "French Republic"
+    ],
+    "code": "fr",
+    "url": "https://flagcdn.com/w320/fr.png"
+  },
+  {
+    "name": "Germany",
+    "aliases": [
+      "Deutschland"
+    ],
+    "code": "de",
+    "url": "https://flagcdn.com/w320/de.png"
+  },
+  {
+    "name": "Italy",
+    "aliases": [],
+    "code": "it",
+    "url": "https://flagcdn.com/w320/it.png"
+  },
+  {
+    "name": "Spain",
+    "aliases": [
+      "Espa\u00f1a",
+      "Espana"
+    ],
+    "code": "es",
+    "url": "https://flagcdn.com/w320/es.png"
+  },
+  {
+    "name": "Canada",
+    "aliases": [],
+    "code": "ca",
+    "url": "https://flagcdn.com/w320/ca.png"
+  },
+  {
+    "name": "Australia",
+    "aliases": [],
+    "code": "au",
+    "url": "https://flagcdn.com/w320/au.png"
+  },
+  {
+    "name": "Japan",
+    "aliases": [
+      "Nippon",
+      "Nihon"
+    ],
+    "code": "jp",
+    "url": "https://flagcdn.com/w320/jp.png"
+  },
+  {
+    "name": "China",
+    "aliases": [
+      "PRC",
+      "People's Republic of China"
+    ],
+    "code": "cn",
+    "url": "https://flagcdn.com/w320/cn.png"
+  },
+  {
+    "name": "India",
+    "aliases": [
+      "Bharat"
+    ],
+    "code": "in",
+    "url": "https://flagcdn.com/w320/in.png"
+  },
+  {
+    "name": "Brazil",
+    "aliases": [
+      "Brasil"
+    ],
+    "code": "br",
+    "url": "https://flagcdn.com/w320/br.png"
+  },
+  {
+    "name": "Mexico",
+    "aliases": [
+      "M\u00e9xico",
+      "Mexico"
+    ],
+    "code": "mx",
+    "url": "https://flagcdn.com/w320/mx.png"
+  },
+  {
+    "name": "South Africa",
+    "aliases": [
+      "RSA"
+    ],
+    "code": "za",
+    "url": "https://flagcdn.com/w320/za.png"
+  },
+  {
+    "name": "South Korea",
+    "aliases": [
+      "Korea",
+      "Republic of Korea",
+      "ROK"
+    ],
+    "code": "kr",
+    "url": "https://flagcdn.com/w320/kr.png"
+  },
+  {
+    "name": "North Korea",
+    "aliases": [
+      "DPRK"
+    ],
+    "code": "kp",
+    "url": "https://flagcdn.com/w320/kp.png"
+  },
+  {
+    "name": "Russia",
+    "aliases": [
+      "Russian Federation"
+    ],
+    "code": "ru",
+    "url": "https://flagcdn.com/w320/ru.png"
+  },
+  {
+    "name": "Sweden",
+    "aliases": [],
+    "code": "se",
+    "url": "https://flagcdn.com/w320/se.png"
+  },
+  {
+    "name": "Norway",
+    "aliases": [],
+    "code": "no",
+    "url": "https://flagcdn.com/w320/no.png"
+  },
+  {
+    "name": "Finland",
+    "aliases": [],
+    "code": "fi",
+    "url": "https://flagcdn.com/w320/fi.png"
+  },
+  {
+    "name": "Denmark",
+    "aliases": [],
+    "code": "dk",
+    "url": "https://flagcdn.com/w320/dk.png"
+  },
+  {
+    "name": "Netherlands",
+    "aliases": [
+      "Holland",
+      "The Netherlands"
+    ],
+    "code": "nl",
+    "url": "https://flagcdn.com/w320/nl.png"
+  },
+  {
+    "name": "Belgium",
+    "aliases": [],
+    "code": "be",
+    "url": "https://flagcdn.com/w320/be.png"
+  },
+  {
+    "name": "Switzerland",
+    "aliases": [
+      "Swiss"
+    ],
+    "code": "ch",
+    "url": "https://flagcdn.com/w320/ch.png"
+  },
+  {
+    "name": "Austria",
+    "aliases": [],
+    "code": "at",
+    "url": "https://flagcdn.com/w320/at.png"
+  },
+  {
+    "name": "Portugal",
+    "aliases": [],
+    "code": "pt",
+    "url": "https://flagcdn.com/w320/pt.png"
+  },
+  {
+    "name": "Greece",
+    "aliases": [
+      "Hellas"
+    ],
+    "code": "gr",
+    "url": "https://flagcdn.com/w320/gr.png"
+  },
+  {
+    "name": "Turkey",
+    "aliases": [
+      "T\u00fcrkiye",
+      "Turkiye"
+    ],
+    "code": "tr",
+    "url": "https://flagcdn.com/w320/tr.png"
+  },
+  {
+    "name": "Poland",
+    "aliases": [],
+    "code": "pl",
+    "url": "https://flagcdn.com/w320/pl.png"
+  },
+  {
+    "name": "Ireland",
+    "aliases": [
+      "Republic of Ireland",
+      "Eire"
+    ],
+    "code": "ie",
+    "url": "https://flagcdn.com/w320/ie.png"
+  },
+  {
+    "name": "New Zealand",
+    "aliases": [
+      "Aotearoa",
+      "NZ"
+    ],
+    "code": "nz",
+    "url": "https://flagcdn.com/w320/nz.png"
+  },
+  {
+    "name": "Argentina",
+    "aliases": [],
+    "code": "ar",
+    "url": "https://flagcdn.com/w320/ar.png"
+  },
+  {
+    "name": "Chile",
+    "aliases": [],
+    "code": "cl",
+    "url": "https://flagcdn.com/w320/cl.png"
+  },
+  {
+    "name": "Colombia",
+    "aliases": [],
+    "code": "co",
+    "url": "https://flagcdn.com/w320/co.png"
+  },
+  {
+    "name": "Peru",
+    "aliases": [],
+    "code": "pe",
+    "url": "https://flagcdn.com/w320/pe.png"
+  },
+  {
+    "name": "Egypt",
+    "aliases": [],
+    "code": "eg",
+    "url": "https://flagcdn.com/w320/eg.png"
+  },
+  {
+    "name": "Nigeria",
+    "aliases": [],
+    "code": "ng",
+    "url": "https://flagcdn.com/w320/ng.png"
+  },
+  {
+    "name": "Kenya",
+    "aliases": [],
+    "code": "ke",
+    "url": "https://flagcdn.com/w320/ke.png"
+  },
+  {
+    "name": "Morocco",
+    "aliases": [],
+    "code": "ma",
+    "url": "https://flagcdn.com/w320/ma.png"
+  },
+  {
+    "name": "Saudi Arabia",
+    "aliases": [
+      "KSA"
+    ],
+    "code": "sa",
+    "url": "https://flagcdn.com/w320/sa.png"
+  },
+  {
+    "name": "United Arab Emirates",
+    "aliases": [
+      "UAE",
+      "Emirates"
+    ],
+    "code": "ae",
+    "url": "https://flagcdn.com/w320/ae.png"
+  },
+  {
+    "name": "Israel",
+    "aliases": [],
+    "code": "il",
+    "url": "https://flagcdn.com/w320/il.png"
+  },
+  {
+    "name": "Thailand",
+    "aliases": [
+      "Siam"
+    ],
+    "code": "th",
+    "url": "https://flagcdn.com/w320/th.png"
+  },
+  {
+    "name": "Vietnam",
+    "aliases": [
+      "Viet Nam"
+    ],
+    "code": "vn",
+    "url": "https://flagcdn.com/w320/vn.png"
+  },
+  {
+    "name": "Indonesia",
+    "aliases": [],
+    "code": "id",
+    "url": "https://flagcdn.com/w320/id.png"
+  },
+  {
+    "name": "Malaysia",
+    "aliases": [],
+    "code": "my",
+    "url": "https://flagcdn.com/w320/my.png"
+  },
+  {
+    "name": "Philippines",
+    "aliases": [
+      "The Philippines"
+    ],
+    "code": "ph",
+    "url": "https://flagcdn.com/w320/ph.png"
+  },
+  {
+    "name": "Singapore",
+    "aliases": [],
+    "code": "sg",
+    "url": "https://flagcdn.com/w320/sg.png"
+  },
+  {
+    "name": "Pakistan",
+    "aliases": [],
+    "code": "pk",
+    "url": "https://flagcdn.com/w320/pk.png"
+  },
+  {
+    "name": "Bangladesh",
+    "aliases": [],
+    "code": "bd",
+    "url": "https://flagcdn.com/w320/bd.png"
+  },
+  {
+    "name": "Ukraine",
+    "aliases": [],
+    "code": "ua",
+    "url": "https://flagcdn.com/w320/ua.png"
+  },
+  {
+    "name": "Czech Republic",
+    "aliases": [
+      "Czechia"
+    ],
+    "code": "cz",
+    "url": "https://flagcdn.com/w320/cz.png"
+  },
+  {
+    "name": "Hungary",
+    "aliases": [],
+    "code": "hu",
+    "url": "https://flagcdn.com/w320/hu.png"
+  },
+  {
+    "name": "Romania",
+    "aliases": [],
+    "code": "ro",
+    "url": "https://flagcdn.com/w320/ro.png"
+  },
+  {
+    "name": "Croatia",
+    "aliases": [],
+    "code": "hr",
+    "url": "https://flagcdn.com/w320/hr.png"
+  },
+  {
+    "name": "Iceland",
+    "aliases": [],
+    "code": "is",
+    "url": "https://flagcdn.com/w320/is.png"
+  },
+  {
+    "name": "Jamaica",
+    "aliases": [],
+    "code": "jm",
+    "url": "https://flagcdn.com/w320/jm.png"
+  },
+  {
+    "name": "Cuba",
+    "aliases": [],
+    "code": "cu",
+    "url": "https://flagcdn.com/w320/cu.png"
+  },
+  {
+    "name": "Ghana",
+    "aliases": [],
+    "code": "gh",
+    "url": "https://flagcdn.com/w320/gh.png"
+  },
+  {
+    "name": "Ethiopia",
+    "aliases": [],
+    "code": "et",
+    "url": "https://flagcdn.com/w320/et.png"
+  },
+  {
+    "name": "Vatican City",
+    "aliases": [
+      "The Vatican",
+      "Holy See"
+    ],
+    "code": "va",
+    "url": "https://flagcdn.com/w320/va.png"
+  }
+]

@@ -1,0 +1,428 @@
+[
+  {
+    "name": "Albert Einstein",
+    "aliases": [
+      "Einstein"
+    ],
+    "hint": "Scientist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Albert_Einstein_sticks_his_tongue.jpg/960px-Albert_Einstein_sticks_his_tongue.jpg"
+  },
+  {
+    "name": "Muhammad Ali",
+    "aliases": [
+      "Cassius Clay",
+      "The Greatest"
+    ],
+    "hint": "Boxer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Muhammad_Ali_NYWTS.jpg/960px-Muhammad_Ali_NYWTS.jpg"
+  },
+  {
+    "name": "Michael Jackson",
+    "aliases": [
+      "MJ",
+      "King of Pop"
+    ],
+    "hint": "Singer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/0/04/Michael_Jackson_1984.jpg"
+  },
+  {
+    "name": "Elvis Presley",
+    "aliases": [
+      "Elvis",
+      "The King"
+    ],
+    "hint": "Singer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Elvis_Presley_promoting_Jailhouse_Rock.jpg/960px-Elvis_Presley_promoting_Jailhouse_Rock.jpg"
+  },
+  {
+    "name": "Audrey Hepburn",
+    "aliases": [],
+    "hint": "Actress",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Audrey_Hepburn_1956.jpg/960px-Audrey_Hepburn_1956.jpg"
+  },
+  {
+    "name": "Charlie Chaplin",
+    "aliases": [
+      "Chaplin",
+      "Charles Chaplin"
+    ],
+    "hint": "Actor",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Charlie_Chaplin.jpg/960px-Charlie_Chaplin.jpg"
+  },
+  {
+    "name": "Bruce Lee",
+    "aliases": [
+      "Lee Jun-fan"
+    ],
+    "hint": "Martial artist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Bruce_Lee_1973.jpg"
+  },
+  {
+    "name": "Nelson Mandela",
+    "aliases": [
+      "Mandela",
+      "Madiba"
+    ],
+    "hint": "Statesman",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Nelson_Mandela_1994.jpg/960px-Nelson_Mandela_1994.jpg"
+  },
+  {
+    "name": "Martin Luther King Jr.",
+    "aliases": [
+      "MLK",
+      "Martin Luther King",
+      "Dr. King"
+    ],
+    "hint": "Activist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Martin_Luther_King%2C_Jr..jpg/960px-Martin_Luther_King%2C_Jr..jpg"
+  },
+  {
+    "name": "Winston Churchill",
+    "aliases": [
+      "Churchill"
+    ],
+    "hint": "Statesman",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Sir_Winston_S_Churchill.jpg/960px-Sir_Winston_S_Churchill.jpg"
+  },
+  {
+    "name": "Princess Diana",
+    "aliases": [
+      "Diana",
+      "Diana Spencer",
+      "Princess of Wales"
+    ],
+    "hint": "Public figure",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/5/5e/Diana%2C_Princess_of_Wales_1997_%282%29.jpg"
+  },
+  {
+    "name": "Barack Obama",
+    "aliases": [
+      "Obama",
+      "President Obama"
+    ],
+    "hint": "Statesman",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/President_Barack_Obama.jpg/960px-President_Barack_Obama.jpg"
+  },
+  {
+    "name": "Lionel Messi",
+    "aliases": [
+      "Messi",
+      "Leo Messi"
+    ],
+    "hint": "Footballer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Lionel_Messi_20180626.jpg"
+  },
+  {
+    "name": "Cristiano Ronaldo",
+    "aliases": [
+      "Ronaldo",
+      "CR7"
+    ],
+    "hint": "Footballer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Cristiano_Ronaldo_2018.jpg"
+  },
+  {
+    "name": "Michael Jordan",
+    "aliases": [
+      "MJ",
+      "Air Jordan"
+    ],
+    "hint": "Basketball player",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Michael_Jordan_in_2014.jpg"
+  },
+  {
+    "name": "Serena Williams",
+    "aliases": [
+      "Serena"
+    ],
+    "hint": "Tennis player",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Serena_Williams_US_Open_2013.jpg/960px-Serena_Williams_US_Open_2013.jpg"
+  },
+  {
+    "name": "Tiger Woods",
+    "aliases": [
+      "Tiger"
+    ],
+    "hint": "Golfer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/0/0b/TigerWoodsOct2011.jpg"
+  },
+  {
+    "name": "Frida Kahlo",
+    "aliases": [
+      "Frida"
+    ],
+    "hint": "Artist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg/960px-Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg"
+  },
+  {
+    "name": "Vincent van Gogh",
+    "aliases": [
+      "Van Gogh",
+      "Vincent Van Gogh"
+    ],
+    "hint": "Artist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Vincent_van_Gogh_-_Self-Portrait_-_Google_Art_Project_%28454045%29.jpg/960px-Vincent_van_Gogh_-_Self-Portrait_-_Google_Art_Project_%28454045%29.jpg"
+  },
+  {
+    "name": "Leonardo da Vinci",
+    "aliases": [
+      "Da Vinci",
+      "Leonardo"
+    ],
+    "hint": "Artist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/b/ba/Leonardo_self.jpg"
+  },
+  {
+    "name": "Pablo Picasso",
+    "aliases": [
+      "Picasso"
+    ],
+    "hint": "Artist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Portrait_de_Picasso%2C_1908.jpg"
+  },
+  {
+    "name": "Wolfgang Amadeus Mozart",
+    "aliases": [
+      "Mozart"
+    ],
+    "hint": "Composer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Wolfgang-amadeus-mozart_1.jpg/960px-Wolfgang-amadeus-mozart_1.jpg"
+  },
+  {
+    "name": "Ludwig van Beethoven",
+    "aliases": [
+      "Beethoven"
+    ],
+    "hint": "Composer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Beethoven.jpg/960px-Beethoven.jpg"
+  },
+  {
+    "name": "Nikola Tesla",
+    "aliases": [
+      "Tesla"
+    ],
+    "hint": "Inventor",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/7/79/Tesla_circa_1890.jpeg"
+  },
+  {
+    "name": "Isaac Newton",
+    "aliases": [
+      "Newton",
+      "Sir Isaac Newton"
+    ],
+    "hint": "Scientist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/GodfreyKneller-IsaacNewton-1689.jpg/960px-GodfreyKneller-IsaacNewton-1689.jpg"
+  },
+  {
+    "name": "Charles Darwin",
+    "aliases": [
+      "Darwin"
+    ],
+    "hint": "Scientist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Charles_Darwin_01.jpg/960px-Charles_Darwin_01.jpg"
+  },
+  {
+    "name": "Stephen Hawking",
+    "aliases": [
+      "Hawking"
+    ],
+    "hint": "Scientist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/e/eb/Stephen_Hawking.StarChild.jpg"
+  },
+  {
+    "name": "Steve Jobs",
+    "aliases": [
+      "Jobs"
+    ],
+    "hint": "Entrepreneur",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Steve_Jobs_Headshot_2010-CROP.jpg/960px-Steve_Jobs_Headshot_2010-CROP.jpg"
+  },
+  {
+    "name": "Oprah Winfrey",
+    "aliases": [
+      "Oprah"
+    ],
+    "hint": "Talk show host",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Oprah_in_2014.jpg/960px-Oprah_in_2014.jpg"
+  },
+  {
+    "name": "Tom Hanks",
+    "aliases": [],
+    "hint": "Actor",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Tom_Hanks_TIFF_2019.jpg/960px-Tom_Hanks_TIFF_2019.jpg"
+  },
+  {
+    "name": "Leonardo DiCaprio",
+    "aliases": [
+      "Leo DiCaprio",
+      "DiCaprio"
+    ],
+    "hint": "Actor",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/2/25/Leonardo_DiCaprio_2014.jpg"
+  },
+  {
+    "name": "Dwayne Johnson",
+    "aliases": [
+      "The Rock",
+      "The Rock Johnson"
+    ],
+    "hint": "Actor",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Dwayne_Johnson_2014_%28cropped%29.jpg"
+  },
+  {
+    "name": "Keanu Reeves",
+    "aliases": [
+      "Keanu"
+    ],
+    "hint": "Actor",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Keanu_Reeves_2019.jpg/960px-Keanu_Reeves_2019.jpg"
+  },
+  {
+    "name": "Robin Williams",
+    "aliases": [],
+    "hint": "Actor",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/0/05/Robin_Williams_2011a_%282%29.jpg"
+  },
+  {
+    "name": "Malala Yousafzai",
+    "aliases": [
+      "Malala"
+    ],
+    "hint": "Activist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Malala_Yousafzai_2015.jpg/960px-Malala_Yousafzai_2015.jpg"
+  },
+  {
+    "name": "Anne Frank",
+    "aliases": [],
+    "hint": "Diarist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Anne_Frank.jpg/960px-Anne_Frank.jpg"
+  },
+  {
+    "name": "William Shakespeare",
+    "aliases": [
+      "Shakespeare"
+    ],
+    "hint": "Playwright",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Shakespeare.jpg/960px-Shakespeare.jpg"
+  },
+  {
+    "name": "The Beatles",
+    "aliases": [
+      "Beatles"
+    ],
+    "hint": "Band",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/The_Beatles_members_at_New_York_City_in_1964.jpg/960px-The_Beatles_members_at_New_York_City_in_1964.jpg"
+  },
+  {
+    "name": "John Lennon",
+    "aliases": [
+      "Lennon"
+    ],
+    "hint": "Singer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/8/85/John_Lennon_1969_%28cropped%29.jpg"
+  },
+  {
+    "name": "Madonna",
+    "aliases": [
+      "Madonna Ciccone"
+    ],
+    "hint": "Singer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Madonna_1990.jpg/960px-Madonna_1990.jpg"
+  },
+  {
+    "name": "Taylor Swift",
+    "aliases": [
+      "Swift"
+    ],
+    "hint": "Singer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Taylor_Swift_2_-_2019_by_Glenn_Francis_%28cropped%29.jpg/960px-Taylor_Swift_2_-_2019_by_Glenn_Francis_%28cropped%29.jpg"
+  },
+  {
+    "name": "Rihanna",
+    "aliases": [
+      "Rihanna Fenty"
+    ],
+    "hint": "Singer",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Rihanna_Fenty_2018.png"
+  },
+  {
+    "name": "Jackie Chan",
+    "aliases": [],
+    "hint": "Actor",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Jackie_Chan_2002.jpg/960px-Jackie_Chan_2002.jpg"
+  },
+  {
+    "name": "Meryl Streep",
+    "aliases": [],
+    "hint": "Actress",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/4/46/Meryl_Streep_December_2018.jpg"
+  },
+  {
+    "name": "Morgan Freeman",
+    "aliases": [],
+    "hint": "Actor",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Morgan_Freeman_Deauville_2018.jpg"
+  },
+  {
+    "name": "Abraham Lincoln",
+    "aliases": [
+      "Lincoln",
+      "Abe Lincoln"
+    ],
+    "hint": "Statesman",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Abraham_Lincoln_O-77_matte_collodion_print.jpg/960px-Abraham_Lincoln_O-77_matte_collodion_print.jpg"
+  },
+  {
+    "name": "George Washington",
+    "aliases": [
+      "Washington",
+      "President Washington"
+    ],
+    "hint": "Statesman",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Gilbert_Stuart_Williamstown_Portrait_of_George_Washington.jpg/960px-Gilbert_Stuart_Williamstown_Portrait_of_George_Washington.jpg"
+  },
+  {
+    "name": "Marie Curie",
+    "aliases": [
+      "Madame Curie",
+      "Maria Sk\u0142odowska-Curie"
+    ],
+    "hint": "Scientist",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/960px-Marie_Curie_c._1920s.jpg"
+  },
+  {
+    "name": "Ada Lovelace",
+    "aliases": [
+      "Ada Byron"
+    ],
+    "hint": "Mathematician",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Ada_Lovelace_portrait.jpg/960px-Ada_Lovelace_portrait.jpg"
+  },
+  {
+    "name": "Alan Turing",
+    "aliases": [
+      "Turing"
+    ],
+    "hint": "Mathematician",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Alan_Turing_Aged_16.jpg"
+  },
+  {
+    "name": "J. K. Rowling",
+    "aliases": [
+      "JK Rowling",
+      "Joanne Rowling",
+      "J.K. Rowling"
+    ],
+    "hint": "Author",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/J._K._Rowling_2010.jpg/960px-J._K._Rowling_2010.jpg"
+  },
+  {
+    "name": "J. R. R. Tolkien",
+    "aliases": [
+      "Tolkien",
+      "JRR Tolkien"
+    ],
+    "hint": "Author",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/J._R._R._Tolkien%2C_ca._1925.jpg/960px-J._R._R._Tolkien%2C_ca._1925.jpg"
+  }
+]
