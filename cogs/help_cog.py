@@ -62,8 +62,9 @@ HELP_SECTIONS = [
         "• `.leaderboard` / `/leaderboard`\n"
         "• `.voicetime [@user]` / `/voicetime`\n"
         "• `.voiceleaderboard` / `/voiceleaderboard`\n"
-        "• `.setlevelchannel #channel` — where to announce level-ups (manage server)\n"
-        "• `.levelrole add/remove/list` — auto roles at a level (manage roles)",
+"• `.setlevelchannel #channel` — where to announce level-ups (manage server)\n"
+"• `.levelrole add/remove/list` — auto roles at a level (manage roles)\n"
+"• `.addxp @member <amount>`, `.removexp`, `.setxp` — staff XP (manage server)"
     ),
     (
         "Voice",

@@ -304,5 +304,60 @@ class Leveling(commands.Cog):
         await ctx.send(embed=make_embed("Level roles", "\n".join(lines)))
 
 
+    @commands.hybrid_command(name="addxp", description="Add XP to a member.")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def addxp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
+        if member.bot:
+            await ctx.send(embed=make_embed("Can't do that", "Bots don't earn XP.", color=DANGER), ephemeral=True)
+            return
+        if amount <= 0 or amount > 1_000_000:
+            await ctx.send(embed=make_embed("Invalid amount", "Amount must be between 1 and 1,000,000.", color=DANGER), ephemeral=True)
+            return
+        old, new = await self.bot.db.add_xp(ctx.guild.id, member.id, amount)
+        _, _, _, _ = level_progress(new)
+        if new > old:
+            await self._handle_level_up(ctx.guild, member, ctx.channel, old, new)
+        level, _, _, _ = level_progress(new)
+        await ctx.send(embed=make_embed("XP added", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**", color=SUCCESS))
+        from cogs.channels import post_modlog
+        await post_modlog(self.bot, ctx.guild, "XP added", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=SUCCESS)
+
+    @commands.hybrid_command(name="removexp", description="Remove XP from a member.")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def removexp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
+        if member.bot:
+            await ctx.send(embed=make_embed("Can't do that", "Bots don't earn XP.", color=DANGER), ephemeral=True)
+            return
+        if amount <= 0 or amount > 1_000_000:
+            await ctx.send(embed=make_embed("Invalid amount", "Amount must be between 1 and 1,000,000.", color=DANGER), ephemeral=True)
+            return
+        old_xp = int((await self.bot.db.ensure_member(ctx.guild.id, member.id))["xp"])
+        new_xp = max(0, old_xp - amount)
+        old, new = await self.bot.db.set_xp(ctx.guild.id, member.id, new_xp)
+        level, _, _, _ = level_progress(new)
+        await ctx.send(embed=make_embed("XP removed", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**", color=SUCCESS))
+        from cogs.channels import post_modlog
+        await post_modlog(self.bot, ctx.guild, "XP removed", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=WARNING)
+
+    @commands.hybrid_command(name="setxp", description="Set a member's XP to an exact value.")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def setxp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
+        if member.bot:
+            await ctx.send(embed=make_embed("Can't do that", "Bots don't earn XP.", color=DANGER), ephemeral=True)
+            return
+        if amount < 0 or amount > 1_000_000:
+            await ctx.send(embed=make_embed("Invalid amount", "Amount must be between 0 and 1,000,000.", color=DANGER), ephemeral=True)
+            return
+        old, new = await self.bot.db.set_xp(ctx.guild.id, member.id, amount)
+        if new > old:
+            await self._handle_level_up(ctx.guild, member, ctx.channel, old, new)
+        level, _, _, _ = level_progress(new)
+        await ctx.send(embed=make_embed("XP set", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**", color=SUCCESS))
+        from cogs.channels import post_modlog
+        await post_modlog(self.bot, ctx.guild, "XP set", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=SUCCESS)
+
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Leveling(bot))
