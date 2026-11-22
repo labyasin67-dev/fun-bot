@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ guild.name }} · Overview{% endblock %}
+{% block body %}
+<h1>Overview</h1>
+<p class="lede">Live status for this server.</p>
+<div class="grid stats">
+  <div class="card"><div class="stat">{{ member_count }}</div><div class="stat-label">Members</div></div>
+  <div class="card"><div class="stat">{{ online_count }}</div><div class="stat-label">Online (approx.)</div></div>
+  <div class="card"><div class="stat">{{ bot_status }}</div><div class="stat-label">Bot · {{ latency_ms }}ms</div></div>
+</div>
+<div class="card" style="margin-top:14px">
+  <h2>Assigned channels</h2>
+  {% for key, label in {
+    'alts':'Alt alerts','modlog':'Mod log','levelups':'Level-ups','welcome':'Welcome','games':'Games','counting':'Counting'
+  }.items() %}
+    <p><strong>{{ label }}:</strong>
+      {% set ids = assigned.get(key) or [] %}
+      {% if ids %}
+        {% for cid in ids %}#{% set ch = guild.get_channel(cid) %}{{ ch.name if ch else cid }}{% if not loop.last %}, {% endif %}{% endfor %}
+      {% else %}
+        <span class="muted">Not set</span>
+      {% endif %}
+    </p>
+  {% endfor %}
+  <a class="btn secondary" href="/servers/{{ guild.id }}/channels">Edit channels</a>
+</div>
+{% endblock %}

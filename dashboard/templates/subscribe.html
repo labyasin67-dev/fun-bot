@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Subscribe · Fun bot Premium{% endblock %}
+{% block body %}
+<h1>Choose a server</h1>
+<p class="lede">You're subscribing to the <strong>{{ plan_label }}</strong> plan ($ {{ price }} USD). Pick a server you can manage that already has Fun bot in it.</p>
+{% if servers %}
+  <form method="post" action="/subscribe/checkout">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="plan" value="{{ plan }}">
+    <div class="field">
+      <label>Server</label>
+      <select name="guild_id" required>
+        {% for s in servers %}
+          <option value="{{ s.id }}">{{ s.name }} ({{ s.id }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn" type="submit">Continue to Stripe</button>
+  </form>
+{% else %}
+  <p class="muted">I don't see any servers where you have Manage Server and the bot is already a member. Invite the bot first, then come back.</p>
+  <a class="btn" href="{{ invite_url }}">Invite Fun bot</a>
+{% endif %}
+{% endblock %}

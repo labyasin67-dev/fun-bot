@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Your servers{% endblock %}
+{% block body %}
+<h1>Your servers</h1>
+<p class="lede">Servers where you have Manage Server. Invite the bot if it is not there yet.</p>
+{% if not bot_ready %}
+  <p class="muted">The bot is still starting, so membership may be incomplete for a moment.</p>
+{% endif %}
+<div class="server-list">
+  {% for s in servers %}
+    <div class="server">
+      {% if s.icon %}<img src="{{ s.icon }}" alt="">{% else %}<span class="ph">{{ s.name[:1] }}</span>{% endif %}
+      <div class="meta">
+        <strong>{{ s.name }}</strong>
+        <span>
+          {% if s.present %}<span class="pill on">Bot is in</span>{% else %}<span class="pill">Bot not in</span>{% endif %}
+          {% if s.members %} · {{ s.members }} members{% endif %}
+        </span>
+      </div>
+      {% if s.present %}
+        <a class="btn" href="/servers/{{ s.id }}">Manage</a>
+      {% else %}
+        <a class="btn green" href="{{ s.invite }}" target="_blank" rel="noopener">Invite</a>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="card muted">No servers found where you have Manage Server. Try logging in again after you get that permission.</div>
+  {% endfor %}
+</div>
+{% endblock %}

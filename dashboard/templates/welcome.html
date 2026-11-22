@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chansel %}
+{% block title %}Welcome · {{ guild.name }}{% endblock %}
+{% block body %}
+<h1>Welcome</h1>
+<p class="lede">Greet new members in a channel you choose. Placeholders: {mention} {user} {server} {membercount}</p>
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="action" value="save">
+  <div class="field">
+    <label>Channel</label>
+    {{ chansel('channel_id', grouped, selected=channel_id) }}
+  </div>
+  <div class="field">
+    <label>Message</label>
+    <textarea name="message" maxlength="1800">{{ message }}</textarea>
+  </div>
+  <div class="row">
+    <button class="btn" type="submit">Save</button>
+  </div>
+</form>
+<form method="post" style="margin-top:12px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="action" value="test">
+  <button class="btn secondary" type="submit">Send a test welcome</button>
+</form>
+{% endblock %}

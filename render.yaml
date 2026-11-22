@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: socialize-bot
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        value: "1573391890227925002"
+      - key: DASHBOARD_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATA_DIR
+        value: /var/data
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PREMIUM_REQUIRED
+        value: "true"
+    disk:
+      name: bot-data
+      mountPath: /var/data
+      sizeGB: 1

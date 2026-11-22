@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Moderation · {{ guild.name }}{% endblock %}
+{% block body %}
+<h1>Moderation</h1>
+<p class="lede">Recent staff actions recorded by the bot, plus warning history.</p>
+
+<div class="card">
+  <h2>Mod log</h2>
+  {% if logs %}
+  <table class="table">
+    <tr><th>When</th><th>Action</th><th>Detail</th></tr>
+    {% for row in logs %}
+      <tr>
+        <td class="faint">{{ fmt_time(row['created_at']) }}</td>
+        <td>{{ row['action'] }}</td>
+        <td>{{ row['detail'] or '' }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p class="muted">No logged actions yet. Ban, kick, timeout, warn and purge will show up here once used. You can also set a modlog channel under Channels.</p>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>Warnings</h2>
+  {% if warns %}
+  <table class="table">
+    <tr><th>When</th><th>User</th><th>By</th><th>Reason</th></tr>
+    {% for row in warns %}
+      <tr>
+        <td class="faint">{{ fmt_time(row['created_at']) }}</td>
+        <td>{{ member_name(row['user_id']) }}</td>
+        <td>{{ member_name(row['moderator_id']) }}</td>
+        <td>{{ row['reason'] or '—' }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p class="muted">No warnings have been issued yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

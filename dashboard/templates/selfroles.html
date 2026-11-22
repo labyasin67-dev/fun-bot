@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chansel %}
+{% block title %}Self roles · {{ guild.name }}{% endblock %}
+{% block body %}
+<h1>Self roles</h1>
+<p class="lede">Members can tap a button to add or remove these roles. Post or refresh the panel into a channel below.</p>
+
+<div class="card">
+  <h2>Add a role</h2>
+  <form method="post" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="add">
+    <div class="field">
+      <label>Role</label>
+      <select name="role_id" required>
+        <option value="">Select a role</option>
+        {% for role in assignable %}
+          <option value="{{ role.id }}">@{{ role.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>Button label (optional)</label>
+      <input type="text" name="label" maxlength="80" placeholder="Defaults to the role name">
+    </div>
+    <div class="field" style="flex:0 0 120px">
+      <label>Emoji</label>
+      <input type="text" name="emoji" maxlength="32" placeholder="🙂">
+    </div>
+    <button class="btn" type="submit">Add</button>
+  </form>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>On the panel</h2>
+  {% if items %}
+  <table class="table">
+    <tr><th>Role</th><th>Label</th><th></th></tr>
+    {% for item in items %}
+      <tr>
+        <td>{% if item.role %}@{{ item.role.name }}{% else %}deleted ({{ item.role_id }}){% endif %}</td>
+        <td>{{ item.row.emoji or '' }} {{ item.row.label }}</td>
+        <td>
+          <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="remove">
+            <input type="hidden" name="role_id" value="{{ item.role_id }}">
+            <button class="btn danger" type="submit">Remove</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p class="muted">No self-roles yet.</p>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>Post or refresh the panel</h2>
+  <form method="post" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="post">
+    <div class="field">
+      <label>Channel</label>
+      {{ chansel('channel_id', grouped, allow_none=False) }}
+    </div>
+    <button class="btn green" type="submit">Post panel</button>
+  </form>
+</div>
+{% endblock %}

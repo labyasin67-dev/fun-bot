@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chansel %}
+{% block title %}Games · {{ guild.name }}{% endblock %}
+{% block body %}
+<h1>Games</h1>
+<p class="lede">Turn individual drop-in games on or off, and optionally limit them to specific channels.</p>
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="card">
+    <h2>Enabled games</h2>
+    <div class="checkgrid">
+      {% for key, emoji, title, blurb in menu_games %}
+        <label class="check">
+          <input type="checkbox" name="enabled" value="{{ key }}" {% if key not in disabled %}checked{% endif %}>
+          <span><strong>{{ emoji }} {{ title }}</strong><br><span class="faint">.{{ key }} — {{ blurb }}</span></span>
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>Game channels</h2>
+    <p class="faint">If none are selected, game commands work in every channel. If you pick some, games only work there.</p>
+    {{ chansel('games_channel', grouped, selected=game_channels, allow_none=False, multiple=True) }}
+  </div>
+  <button class="btn" type="submit" style="margin-top:14px">Save game settings</button>
+</form>
+{% endblock %}

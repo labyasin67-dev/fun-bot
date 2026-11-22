@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chansel %}
+{% block title %}Channels · {{ guild.name }}{% endblock %}
+{% block body %}
+<h1>Channels</h1>
+<p class="lede">Point each feature at a channel. Games can use more than one. Changes apply immediately, without a restart.</p>
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% for key, label in features.items() %}
+    <div class="field">
+      <label for="f-{{ key }}">{{ key }} — {{ label }}</label>
+      {% if key == 'games' %}
+        {{ chansel('games', grouped, selected=assigned.get('games') or [], allow_none=False, multiple=True) }}
+        <span class="faint">Hold to select multiple. Leave empty to allow games in every channel.</span>
+      {% else %}
+        {{ chansel(key, grouped, selected=(assigned.get(key) or [None])[0] if assigned.get(key) else None) }}
+      {% endif %}
+    </div>
+  {% endfor %}
+  <button class="btn" type="submit">Save assignments</button>
+</form>
+{% endblock %}
