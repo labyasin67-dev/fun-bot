@@ -83,21 +83,10 @@ class ChannelGame:
         if getattr(self, "_cleaned", False):
             return
         self._cleaned = True
-        for msg in (getattr(self, "message", None), getattr(self, "menu_message", None)):
-            if msg is None:
-                continue
-            try:
-                await msg.delete()
-            except discord.NotFound:
-                pass
-            except discord.HTTPException:
-                pass
-        self.message = None
-        self.menu_message = None
         text = result
         if text:
             try:
-                await self.channel.send(text, delete_after=15)
+                await self.channel.send(text)
             except discord.HTTPException:
                 pass
 
