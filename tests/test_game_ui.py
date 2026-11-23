@@ -1,7 +1,4 @@
 """Tests for the shared game_ui presentation helpers.
-
-discord.py is not installed in every environment, so stub it before importing
-the helpers (annotations are not evaluated thanks to ``__future__``).
 """
 
 from __future__ import annotations
@@ -57,113 +54,164 @@ class FakeEmbed:
         del self.fields[index]
 
 
-discord_stub = sys.modules.get("discord")
-if discord_stub is None:
-    discord_stub = types.ModuleType("discord")
-    sys.modules["discord"] = discord_stub
-if not hasattr(discord_stub, "Embed"):
-    discord_stub.Embed = FakeEmbed
-if not hasattr(discord_stub, "Interaction"):
-    discord_stub.Interaction = type("Interaction", (), {})
-if not hasattr(discord_stub, "abc"):
-    discord_stub.abc = types.SimpleNamespace(User=type("User", (), {}))
+def _import_modules():
+    """Import modules that require discord to be fully loaded."""
+    import discord
+    import discord.ext.commands
+    from discord import Embed, Interaction
+    from discord.ext import commands
+    from cogs.game_ui import (
+        DEFAULT_PLAYERS,
+        MAX_DESCRIPTION,
+        MAX_FIELD_VALUE,
+        MAX_TITLE,
+        PHASE_COLORS,
+        clear_countdown,
+        countdown_field,
+        game_embed,
+        game_footer,
+        game_menu_line,
+        games_menu_embed,
+        phase_color,
+        phase_emoji,
+        result_embed,
+        with_countdown,
+    )
+    from utils import COLOR, DANGER, SUCCESS, WARNING
+    return {
+        "DEFAULT_PLAYERS": DEFAULT_PLAYERS,
+        "MAX_DESCRIPTION": MAX_DESCRIPTION,
+        "MAX_FIELD_VALUE": MAX_FIELD_VALUE,
+        "MAX_TITLE": MAX_TITLE,
+        "PHASE_COLORS": PHASE_COLORS,
+        "clear_countdown": clear_countdown,
+        "countdown_field": countdown_field,
+        "game_embed": game_embed,
+        "game_footer": game_footer,
+        "game_menu_line": game_menu_line,
+        "games_menu_embed": games_menu_embed,
+        "phase_color": phase_color,
+        "phase_emoji": phase_emoji,
+        "result_embed": result_embed,
+        "with_countdown": with_countdown,
+        "COLOR": COLOR,
+        "DANGER": DANGER,
+        "SUCCESS": SUCCESS,
+        "WARNING": WARNING,
+    }
+
+
+# Import modules lazily to avoid import-order issues during test discovery
+_modules = None
+
+def _get_modules():
+    global _modules
+    if _modules is None:
+        _modules = _import_modules()
+    return _modules
+
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from cogs.game_ui import (  # noqa: E402
-    DEFAULT_PLAYERS,
-    MAX_DESCRIPTION,
-    MAX_FIELD_VALUE,
-    MAX_TITLE,
-    PHASE_COLORS,
-    clear_countdown,
-    countdown_field,
-    game_embed,
-    game_footer,
-    game_menu_line,
-    games_menu_embed,
-    phase_color,
-    phase_emoji,
-    result_embed,
-    with_countdown,
-)
-from utils import COLOR, DANGER, SUCCESS, WARNING  # noqa: E402
-
 
 class PhaseTests(unittest.TestCase):
+    def setUp(self):
+        self.modules = _get_modules()
+
     def test_phase_colors(self):
-        self.assertEqual(phase_color("play"), COLOR)
-        self.assertEqual(phase_color("hint"), WARNING)
-        self.assertEqual(phase_color("timeout"), WARNING)
-        self.assertEqual(phase_color("win"), SUCCESS)
-        self.assertEqual(phase_color("lose"), DANGER)
+        m = self.modules
+        self.assertEqual(m["phase_color"]("play"), m["COLOR"])
+        self.assertEqual(m["phase_color"]("hint"), m["WARNING"])
+        self.assertEqual(m["phase_color"]("timeout"), m["WARNING"])
+        self.assertEqual(m["phase_color"]("win"), m["SUCCESS"])
+        self.assertEqual(m["phase_color"]("lose"), m["DANGER"])
 
     def test_unknown_phase_falls_back_to_blurple(self):
-        self.assertEqual(phase_color("nonsense"), COLOR)
+        m = self.modules
+        self.assertEqual(m["phase_color"]("nonsense"), m["COLOR"])
 
     def test_phase_emojis(self):
-        self.assertEqual(phase_emoji("play"), "🎮")
-        self.assertEqual(phase_emoji("hint"), "💡")
-        self.assertEqual(phase_emoji("win"), "🏆")
-        self.assertEqual(phase_emoji("lose"), "❌")
-        self.assertEqual(phase_emoji("timeout"), "⏰")
+        m = self.modules
+        self.assertEqual(m["phase_emoji"]("play"), "🎮")
+        self.assertEqual(m["phase_emoji"]("hint"), "💡")
+        self.assertEqual(m["phase_emoji"]("win"), "🏆")
+        self.assertEqual(m["phase_emoji"]("lose"), "❌")
+        self.assertEqual(m["phase_emoji"]("timeout"), "⏰")
 
     def test_every_phase_has_a_color(self):
-        self.assertEqual(set(PHASE_COLORS), {"play", "hint", "win", "lose", "timeout"})
+        m = self.modules
+        self.assertEqual(set(m["PHASE_COLORS"]), {"play", "hint", "win", "lose", "timeout"})
 
 
 class GameEmbedTests(unittest.TestCase):
+    def setUp(self):
+        self.modules = _get_modules()
+
     def test_title_gets_emoji_once(self):
-        self.assertEqual(game_embed("Button Hunt", emoji="🔘").title, "🔘 Button Hunt")
+        m = self.modules
+        self.assertEqual(m["game_embed"]("Button Hunt", emoji="\U0001f518").title, "\U0001f518 Button Hunt")
         # An emoji already in the title is not added twice.
-        self.assertEqual(game_embed("🔘 Button Hunt", emoji="🔘").title, "🔘 Button Hunt")
+        self.assertEqual(m["game_embed"]("🔘 Button Hunt", emoji="🔘").title, "🔘 Button Hunt")
 
     def test_color_comes_from_phase(self):
-        self.assertEqual(game_embed("Trivia", phase="win").color, SUCCESS)
-        self.assertEqual(game_embed("Trivia", phase="timeout").color, WARNING)
+        m = self.modules
+        self.assertEqual(m["game_embed"]("Trivia", phase="win").color.value, m["SUCCESS"])
+        self.assertEqual(m["game_embed"]("Trivia", phase="timeout").color.value, m["WARNING"])
 
     def test_explicit_color_overrides_phase(self):
-        self.assertEqual(game_embed("Trivia", phase="win", color=DANGER).color, DANGER)
+        m = self.modules
+        self.assertEqual(m["game_embed"]("Trivia", phase="win", color=m["DANGER"]).color.value, m["DANGER"])
 
     def test_host_sets_footer_and_author(self):
-        embed = game_embed("Trivia", host="Ann", host_avatar="https://x/a.png")
-        self.assertEqual(embed.footer, "Trivia • Started by Ann")
-        self.assertEqual(embed.author, ("Ann", "https://x/a.png"))
+        m = self.modules
+        embed = m["game_embed"]("Trivia", host="Ann", host_avatar="https://x/a.png")
+        self.assertEqual(embed.footer.text, "Trivia • Started by Ann")
+        self.assertEqual((embed.author.name, embed.author.icon_url), ("Ann", "https://x/a.png"))
 
     def test_footer_override_wins(self):
-        embed = game_embed("Trivia", host="Ann", footer="Trivia • 30s left")
-        self.assertEqual(embed.footer, "Trivia • 30s left")
+        m = self.modules
+        embed = m["game_embed"]("Trivia", host="Ann", footer="Trivia • 30s left")
+        self.assertEqual(embed.footer.text, "Trivia • 30s left")
 
     def test_game_footer_joins_parts(self):
-        self.assertEqual(game_footer("Trivia", "Ann", extra="30s left"), "Trivia • 30s left • Started by Ann")
-        self.assertEqual(game_footer("Trivia"), "Trivia")
+        m = self.modules
+        self.assertEqual(m["game_footer"]("Trivia", "Ann", extra="30s left"), "Trivia • 30s left • Started by Ann")
+        self.assertEqual(m["game_footer"]("Trivia"), "Trivia")
 
     def test_title_is_clamped(self):
-        embed = game_embed("x" * 400, emoji="🎮")
-        self.assertLessEqual(len(embed.title), MAX_TITLE)
+        m = self.modules
+        embed = m["game_embed"]("x" * 400, emoji="🎮")
+        self.assertLessEqual(len(embed.title), m["MAX_TITLE"])
 
     def test_description_is_clamped(self):
-        embed = game_embed("Trivia", "y" * 6000)
-        self.assertLessEqual(len(embed.description), MAX_DESCRIPTION)
+        m = self.modules
+        embed = m["game_embed"]("Trivia", "y" * 6000)
+        self.assertLessEqual(len(embed.description), m["MAX_DESCRIPTION"])
 
     def test_fields_are_clamped(self):
-        embed = game_embed(
+        m = self.modules
+        embed = m["game_embed"](
             "Trivia",
             fields=[("n" * 400, "v" * 2000, False)],
         )
         field = embed.fields[0]
         self.assertLessEqual(len(field.name), 256)
-        self.assertLessEqual(len(field.value), MAX_FIELD_VALUE)
+        self.assertLessEqual(len(field.value), m["MAX_FIELD_VALUE"])
 
     def test_image_and_thumbnail(self):
-        embed = game_embed("Flag", thumbnail="https://x/t.png", image="https://x/i.png")
-        self.assertEqual(embed.thumbnail, "https://x/t.png")
-        self.assertEqual(embed.image, "https://x/i.png")
+        m = self.modules
+        embed = m["game_embed"]("Flag", thumbnail="https://x/t.png", image="https://x/i.png")
+        self.assertEqual(embed.thumbnail.url, "https://x/t.png")
+        self.assertEqual(embed.image.url, "https://x/i.png")
 
 
 class ResultEmbedTests(unittest.TestCase):
+    def setUp(self):
+        self.modules = _get_modules()
+
     def test_result_has_answer_xp_and_replay(self):
-        embed = result_embed(
+        m = self.modules
+        embed = m["result_embed"](
             "Trivia",
             "Ann got it!",
             answer="Canberra",
@@ -172,38 +220,46 @@ class ResultEmbedTests(unittest.TestCase):
             winner_avatar="https://x/w.png",
         )
         self.assertIn("Canberra", embed.description)
-        self.assertEqual(embed.color, SUCCESS)
-        self.assertEqual(embed.thumbnail, "https://x/w.png")
+        self.assertEqual(embed.color.value, m["SUCCESS"])
+        self.assertEqual(embed.thumbnail.url, "https://x/w.png")
         fields = dict((f.name, f.value) for f in embed.fields)
         self.assertEqual(fields["XP earned"], "+25 XP")
         self.assertEqual(fields["Play again"], "Run `.trivia` again.")
 
     def test_timeout_result_uses_timeout_colour(self):
-        embed = result_embed("Trivia", "Nobody got it.", phase="timeout", answer="Mars")
-        self.assertEqual(embed.color, WARNING)
+        m = self.modules
+        embed = m["result_embed"]("Trivia", "Nobody got it.", phase="timeout", answer="Mars")
+        self.assertEqual(embed.color.value, m["WARNING"])
         self.assertEqual(embed.title, "⏰ Trivia")
 
 
 class GameMenuLineTests(unittest.TestCase):
+    def setUp(self):
+        self.modules = _get_modules()
+
     def test_single_line_with_command(self):
+        m = self.modules
         self.assertEqual(
-            game_menu_line("🔘", "Button Hunt", ".buttonhunt"),
+            m["game_menu_line"]("🔘", "Button Hunt", ".buttonhunt"),
             "🔘 **Button Hunt** · .buttonhunt",
         )
 
     def test_default_players_are_omitted(self):
-        line = game_menu_line("💡", "Trivia", ".trivia", players=DEFAULT_PLAYERS)
+        m = self.modules
+        line = m["game_menu_line"]("💡", "Trivia", ".trivia", players=m["DEFAULT_PLAYERS"])
         self.assertNotIn("players", line)
         self.assertNotIn("30s", line)
 
     def test_exception_players_are_shown_inline(self):
+        m = self.modules
         self.assertEqual(
-            game_menu_line("⚔️", "Dice Roll Duel", ".diceduel", players="2 players"),
+            m["game_menu_line"]("⚔️", "Dice Roll Duel", ".diceduel", players="2 players"),
             "⚔️ **Dice Roll Duel** · .diceduel · 2 players",
         )
 
     def test_duration_is_never_shown(self):
-        line = game_menu_line("🃏", "UNO", ".uno", players="2–10 players")
+        m = self.modules
+        line = m["game_menu_line"]("🃏", "UNO", ".uno", players="2–10 players")
         self.assertIn("2–10 players", line)
         self.assertNotIn("min", line)
 
