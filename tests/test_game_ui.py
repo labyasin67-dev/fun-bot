@@ -374,10 +374,11 @@ class GamesMenuEmbedTests(unittest.TestCase):
         game.message = None
         game.view = None
         game.seconds_left = None
-        game.end_ts = None
+        game.end_ts = 1700000000
         game.host_name = None
         game.host_avatar = None
-        e = game._embed()
+        game.layout = game._build_layout()
+        e = game.layout
         self.assertIsNotNone(e)
 
     def test_dice_duel_embed(self):

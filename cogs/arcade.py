@@ -570,15 +570,40 @@ class ButtonHuntGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
+        self.layout: GameLayout | None = None
 
-    def _embed(self) -> discord.Embed:
+    def _build_layout(self) -> GameLayout:
+        try:
+            from cogs.v2 import GameLayout, build_game_layout, result_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+
+        if not v2_available:
+            from cogs.game_ui import game_embed
+            fields = []
+            if self.eliminated:
+                count = len(self.eliminated)
+                fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
+            if self.end_ts is not None:
+                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
+            return game_embed(
+                "Button Hunt",
+                "One of these buttons is the winner. First to press it wins. A wrong press puts you out.",
+                emoji="🔘",
+                phase="play",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+                fields=fields,
+            )
+
         fields = []
         if self.eliminated:
             count = len(self.eliminated)
             fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
         if self.end_ts is not None:
             fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-        return game_embed(
+        layout = build_game_layout(
             "Button Hunt",
             "One of these buttons is the winner. First to press it wins. A wrong press puts you out.",
             emoji="🔘",
@@ -587,12 +612,71 @@ class ButtonHuntGame(ChannelGame):
             host_avatar=self.host_avatar,
             fields=fields,
         )
+        return layout
+
+    def _build_win_layout(self, winner: discord.abc.User) -> GameLayout:
+        try:
+            from cogs.v2 import result_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+        if not v2_available:
+            from cogs.game_ui import result_embed
+            return result_embed(
+                "Button Hunt",
+                f"{winner.mention} found the right button!",
+                emoji="🔘",
+                phase="win",
+                xp=DEFAULT_WIN_XP,
+                play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
+                winner_avatar=avatar_url(winner),
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
+        return result_layout(
+            "Button Hunt",
+            f"{winner.mention} found the right button!",
+            emoji="🔘",
+            phase="win",
+            xp=DEFAULT_WIN_XP,
+            play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
+            winner_avatar=avatar_url(winner),
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+        )
+
+    def _build_timeout_layout(self) -> GameLayout:
+        try:
+            from cogs.v2 import result_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+        if not v2_available:
+            from cogs.game_ui import result_embed
+            return result_embed(
+                "Button Hunt",
+                "Nobody found the right button.",
+                emoji="🔘",
+                phase="timeout",
+                play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
+        return result_layout(
+            "Button Hunt",
+            "Nobody found the right button.",
+            emoji="🔘",
+            phase="timeout",
+            play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+        )
 
     async def refresh(self) -> None:
-        if self.message is None or self.finished:
+        if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(embed=self._embed(), view=self.view)
+            await self.message.edit(view=self.layout)
         except discord.HTTPException:
             pass
 
@@ -600,7 +684,8 @@ class ButtonHuntGame(ChannelGame):
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(30)
         self.view = ButtonHuntView(self, timeout=33)  # backstop; the countdown drives the actual timeout
-        self.message = await send_dest(dest, embed=self._embed(), view=self.view)
+        self.layout = self._build_layout()
+        self.message = await send_dest(dest, view=self.layout)
         self.task = asyncio.create_task(self._countdown())
 
     async def _countdown(self) -> None:
@@ -609,7 +694,9 @@ class ButtonHuntGame(ChannelGame):
                 if self.finished:
                     return
                 self.seconds_left = remaining
-                await self.refresh()
+                if self.layout:
+                    self.layout.set_countdown(self.end_ts)
+                    await self.message.edit(view=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             if self.finished:
@@ -630,19 +717,8 @@ class ButtonHuntGame(ChannelGame):
                         child.style = discord.ButtonStyle.success
             self.view.stop()
         await award_xp(self.bot, interaction.user, self.channel, DEFAULT_WIN_XP)
-        e = result_embed(
-            "Button Hunt",
-            f"{interaction.user.mention} found the right button!",
-            emoji="🔘",
-            phase="win",
-            xp=DEFAULT_WIN_XP,
-            play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
-            winner_avatar=avatar_url(interaction.user),
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-        )
-        await interaction.response.defer()
-        await end_game_message(self.message, e, self.view)
+        if self.message:
+            await end_game_message_v2(self.message, self._build_win_layout(interaction.user), self.layout)
         await self.finish(result=f"🏆 {interaction.user.mention} won Button Hunt! (+{DEFAULT_WIN_XP} XP)")
 
     async def timed_out(self) -> None:
@@ -653,16 +729,7 @@ class ButtonHuntGame(ChannelGame):
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
         if self.message:
-            e = result_embed(
-                "Button Hunt",
-                "Nobody found the right button.",
-                emoji="🔘",
-                phase="timeout",
-                play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
-            await end_game_message(self.message, e, self.view)
+            await end_game_message_v2(self.message, self._build_timeout_layout(), self.layout)
         await self.finish(result="⏰ Time's up! Nobody found the right button.")
 
 
