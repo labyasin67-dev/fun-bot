@@ -30,6 +30,7 @@ from cogs.sessions import (
     award_xp,
     dest_user,
     end_game_message,
+    end_game_message_v2,
     launch_channel_game,
     normalize_answer,
     send_dest,
@@ -395,62 +396,31 @@ class WordRuleGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
+        self.layout: GameLayout | None = None
 
-    def valid(self, text: str) -> bool:
-        word = normalize_answer(text)
-        if not word or " " in word or word not in self.words:
-            return False
-        if self.kind == "startswith":
-            return word.startswith(self.payload)
-        if self.kind == "endswith":
-            return word.endswith(self.payload)
-        if self.kind == "contains":
-            return self.payload in word
-        if self.kind == "length":
-            return len(word) == int(self.payload)
-        if self.kind == "startend":
-            start, end = self.payload.split("|")
-            return word.startswith(start) and word.endswith(end)
-        if self.kind == "startlen":
-            start, length = self.payload.split("|")
-            return word.startswith(start) and len(word) == int(length)
-        return False
-
-    async def begin(self, dest) -> None:
-        self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.end_ts, _ = countdown_field(30)
-        self.message = await send_dest(dest, embed=self._play_embed())
-        self.seconds_left = 30
-        self.task = asyncio.create_task(self._timer())
-
-    def _play_embed(self) -> discord.Embed:
-        return game_embed(
-            "Word",
-            f"{self.prompt}\n\nFirst valid English word wins.",
-            emoji="📝",
-            phase="play",
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-            fields=[("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False)] if self.end_ts else [],
-        )
-
-    async def _timer(self) -> None:
+    def _build_layout(self, *, phase: str, winner: discord.abc.User | None = None, word: str | None = None):
         try:
-            for remaining in range(30, -1, -1):
-                if self.finished:
-                    return
-                self.seconds_left = remaining
-                if self.message:
-                    try:
-                        await self.message.edit(embed=self._play_embed())
-                    except discord.HTTPException:
-                        pass
-                if remaining > 0:
-                    await asyncio.sleep(1)
-            if self.finished:
-                return
-            if self.message:
-                e = result_embed(
+            from cogs.v2 import GameLayout, build_game_layout, result_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+        if not v2_available:
+            # Fallback to old embed system for test environments
+            from cogs.game_ui import game_embed
+            if phase == "win" and winner is not None:
+                return game_embed(
+                    "Word",
+                    f"{winner.mention} played **{word}**",
+                    emoji="📝",
+                    phase="win",
+                    xp=DEFAULT_WIN_XP,
+                    play_again=f"Play again with `{command_for_title('Word')}`.",
+                    winner_avatar=avatar_url(winner),
+                    host=self.host_name,
+                    host_avatar=self.host_avatar,
+                )
+            elif phase == "timeout":
+                return game_embed(
                     "Word",
                     "Nobody found a word that fits.",
                     emoji="📝",
@@ -459,7 +429,79 @@ class WordRuleGame(ChannelGame):
                     host=self.host_name,
                     host_avatar=self.host_avatar,
                 )
-                await end_game_message(self.message, e)
+            else:
+                fields = []
+                if self.end_ts is not None:
+                    fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
+                return game_embed(
+                    "Word",
+                    f"{self.prompt}\n\nFirst valid English word wins.",
+                    emoji="📝",
+                    phase="play",
+                    host=self.host_name,
+                    host_avatar=self.host_avatar,
+                    fields=fields,
+                )
+        if phase == "win" and winner is not None:
+            return result_layout(
+                "Word",
+                f"{winner.mention} played **{word}**",
+                phase="win",
+                emoji="📝",
+                xp=DEFAULT_WIN_XP,
+                play_again=f"Play again with `{command_for_title('Word')}`.",
+                winner_avatar=avatar_url(winner),
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
+        elif phase == "timeout":
+            return result_layout(
+                "Word",
+                "Nobody found a word that fits.",
+                phase="timeout",
+                emoji="📝",
+                play_again=f"Play again with `{command_for_title('Word')}`.",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
+        else:
+            fields = []
+            if self.end_ts is not None:
+                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
+            layout = build_game_layout(
+                "Word",
+                f"{self.prompt}\n\nFirst valid English word wins.",
+                emoji="📝",
+                phase="play",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+                fields=fields,
+            )
+            return layout
+
+    async def begin(self, dest) -> None:
+        self.host_name, self.host_avatar = host_details(dest, self.host_id)
+        self.end_ts, _ = countdown_field(30)
+        self.layout = self._build_layout(phase="play")
+        self.message = await send_dest(dest, view=self.layout)
+        self.seconds_left = 30
+        self.task = asyncio.create_task(self._timer())
+
+    async def _timer(self) -> None:
+        try:
+            for remaining in range(30, -1, -1):
+                if self.finished:
+                    return
+                self.seconds_left = remaining
+                if self.layout:
+                    self.layout.set_countdown(self.end_ts)
+                    await self.message.edit(view=self.layout)
+                if remaining > 0:
+                    await asyncio.sleep(1)
+            if self.finished:
+                return
+            if self.message:
+                await end_game_message_v2(self.message, self._build_layout(phase="timeout"), self.layout, timeout=True)
             await self.finish(result="⏰ Time's up! Nobody found a word that fits.")
         except asyncio.CancelledError:
             return
@@ -478,19 +520,8 @@ class WordRuleGame(ChannelGame):
         except discord.HTTPException:
             pass
         await award_xp(self.bot, message.author, message.channel, DEFAULT_WIN_XP)
-        e = result_embed(
-            "Word",
-            f"{message.author.mention} played **{word}**",
-            emoji="📝",
-            phase="win",
-            xp=DEFAULT_WIN_XP,
-            play_again=f"Play again with `{command_for_title('Word')}`.",
-            winner_avatar=avatar_url(message.author),
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-        )
         if self.message:
-            await end_game_message(self.message, e)
+            await end_game_message_v2(self.message, self._build_layout(phase="win", winner=message.author, word=word), self.layout)
         await self.finish(result=f"🏆 {message.author.mention} won Word! Answer: **{word}** (+{DEFAULT_WIN_XP} XP)")
         return True
 
@@ -1851,7 +1882,7 @@ class Arcade(commands.Cog):
     async def _start_redlight(self, dest) -> None:
         await self._launch(dest, RedLightGame)
 
-async def _start_missingemoji(self, dest) -> None:
+    async def _start_missingemoji(self, dest) -> None:
         seq, missing = random.choice(banks.MISSING_EMOJI)
         shown = [e if e != missing else "□" for e in seq]
         # If the missing emoji appears more than once, only blank one occurrence.
@@ -1927,7 +1958,7 @@ async def _start_missingemoji(self, dest) -> None:
             return WordRuleGame(bot, channel, host_id, prompt, kind, payload, self._words)
         await self._launch(dest, factory)
 
-async def _start_nickname(self, dest) -> None:
+    async def _start_nickname(self, dest) -> None:
         nick, answers, reveal = random.choice(banks.NICKNAMES)
         def factory(bot, channel, host_id):
             return ChatGuessGame(

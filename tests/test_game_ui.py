@@ -360,10 +360,11 @@ class GamesMenuEmbedTests(unittest.TestCase):
         game.words = {"apple"}
         game.message = None
         game.seconds_left = None
-        game.end_ts = None
+        game.end_ts = 1700000000
         game.host_name = None
         game.host_avatar = None
-        e = game._play_embed()
+        game.layout = game._build_layout(phase="play")
+        e = game.layout
         self.assertIsNotNone(e)
 
     def test_button_hunt_embed(self):
