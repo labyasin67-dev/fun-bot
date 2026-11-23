@@ -174,7 +174,7 @@ class UnoGame(ChannelGame):
         user = dest_user(dest)
         self.host_name = getattr(user, "display_name", user.name)
         self.host_avatar = _avatar_url(user)
-        self.message = await send_dest(dest, layout=self.lobby_layout())
+        self.message = await send_dest(dest, view=self.lobby_layout())
 
     async def refresh(self, interaction: discord.Interaction | None = None) -> None:
         if self.message is None:
@@ -182,9 +182,9 @@ class UnoGame(ChannelGame):
         layout = self.board_layout() if self.started else self.lobby_layout()
         try:
             if interaction is not None and not interaction.response.is_done():
-                await interaction.response.edit_message(layout=layout)
+                await interaction.response.edit_message(view=layout)
             else:
-                await self.message.edit(layout=layout)
+                await self.message.edit(view=layout)
         except discord.HTTPException:
             pass
 
@@ -214,7 +214,7 @@ class UnoGame(ChannelGame):
                 self.host_id = self.players[0]
             elif uid == self.host_id:
                 await interaction.response.edit_message(
-                    layout=build_game_layout("UNO lobby closed", "The host left before the game started.", phase="lose")
+                    view=build_game_layout("UNO lobby closed", "The host left before the game started.", phase="lose")
                 )
                 await self.finish(result="UNO lobby closed — the host left.")
                 return
@@ -231,7 +231,7 @@ class UnoGame(ChannelGame):
             self.uno_pending = None
         if len(self.players) < 2:
             await interaction.response.edit_message(
-                layout=build_game_layout("UNO ended", f"{interaction.user.mention} left, and there aren't enough players to continue.", phase="lose")
+                view=build_game_layout("UNO ended", f"{interaction.user.mention} left, and there aren't enough players to continue.", phase="lose")
             )
             self._cancel_turn()
             await self.finish(result=f"UNO ended — {interaction.user.mention} left, and there aren't enough players to continue.")
@@ -357,7 +357,7 @@ class UnoGame(ChannelGame):
         if uid != self.current_id:
             footer = "It's not your turn — you can look, but you can't play yet."
             await interaction.response.send_message(
-                layout=build_game_layout("Your hand", body, emoji="🃏", phase="play", host=self.host_name, host_avatar=self.host_avatar, footer=footer),
+                view=build_game_layout("Your hand", body, emoji="🃏", phase="play", host=self.host_name, host_avatar=self.host_avatar, footer=footer),
                 ephemeral=True,
             )
             return
@@ -378,7 +378,7 @@ class UnoGame(ChannelGame):
             items.append(select)
         items.append(discord.ui.Button(label="🃏 Draw", style=discord.ButtonStyle.secondary, custom_id=f"uno:draw:{uid}", callback=self.draw_from_hand))
         await interaction.response.send_message(
-            layout=build_game_layout("Your hand", body, emoji="🃏", phase="play", host=self.host_name, host_avatar=self.host_avatar, footer=footer, items=tuple(items)),
+            view=build_game_layout("Your hand", body, emoji="🃏", phase="play", host=self.host_name, host_avatar=self.host_avatar, footer=footer, items=tuple(items)),
             ephemeral=True,
         )
 
@@ -401,7 +401,7 @@ class UnoGame(ChannelGame):
             ):
                 items.append(discord.ui.Button(label=f"{emoji} {label}", style=discord.ButtonStyle.secondary, custom_id=f"uno:wild:{color}", callback=lambda inter, c=color: self.play_wild(inter, card, c)))
             await interaction.response.send_message(
-                layout=build_game_layout("Choose a colour for your wild.", "", emoji="🃏", phase="play", items=tuple(items)),
+                view=build_game_layout("Choose a colour for your wild.", "", emoji="🃏", phase="play", items=tuple(items)),
                 ephemeral=True,
             )
             return
@@ -444,10 +444,10 @@ class UnoGame(ChannelGame):
                 host_avatar=self.host_avatar,
             )
             if not interaction.response.is_done():
-                await interaction.response.edit_message(layout=build_game_layout("You win!", ""))
+                await interaction.response.edit_message(view=build_game_layout("You win!", ""))
             if self.message:
                 try:
-                    await self.message.edit(layout=e)
+                    await self.message.edit(view=e)
                 except discord.HTTPException:
                     pass
             await self.finish(result=f"🏆 {interaction.user.mention} won UNO! (+{UNO_XP} XP)")
@@ -472,10 +472,10 @@ class UnoGame(ChannelGame):
         else:
             self._advance(1)
         if not interaction.response.is_done():
-            await interaction.response.edit_message(layout=build_game_layout(f"Played {card.label()}.", ""))
+            await interaction.response.edit_message(view=build_game_layout(f"Played {card.label()}.", ""))
         else:
             try:
-                await interaction.edit_original_response(layout=build_game_layout(f"Played {card.label()}.", ""))
+                await interaction.edit_original_response(view=build_game_layout(f"Played {card.label()}.", ""))
             except discord.HTTPException:
                 pass
         await self.refresh()
@@ -495,7 +495,7 @@ class UnoGame(ChannelGame):
                 discord.ui.Button(label="✋ Keep it", style=discord.ButtonStyle.secondary, custom_id=f"uno:drawn:keep:{uid}", callback=self.keep_drawn),
             ]
             await interaction.response.send_message(
-                layout=build_game_layout(f"You drew {card.label()}. You can play it or keep it.", "", emoji="🃏", phase="play", items=tuple(items)),
+                view=build_game_layout(f"You drew {card.label()}. You can play it or keep it.", "", emoji="🃏", phase="play", items=tuple(items)),
                 ephemeral=True,
             )
             return
@@ -510,7 +510,7 @@ class UnoGame(ChannelGame):
             await interaction.response.send_message("It's not your turn.", ephemeral=True)
             return
         self._advance(1)
-        await interaction.response.edit_message(layout=build_game_layout("Kept the card.", "Turn passed."))
+        await interaction.response.edit_message(view=build_game_layout("Kept the card.", "Turn passed."))
         await self.refresh()
         self._arm_turn_timer()
 
@@ -524,7 +524,7 @@ class Uno(commands.Cog):
     async def start_lobby(self, dest: commands.Context | discord.Interaction) -> None:
         guild = getattr(dest, "guild", None)
         if guild is not None and not await self.bot.db.is_game_enabled(guild.id, "uno"):
-            await send_dest(dest, layout=build_game_layout("Game disabled", "UNO is disabled in this server.", phase="lose"), ephemeral=True)
+            await send_dest(dest, view=build_game_layout("Game disabled", "UNO is disabled in this server.", phase="lose"), ephemeral=True)
             return
         async def factory(bot, channel, host_id):
             return UnoGame(bot, channel, host_id)
@@ -546,3 +546,4 @@ class Uno(commands.Cog):
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Uno(bot))
+

@@ -124,7 +124,7 @@ class Premium(commands.Cog):
     @premium.command(name="status", description="Show this server's Fun bot Premium status.")
     async def status(self, ctx: commands.Context) -> None:
         if ctx.guild is None:
-            await ctx.send(layout=build_game_layout("Server only", "Check premium status in a server.", phase="lose"), ephemeral=True)
+            await ctx.send(view=build_game_layout("Server only", "Check premium status in a server.", phase="lose"), ephemeral=True)
             return
         access = await guild_access(
             self.bot.db,
@@ -140,7 +140,7 @@ class Premium(commands.Cog):
             lines.append(f"**Note:** {access.detail}")
         if not access.allowed:
             lines.append(f"\nSubscribe at {premium_needed_message().rsplit(' at ', 1)[-1]}")
-        await ctx.send(layout=build_game_layout("Fun bot Premium", "\n".join(lines), phase="win" if access.allowed else "hint"), ephemeral=True)
+        await ctx.send(view=build_game_layout("Fun bot Premium", "\n".join(lines), phase="win" if access.allowed else "hint"), ephemeral=True)
 
     @premium.command(name="grant", description="(Owner) Grant Premium to a server.")
     @is_app_owner()
@@ -148,7 +148,7 @@ class Premium(commands.Cog):
         expires = None
         if days is not None:
             if days <= 0:
-                await ctx.send(layout=build_game_layout("Invalid duration", "Days must be a positive number, or omit it for lifetime."), ephemeral=True)
+                await ctx.send(view=build_game_layout("Invalid duration", "Days must be a positive number, or omit it for lifetime."), ephemeral=True)
                 return
             expires = time.time() + days * 86400
         grant_id = await self.bot.db.add_premium_grant(
@@ -160,7 +160,7 @@ class Premium(commands.Cog):
         )
         until = format_renewal(expires)
         await ctx.send(
-            layout=build_game_layout(
+            view=build_game_layout(
                 "Premium granted",
                 f"Grant **#{grant_id}** on server `{guild_id}` until **{until}**.",
             ),
@@ -172,9 +172,9 @@ class Premium(commands.Cog):
     async def revoke(self, ctx: commands.Context, guild_id: int) -> None:
         n = await self.bot.db.revoke_guild_grants(guild_id)
         if n:
-            await ctx.send(layout=build_game_layout("Premium revoked", f"Revoked **{n}** manual grant(s) for `{guild_id}`."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Premium revoked", f"Revoked **{n}** manual grant(s) for `{guild_id}`."), ephemeral=True)
         else:
-            await ctx.send(layout=build_game_layout("Nothing to revoke", f"No active manual grants for `{guild_id}`."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Nothing to revoke", f"No active manual grants for `{guild_id}`."), ephemeral=True)
 
     @premium.command(name="list", description="(Owner) List active subscriptions and manual grants.")
     @is_app_owner()
@@ -198,9 +198,10 @@ class Premium(commands.Cog):
         if not lines:
             lines.append("No active subscriptions or grants.")
         lines.append(CREDIT)
-        await ctx.send(layout=build_game_layout("Premium list", "\n".join(lines)), ephemeral=True)
+        await ctx.send(view=build_game_layout("Premium list", "\n".join(lines)), ephemeral=True)
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Premium(bot))
+
 

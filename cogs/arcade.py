@@ -295,14 +295,14 @@ class ChatGuessGame(ChannelGame):
         if self.message is None or self.finished:
             return
         try:
-            await self.message.edit(layout=self._layout(phase="play"))
+            await self.message.edit(view=self._layout(phase="play"))
         except discord.HTTPException:
             pass
 
     async def begin(self, dest: commands.Context | discord.Interaction) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(self.timeout)
-        self.message = await send_dest(dest, layout=self._layout(phase="play"))
+        self.message = await send_dest(dest, view=self._layout(phase="play"))
         self.task = asyncio.create_task(self._timer())
 
     async def _timer(self) -> None:
@@ -326,7 +326,7 @@ class ChatGuessGame(ChannelGame):
                 return
             if self.message:
                 try:
-                    await self.message.edit(layout=self._layout(phase="timeout"))
+                    await self.message.edit(view=self._layout(phase="timeout"))
                 except discord.HTTPException:
                     pass
             await self.finish(result=f"⏰ Time's up! The answer was **{self.reveal}**.")
@@ -350,12 +350,12 @@ class ChatGuessGame(ChannelGame):
         await award_xp(self.bot, message.author, message.channel, self.xp)
         if self.message:
             try:
-                await self.message.edit(layout=self._layout(phase="win", winner=message.author))
+                await self.message.edit(view=self._layout(phase="win", winner=message.author))
             except discord.HTTPException:
                 pass
         else:
             try:
-                await message.channel.send(layout=self._layout(phase="win", winner=message.author))
+                await message.channel.send(view=self._layout(phase="win", winner=message.author))
             except discord.HTTPException:
                 pass
         await self.finish(result=f"🏆 {message.author.mention} won {self.title}! Answer: **{self.reveal}** (+{self.xp} XP)")
@@ -418,7 +418,7 @@ class WordRuleGame(ChannelGame):
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(30)
         self.layout = self._build_layout(phase="play")
-        self.message = await send_dest(dest, layout=self.layout)
+        self.message = await send_dest(dest, view=self.layout)
         self.seconds_left = 30
         self.task = asyncio.create_task(self._timer())
 
@@ -430,7 +430,7 @@ class WordRuleGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.layout:
                     self.layout.set_countdown(self.end_ts)
-                    await self.message.edit(layout=self.layout)
+                    await self.message.edit(view=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             if self.finished:
@@ -553,7 +553,7 @@ class ButtonHuntGame(ChannelGame):
         if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(layout=self.layout)
+            await self.message.edit(view=self.layout)
         except discord.HTTPException:
             pass
 
@@ -561,7 +561,7 @@ class ButtonHuntGame(ChannelGame):
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(30)
         self.layout = self._build_layout()
-        self.message = await send_dest(dest, layout=self.layout)
+        self.message = await send_dest(dest, view=self.layout)
         self.task = asyncio.create_task(self._countdown())
 
     async def _countdown(self) -> None:
@@ -572,7 +572,7 @@ class ButtonHuntGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.layout:
                     self.layout.set_countdown(self.end_ts)
-                    await self.message.edit(layout=self.layout)
+                    await self.message.edit(view=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             if self.finished:
@@ -643,7 +643,7 @@ class DiceDuelGame(ChannelGame):
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(30)
-        self.message = await send_dest(dest, layout=self._layout())
+        self.message = await send_dest(dest, view=self._layout())
 
     async def join(self, interaction: discord.Interaction) -> None:
         if self.finished:
@@ -654,7 +654,7 @@ class DiceDuelGame(ChannelGame):
             return
         self.players.append(interaction.user)
         if len(self.players) < 2:
-            await interaction.response.edit_message(layout=self._layout())
+            await interaction.response.edit_message(view=self._layout())
             return
         await interaction.response.defer()
         await self.resolve()
@@ -683,7 +683,7 @@ class DiceDuelGame(ChannelGame):
         )
         if self.message:
             try:
-                await self.message.edit(layout=e)
+                await self.message.edit(view=e)
             except discord.HTTPException:
                 pass
         await self.finish(result=f"🏆 {winner.mention} won Dice Roll Duel! {wr}–{lr} (+{DEFAULT_WIN_XP} XP)")
@@ -702,7 +702,7 @@ class DiceDuelGame(ChannelGame):
                 host_avatar=self.host_avatar,
             )
             try:
-                await self.message.edit(layout=e)
+                await self.message.edit(view=e)
             except discord.HTTPException:
                 pass
         await self.finish(result="⏰ Dice Roll Duel ended — not enough players joined.")
@@ -810,7 +810,7 @@ class ColorHuntGame(ChannelGame):
         if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(layout=self.layout)
+            await self.message.edit(view=self.layout)
         except discord.HTTPException:
             pass
 
@@ -819,7 +819,7 @@ class ColorHuntGame(ChannelGame):
         self.end_ts, _ = countdown_field(20)
         self.view = ColorHuntView(self, timeout=23)  # backstop; the countdown drives the actual timeout
         self.layout = self._build_layout()
-        self.message = await send_dest(dest, layout=self.layout)
+        self.message = await send_dest(dest, view=self.layout)
         self.task = asyncio.create_task(self._countdown())
 
     async def _countdown(self) -> None:
@@ -830,7 +830,7 @@ class ColorHuntGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.layout:
                     self.layout.set_countdown(self.end_ts)
-                    await self.message.edit(layout=self.layout)
+                    await self.message.edit(view=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             if self.finished:
@@ -948,7 +948,7 @@ class ReactionGame(ChannelGame):
         if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(layout=self.layout)
+            await self.message.edit(view=self.layout)
         except discord.HTTPException:
             pass
 
@@ -958,7 +958,7 @@ class ReactionGame(ChannelGame):
         self.end_ts, _ = countdown_field(int(wait_seconds) + REACTION_LIVE_SECONDS)
         self.view = ReactionView(self)
         self.layout = self._build_initial_layout()
-        self.message = await send_dest(dest, layout=self.layout)
+        self.message = await send_dest(dest, view=self.layout)
         self.task = asyncio.create_task(self._run())
 
     async def _run(self) -> None:
@@ -976,7 +976,7 @@ class ReactionGame(ChannelGame):
             if self.message and self.view:
                 try:
                     self.layout = self._build_live_layout()
-                    await self.message.edit(layout=self.layout)
+                    await self.message.edit(view=self.layout)
                 except discord.HTTPException:
                     pass
             for remaining in range(REACTION_LIVE_SECONDS, -1, -1):
@@ -985,7 +985,7 @@ class ReactionGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.layout:
                     self.layout.set_countdown(self.end_ts)
-                    await self.message.edit(layout=self.layout)
+                    await self.message.edit(view=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             self.seconds_left = None
@@ -1190,7 +1190,7 @@ class HiLoGame(ChannelGame):
         if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(layout=self.layout)
+            await self.message.edit(view=self.layout)
         except discord.HTTPException:
             pass
 
@@ -1199,7 +1199,7 @@ class HiLoGame(ChannelGame):
         self.end_ts, _ = countdown_field(20)
         self.view = HiLoView(self)
         self.layout = self._build_layout()
-        self.message = await send_dest(dest, layout=self.layout)
+        self.message = await send_dest(dest, view=self.layout)
 
     async def guess(self, interaction: discord.Interaction, choice: str) -> None:
         if self.finished or not self.round_open:
@@ -1224,7 +1224,7 @@ class HiLoGame(ChannelGame):
             )
             await interaction.response.defer()
             try:
-                await self.message.edit(layout=e)
+                await self.message.edit(view=e)
             except discord.HTTPException:
                 pass
             await self.finish(result=f"HILO ended — the streak stopped at **{self.streak}**.")
@@ -1251,7 +1251,7 @@ class HiLoGame(ChannelGame):
             )
             await interaction.response.defer()
             try:
-                await self.message.edit(layout=e)
+                await self.message.edit(view=e)
             except discord.HTTPException:
                 pass
             await self.finish(result=f"🏆 {interaction.user.mention} won HILO with a streak of **{self.streak}**! (+10 XP)")
@@ -1262,7 +1262,7 @@ class HiLoGame(ChannelGame):
         self.round_open = True
         self.end_ts, _ = countdown_field(20)
         self.layout = self._build_layout(extra=f"{interaction.user.display_name} was right • +10 XP")
-        await interaction.response.edit_message(layout=self.layout)
+        await interaction.response.edit_message(view=self.layout)
 
     async def round_timeout(self) -> None:
         if self.finished or not self.round_open:
@@ -1274,7 +1274,7 @@ class HiLoGame(ChannelGame):
                     child.disabled = True
         if self.message:
             try:
-                await self.message.edit(layout=self._build_layout(over=True, phase="timeout", title="HILO timed out"))
+                await self.message.edit(view=self._build_layout(over=True, phase="timeout", title="HILO timed out"))
             except discord.HTTPException:
                 pass
         await self.finish(result=f"⏰ HILO timed out. The streak ended at **{self.streak}**.")
@@ -1330,7 +1330,7 @@ class TriviaGame(ChannelGame):
         self.end_ts, _ = countdown_field(25)
         self.view = TriviaChannelView(self, self.options, self.correct, timeout=28)  # backstop; the countdown drives the actual timeout
         self.seconds_left = 25
-        self.message = await send_dest(dest, layout=self._play_layout())
+        self.message = await send_dest(dest, view=self._play_layout())
         self.task = asyncio.create_task(self._countdown())
 
     def _play_layout(self):
@@ -1352,7 +1352,7 @@ class TriviaGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.message:
                     try:
-                        await self.message.edit(layout=self._play_layout())
+                        await self.message.edit(view=self._play_layout())
                     except discord.HTTPException:
                         pass
                 if remaining > 0:
@@ -1389,7 +1389,7 @@ class TriviaGame(ChannelGame):
         )
         await interaction.response.defer()
         try:
-            await self.message.edit(layout=e)
+            await self.message.edit(view=e)
         except discord.HTTPException:
             pass
         await self.finish(result=f"🏆 {interaction.user.mention} won Trivia! Answer: **{self.correct}** (+{DEFAULT_WIN_XP} XP)")
@@ -1415,7 +1415,7 @@ class TriviaGame(ChannelGame):
                 host_avatar=self.host_avatar,
             )
             try:
-                await self.message.edit(layout=e)
+                await self.message.edit(view=e)
             except discord.HTTPException:
                 pass
         await self.finish(result=f"⏰ Time's up! The answer was **{self.correct}**.")
@@ -1460,7 +1460,7 @@ class RedLightGame(ChannelGame):
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(30)
-        self.message = await send_dest(dest, layout=self._layout())
+        self.message = await send_dest(dest, view=self._layout())
         self.task = asyncio.create_task(self._run())
 
     async def _run(self) -> None:
@@ -1472,7 +1472,7 @@ class RedLightGame(ChannelGame):
                 self.green = not self.green
                 if self.message:
                     try:
-                        await self.message.edit(layout=self._layout())
+                        await self.message.edit(view=self._layout())
                     except discord.HTTPException:
                         pass
             if self.finished:
@@ -1547,7 +1547,7 @@ class RedLightGame(ChannelGame):
             result = f"🏆 {mentions} won Red Light Green Light with **{best}** point{'s' if best != 1 else ''}! (+{DEFAULT_WIN_XP} XP)"
         if self.message:
             try:
-                await self.message.edit(layout=e)
+                await self.message.edit(view=e)
             except discord.HTTPException:
                 pass
         await self.finish(result=result)
@@ -1584,10 +1584,10 @@ class Arcade(commands.Cog):
             disabled = await self.bot.db.disabled_game_keys(guild.id)
             games = [item for item in MENU_GAMES if item[0] not in disabled]
         if not games:
-            await send_dest(dest, layout=build_game_layout("Games disabled", "All drop-in games are disabled in this server.", phase="lose"))
+            await send_dest(dest, view=build_game_layout("Games disabled", "All drop-in games are disabled in this server.", phase="lose"))
             return
         layout = build_menu_layout(self, games)
-        msg = await send_dest(dest, layout=layout)
+        msg = await send_dest(dest, view=layout)
         channel_id = getattr(getattr(dest, "channel", None), "id", None)
         if channel_id and msg is not None:
             self.bot.game_sessions.remember_menu(channel_id, msg)
@@ -1595,12 +1595,12 @@ class Arcade(commands.Cog):
     async def drop_game(self, dest: commands.Context | discord.Interaction, key: str) -> None:
         guild = getattr(dest, "guild", None)
         if guild is not None and not await self.bot.db.is_game_enabled(guild.id, key):
-            await send_dest(dest, layout=build_game_layout("Game disabled", "That game is disabled in this server.", phase="lose"), ephemeral=True)
+            await send_dest(dest, view=build_game_layout("Game disabled", "That game is disabled in this server.", phase="lose"), ephemeral=True)
             return
         if key == "uno":
             uno = self.bot.get_cog("Uno")
             if uno is None:
-                await send_dest(dest, layout=build_game_layout("UNO isn't loaded", "Try again in a moment.", phase="lose"), ephemeral=True)
+                await send_dest(dest, view=build_game_layout("UNO isn't loaded", "Try again in a moment.", phase="lose"), ephemeral=True)
                 return
             await uno.start_lobby(dest)  # type: ignore[attr-defined]
             return
@@ -1627,7 +1627,7 @@ class Arcade(commands.Cog):
             "hilo": self._start_hilo,
         }.get(key)
         if starter is None:
-            await send_dest(dest, layout=build_game_layout("Unknown game", "I don't know that game.", phase="lose"), ephemeral=True)
+            await send_dest(dest, view=build_game_layout("Unknown game", "I don't know that game.", phase="lose"), ephemeral=True)
             return
         await starter(dest)
 
@@ -1901,3 +1901,4 @@ async def setup(bot: SocializeBot) -> None:
         command = commands.guild_only()(command)
         command = commands.cooldown(1, 5, commands.BucketType.channel)(command)
         bot.add_command(command)
+

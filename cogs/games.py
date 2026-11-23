@@ -304,7 +304,7 @@ class TriviaView(discord.ui.LayoutView):
             else:
                 self.body_td.content = f"Not quite. You picked **{option}**. The answer was **{self.correct}**."
                 result = result_layout("Trivia", f"Not quite. You picked **{option}**. The answer was **{self.correct}**.", phase="lose", emoji="🧠", answer=self.correct, play_again="Start another round with `.trivia`.")
-            await interaction.response.edit_message(layout=self)
+            await interaction.response.edit_message(view=self)
             await end_game_message_v2(self.message, result, self)
             self.stop()
         return callback
@@ -317,7 +317,7 @@ class TriviaView(discord.ui.LayoutView):
         self.body_td.content = "Time's up!"
         if self.message:
             try:
-                await self.message.edit(layout=self)
+                await self.message.edit(view=self)
             except discord.HTTPException:
                 pass
         try:
@@ -367,7 +367,7 @@ class WYRView(discord.ui.LayoutView):
         total = a + b
         self.body_td.content = self._content()
         self.footer_td.content = f"-# {total} vote{'s' if total != 1 else ''}"
-        await interaction.response.edit_message(layout=self)
+        await interaction.response.edit_message(view=self)
 
     async def a_button(self, interaction: discord.Interaction) -> None:
         await self._vote(interaction, "a")
@@ -379,7 +379,7 @@ class WYRView(discord.ui.LayoutView):
         self.disable_items()
         if self.message:
             try:
-                await self.message.edit(layout=self)
+                await self.message.edit(view=self)
             except discord.HTTPException:
                 pass
 
@@ -409,21 +409,21 @@ class TODView(discord.ui.LayoutView):
         self.disable_items()
         if self.message:
             try:
-                await self.message.edit(layout=self)
+                await self.message.edit(view=self)
             except discord.HTTPException:
                 pass
 
     async def truth(self, interaction: discord.Interaction) -> None:
         self.body_td.content = self._prompt("truth")
-        await interaction.response.edit_message(layout=self)
+        await interaction.response.edit_message(view=self)
 
     async def dare(self, interaction: discord.Interaction) -> None:
         self.body_td.content = self._prompt("dare")
-        await interaction.response.edit_message(layout=self)
+        await interaction.response.edit_message(view=self)
 
     async def random_btn(self, interaction: discord.Interaction) -> None:
         self.body_td.content = self._prompt(random.choice(["truth", "dare"]))
-        await interaction.response.edit_message(layout=self)
+        await interaction.response.edit_message(view=self)
 
 
 class GamesMenu(discord.ui.LayoutView):
@@ -468,7 +468,7 @@ class GamesMenu(discord.ui.LayoutView):
         self.disable_items()
         if self.message:
             try:
-                await self.message.edit(layout=self)
+                await self.message.edit(view=self)
             except discord.HTTPException:
                 pass
 
@@ -484,7 +484,7 @@ class Games(commands.Cog):
     async def games(self, ctx: commands.Context) -> None:
         arcade = self.bot.get_cog("Arcade")
         if arcade is None:
-            await ctx.send(layout=build_game_layout("Games aren't ready", "Try again in a moment.", phase="lose"))
+            await ctx.send(view=build_game_layout("Games aren't ready", "Try again in a moment.", phase="lose"))
             return
         await arcade.send_menu(ctx)
 
@@ -498,10 +498,10 @@ class Games(commands.Cog):
         view.countdown_td.content = f"⏳ Ends <t:{view.end_ts}:R>"
         view.footer_td.content = f"-# Started by {host}"
         if isinstance(destination, discord.Interaction):
-            await destination.response.send_message(layout=view)
+            await destination.response.send_message(view=view)
             view.message = await destination.original_response()
         else:
-            view.message = await destination.send(layout=view)
+            view.message = await destination.send(view=view)
 
     async def _get_trivia(self) -> tuple[str, str, list[str]]:
         try:
@@ -537,14 +537,14 @@ class Games(commands.Cog):
             if isinstance(destination, discord.Interaction):
                 await destination.response.send_message(content, ephemeral=True)
             else:
-                await destination.send(layout=build_game_layout("Can't do that", content, phase="lose"))
+                await destination.send(view=build_game_layout("Can't do that", content, phase="lose"))
             return
         if opponent and opponent.bot:
             content = "Bots don't have hands. Leave the opponent blank to play against me."
             if isinstance(destination, discord.Interaction):
                 await destination.response.send_message(content, ephemeral=True)
             else:
-                await destination.send(layout=build_game_layout("Can't do that", content, phase="lose"))
+                await destination.send(view=build_game_layout("Can't do that", content, phase="lose"))
             return
         view = RPSView(author, opponent)
         host, host_avatar = _host_details(author)
@@ -556,10 +556,10 @@ class Games(commands.Cog):
         view.countdown_td.content = f"⏳ Ends <t:{view.end_ts}:R>"
         view.footer_td.content = f"-# Started by {host}"
         if isinstance(destination, discord.Interaction):
-            await destination.response.send_message(layout=view)
+            await destination.response.send_message(view=view)
             view.message = await destination.original_response()
         else:
-            view.message = await destination.send(layout=view)
+            view.message = await destination.send(view=view)
 
     @commands.hybrid_command(name="rps", description="Play rock paper scissors against the bot or another member.")
     @commands.guild_only()
@@ -575,10 +575,10 @@ class Games(commands.Cog):
         view.body_td.content = view._content()
         view.countdown_td.content = f"⏳ Ends <t:{view.end_ts}:R>"
         if isinstance(destination, discord.Interaction):
-            await destination.response.send_message(layout=view)
+            await destination.response.send_message(view=view)
             view.message = await destination.original_response()
         else:
-            view.message = await destination.send(layout=view)
+            view.message = await destination.send(view=view)
 
     @commands.hybrid_command(name="wyr", aliases=["wouldyourather"], description="Start a would-you-rather vote.")
     @commands.guild_only()
@@ -591,10 +591,10 @@ class Games(commands.Cog):
         view.end_ts, _ = countdown_field(90)
         view.body_td.content = f"{target.mention}, pick **Truth**, **Dare**, or **Random**."
         if isinstance(destination, discord.Interaction):
-            await destination.response.send_message(layout=view)
+            await destination.response.send_message(view=view)
             view.message = await destination.original_response()
         else:
-            view.message = await destination.send(layout=view)
+            view.message = await destination.send(view=view)
 
     @commands.hybrid_command(name="tod", aliases=["truthordare"], description="Start a truth or dare for yourself or someone else.")
     @commands.guild_only()
@@ -603,7 +603,7 @@ class Games(commands.Cog):
     async def tod(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         target = member or ctx.author
         if not isinstance(target, discord.Member):
-            await ctx.send(layout=build_game_layout("Server only", "This command can only be used in a server.", phase="lose"), ephemeral=True)
+            await ctx.send(view=build_game_layout("Server only", "This command can only be used in a server.", phase="lose"), ephemeral=True)
             return
         await self.start_tod(ctx, target)
 
@@ -611,13 +611,13 @@ class Games(commands.Cog):
     @commands.guild_only()
     async def truth(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         target = member or ctx.author
-        await ctx.send(layout=build_game_layout(f"Truth for {_member_name(target)}", random.choice(TRUTHS)))
+        await ctx.send(view=build_game_layout(f"Truth for {_member_name(target)}", random.choice(TRUTHS)))
 
     @commands.hybrid_command(name="dare", description="Get a random dare.")
     @commands.guild_only()
     async def dare(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         target = member or ctx.author
-        await ctx.send(layout=build_game_layout(f"Dare for {_member_name(target)}", random.choice(DARES)))
+        await ctx.send(view=build_game_layout(f"Dare for {_member_name(target)}", random.choice(DARES)))
 
 
     @commands.hybrid_command(name="eightball", aliases=["8ball", "eight_ball"], description="Ask the magic 8-ball a question.")
@@ -625,7 +625,7 @@ class Games(commands.Cog):
         from cogs.banks import EIGHTBALL
         answer = random.choice(EIGHTBALL)
         prompt = question.strip() if question else "The 8-ball says:"
-        await ctx.send(layout=build_game_layout("8-ball", f"**{prompt}**\n\n{answer}"))
+        await ctx.send(view=build_game_layout("8-ball", f"**{prompt}**\n\n{answer}"))
 
     @commands.hybrid_command(name="setcounting", description="Set or clear the counting channel.")
     @commands.guild_only()
@@ -636,12 +636,12 @@ class Games(commands.Cog):
         if channel is None:
             await self.bot.db.update_settings(ctx.guild.id, counting_next=1, counting_last_user=None)
             await self.bot.db.set_feature_channel(ctx.guild.id, "counting", None)
-            await ctx.send(layout=build_game_layout("Counting disabled", "I won't look for a counting channel any more."))
+            await ctx.send(view=build_game_layout("Counting disabled", "I won't look for a counting channel any more."))
             return
         await self.bot.db.update_settings(ctx.guild.id, counting_next=1, counting_last_user=None)
         await self.bot.db.set_feature_channel(ctx.guild.id, "counting", channel.id)
         await ctx.send(
-            layout=build_game_layout(
+            view=build_game_layout(
                 "Counting channel set",
                 f"Start at **1** in {channel.mention}. No skipping, and you can't count twice in a row.",
             )
@@ -691,7 +691,7 @@ class Games(commands.Cog):
             pass
         if expected > 0 and expected % 100 == 0:
             try:
-                await message.channel.send(layout=build_game_layout("Nice streak!", f"The server just hit **{expected}**! High score: **{high}**."))
+                await message.channel.send(view=build_game_layout("Nice streak!", f"The server just hit **{expected}**! High score: **{high}**."))
             except discord.HTTPException:
                 pass
 
@@ -709,7 +709,7 @@ class Games(commands.Cog):
         try:
             await message.add_reaction("❌")
             await message.channel.send(
-                layout=build_game_layout("Streak broken", f"{message.author.mention} — {reason}\nHigh score: **{high}**.", phase="lose")
+                view=build_game_layout("Streak broken", f"{message.author.mention} — {reason}\nHigh score: **{high}**.", phase="lose")
             )
         except discord.HTTPException:
             pass
@@ -720,14 +720,15 @@ class Games(commands.Cog):
     async def endgame(self, ctx: commands.Context) -> None:
         game = self.bot.game_sessions.peek(ctx.channel.id)
         if game is None:
-            await ctx.send(layout=build_game_layout("No game running", "There's no game to end in this channel.", phase="lose"), ephemeral=True)
+            await ctx.send(view=build_game_layout("No game running", "There's no game to end in this channel.", phase="lose"), ephemeral=True)
             return
         try:
             await game.finish()
         except Exception:
             self.bot.game_sessions.end(ctx.channel.id)
-        await ctx.send(layout=build_game_layout("Game ended", "The channel is free — you can start a new game.", phase="win"))
+        await ctx.send(view=build_game_layout("Game ended", "The channel is free — you can start a new game.", phase="win"))
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Games(bot))
+

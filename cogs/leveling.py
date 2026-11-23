@@ -83,7 +83,7 @@ class Leveling(commands.Cog):
         if channel is None:
             return
         try:
-            await channel.send(layout=build_game_layout("Level up!", f"{user.mention} reached **level {new_level}**!"))
+            await channel.send(view=build_game_layout("Level up!", f"{user.mention} reached **level {new_level}**!"))
         except discord.HTTPException:
             pass
 
@@ -171,7 +171,7 @@ class Leveling(commands.Cog):
             f"**Voice time:** {format_duration(voice_seconds)}",
             f"**Voice rank:** #{voice_rank}",
         ]
-        await ctx.send(layout=build_game_layout(f"{target.display_name}'s rank", "\n".join(lines)))
+        await ctx.send(view=build_game_layout(f"{target.display_name}'s rank", "\n".join(lines)))
 
     @commands.hybrid_command(name="leaderboard", aliases=["lb", "levels"], description="Show the server XP leaderboard.")
     @commands.guild_only()
@@ -179,7 +179,7 @@ class Leveling(commands.Cog):
         assert ctx.guild
         rows = await self.bot.db.top_xp(ctx.guild.id, 10)
         if not rows:
-            await ctx.send(layout=build_game_layout("Leaderboard", "No one has earned XP yet. Chat or hop in voice to get started."))
+            await ctx.send(view=build_game_layout("Leaderboard", "No one has earned XP yet. Chat or hop in voice to get started."))
             return
         lines = []
         medals = {1: "🥇", 2: "🥈", 3: "🥉"}
@@ -189,7 +189,7 @@ class Leveling(commands.Cog):
             level = level_from_xp(int(row["xp"]))
             medal = medals.get(i, f"`{i}.`")
             lines.append(f"{medal} **{name}** — level {level} · {int(row['xp']):,} XP")
-        await ctx.send(layout=build_game_layout("XP leaderboard", "\n".join(lines)))
+        await ctx.send(view=build_game_layout("XP leaderboard", "\n".join(lines)))
 
     @commands.hybrid_command(name="voicetime", description="Show how long you or another member have spent in voice.")
     @commands.guild_only()
@@ -204,7 +204,7 @@ class Leveling(commands.Cog):
             f"**{format_duration(seconds)}** in voice (counted when not alone, AFK, or self-deafened).\n"
             f"Voice rank: **#{rank}**"
         )
-        await ctx.send(layout=build_game_layout(f"{target.display_name}'s voice time", body))
+        await ctx.send(view=build_game_layout(f"{target.display_name}'s voice time", body))
 
     @commands.hybrid_command(name="voiceleaderboard", aliases=["voicelb", "vclb"], description="Show the server voice-time leaderboard.")
     @commands.guild_only()
@@ -212,7 +212,7 @@ class Leveling(commands.Cog):
         assert ctx.guild
         rows = await self.bot.db.top_voice(ctx.guild.id, 10)
         if not rows or all(int(r["voice_seconds"]) == 0 for r in rows):
-            await ctx.send(layout=build_game_layout("Voice leaderboard", "No voice time has been tracked yet."))
+            await ctx.send(view=build_game_layout("Voice leaderboard", "No voice time has been tracked yet."))
             return
         lines = []
         medals = {1: "🥇", 2: "🥈", 3: "🥉"}
@@ -223,7 +223,7 @@ class Leveling(commands.Cog):
             name = member.display_name if member else f"User {row['user_id']}"
             medal = medals.get(i, f"`{i}.`")
             lines.append(f"{medal} **{name}** — {format_duration(int(row['voice_seconds']))}")
-        await ctx.send(layout=build_game_layout("Voice leaderboard", "\n".join(lines) or "No voice time has been tracked yet."))
+        await ctx.send(view=build_game_layout("Voice leaderboard", "\n".join(lines) or "No voice time has been tracked yet."))
 
     @commands.hybrid_command(name="setlevelchannel", description="Set the channel for level-up messages, or clear it.")
     @commands.guild_only()
@@ -233,16 +233,16 @@ class Leveling(commands.Cog):
         assert ctx.guild
         await self.bot.db.set_feature_channel(ctx.guild.id, "levelups", channel.id if channel else None)
         if channel:
-            await ctx.send(layout=build_game_layout("Level-up channel set", f"Level-ups will be posted in {channel.mention}."))
+            await ctx.send(view=build_game_layout("Level-up channel set", f"Level-ups will be posted in {channel.mention}."))
         else:
-            await ctx.send(layout=build_game_layout("Level-up channel cleared", "Level-ups from chatting will be posted in the same channel."))
+            await ctx.send(view=build_game_layout("Level-up channel cleared", "Level-ups from chatting will be posted in the same channel."))
 
     @commands.hybrid_group(name="levelrole", description="Assign roles automatically when members reach a level.", invoke_without_command=True)
     @commands.guild_only()
     @commands.has_guild_permissions(manage_roles=True)
     async def levelrole(self, ctx: commands.Context) -> None:
         await ctx.send(
-            layout=build_game_layout(
+            view=build_game_layout(
                 "Level roles",
                 "• `.levelrole add <level> @role` — grant a role at that level\n"
                 "• `.levelrole remove <level>` — stop granting it\n"
@@ -258,16 +258,16 @@ class Leveling(commands.Cog):
     async def levelrole_add(self, ctx: commands.Context, level: int, role: discord.Role) -> None:
         assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
         if level < 1 or level > 1000:
-            await ctx.send(layout=build_game_layout("Invalid level", "Use a level between 1 and 1000."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Invalid level", "Use a level between 1 and 1000."), ephemeral=True)
             return
         if role.is_default() or role.managed or role >= ctx.guild.me.top_role:
-            await ctx.send(layout=build_game_layout("Can't use that role", "The role must be below my highest role, and not managed."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Can't use that role", "The role must be below my highest role, and not managed."), ephemeral=True)
             return
         if ctx.author != ctx.guild.owner and role >= ctx.author.top_role:
-            await ctx.send(layout=build_game_layout("Can't use that role", "That role is higher than or equal to your highest role."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Can't use that role", "That role is higher than or equal to your highest role."), ephemeral=True)
             return
         await self.bot.db.set_level_role(ctx.guild.id, level, role.id)
-        await ctx.send(layout=build_game_layout("Level role set", f"{role.mention} will be given at **level {level}**."))
+        await ctx.send(view=build_game_layout("Level role set", f"{role.mention} will be given at **level {level}**."))
 
     @levelrole.command(name="remove", description="Stop granting a role at a given level.")
     @commands.guild_only()
@@ -276,9 +276,9 @@ class Leveling(commands.Cog):
         assert ctx.guild
         ok = await self.bot.db.remove_level_role(ctx.guild.id, level)
         if not ok:
-            await ctx.send(layout=build_game_layout("Nothing to remove", f"There is no level role at level {level}."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Nothing to remove", f"There is no level role at level {level}."), ephemeral=True)
             return
-        await ctx.send(layout=build_game_layout("Level role removed", f"No role will be granted at level {level} any more."))
+        await ctx.send(view=build_game_layout("Level role removed", f"No role will be granted at level {level} any more."))
 
     @levelrole.command(name="list", description="List automatic level roles.")
     @commands.guild_only()
@@ -286,14 +286,14 @@ class Leveling(commands.Cog):
         assert ctx.guild
         rows = await self.bot.db.level_roles(ctx.guild.id)
         if not rows:
-            await ctx.send(layout=build_game_layout("Level roles", "None set. A mod can add some with `.levelrole add`."))
+            await ctx.send(view=build_game_layout("Level roles", "None set. A mod can add some with `.levelrole add`."))
             return
         lines = []
         for row in rows:
             role = ctx.guild.get_role(int(row["role_id"]))
             mention = role.mention if role else f"`{row['role_id']}` (deleted)"
             lines.append(f"Level **{row['level']}** — {mention}")
-        await ctx.send(layout=build_game_layout("Level roles", "\n".join(lines)))
+        await ctx.send(view=build_game_layout("Level roles", "\n".join(lines)))
 
 
     @commands.hybrid_command(name="addxp", description="Add XP to a member.")
@@ -301,17 +301,17 @@ class Leveling(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def addxp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
         if member.bot:
-            await ctx.send(layout=build_game_layout("Can't do that", "Bots don't earn XP."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Can't do that", "Bots don't earn XP."), ephemeral=True)
             return
         if amount <= 0 or amount > 1_000_000:
-            await ctx.send(layout=build_game_layout("Invalid amount", "Amount must be between 1 and 1,000,000."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Invalid amount", "Amount must be between 1 and 1,000,000."), ephemeral=True)
             return
         old, new = await self.bot.db.add_xp(ctx.guild.id, member.id, amount)
         _, _, _, _ = level_progress(new)
         if new > old:
             await self._handle_level_up(ctx.guild, member, ctx.channel, old, new)
         level, _, _, _ = level_progress(new)
-        await ctx.send(layout=build_game_layout("XP added", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**"))
+        await ctx.send(view=build_game_layout("XP added", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**"))
         from cogs.channels import post_modlog
         await post_modlog(self.bot, ctx.guild, "XP added", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=SUCCESS)
 
@@ -320,16 +320,16 @@ class Leveling(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def removexp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
         if member.bot:
-            await ctx.send(layout=build_game_layout("Can't do that", "Bots don't earn XP."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Can't do that", "Bots don't earn XP."), ephemeral=True)
             return
         if amount <= 0 or amount > 1_000_000:
-            await ctx.send(layout=build_game_layout("Invalid amount", "Amount must be between 1 and 1,000,000."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Invalid amount", "Amount must be between 1 and 1,000,000."), ephemeral=True)
             return
         old_xp = int((await self.bot.db.ensure_member(ctx.guild.id, member.id))["xp"])
         new_xp = max(0, old_xp - amount)
         old, new = await self.bot.db.set_xp(ctx.guild.id, member.id, new_xp)
         level, _, _, _ = level_progress(new)
-        await ctx.send(layout=build_game_layout("XP removed", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**"))
+        await ctx.send(view=build_game_layout("XP removed", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**"))
         from cogs.channels import post_modlog
         await post_modlog(self.bot, ctx.guild, "XP removed", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=WARNING)
 
@@ -338,19 +338,20 @@ class Leveling(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def setxp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
         if member.bot:
-            await ctx.send(layout=build_game_layout("Can't do that", "Bots don't earn XP."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Can't do that", "Bots don't earn XP."), ephemeral=True)
             return
         if amount < 0 or amount > 1_000_000:
-            await ctx.send(layout=build_game_layout("Invalid amount", "Amount must be between 0 and 1,000,000."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Invalid amount", "Amount must be between 0 and 1,000,000."), ephemeral=True)
             return
         old, new = await self.bot.db.set_xp(ctx.guild.id, member.id, amount)
         if new > old:
             await self._handle_level_up(ctx.guild, member, ctx.channel, old, new)
         level, _, _, _ = level_progress(new)
-        await ctx.send(layout=build_game_layout("XP set", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**"))
+        await ctx.send(view=build_game_layout("XP set", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**"))
         from cogs.channels import post_modlog
         await post_modlog(self.bot, ctx.guild, "XP set", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=SUCCESS)
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Leveling(bot))
+
 

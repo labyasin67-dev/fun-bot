@@ -529,19 +529,19 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         await self.bot.db.set_feature_channel(ctx.guild.id, "alts", channel.id if channel else None)
         if channel:
-            await ctx.send(layout=build_game_layout("Alt log channel set", f"Alerts will be posted in {channel.mention}."))
+            await ctx.send(view=build_game_layout("Alt log channel set", f"Alerts will be posted in {channel.mention}."))
         else:
-            await ctx.send(layout=build_game_layout("Alt log channel cleared", "I won't post alt alerts until you set a channel again."))
+            await ctx.send(view=build_game_layout("Alt log channel cleared", "I won't post alt alerts until you set a channel again."))
 
     @altconfig.command(name="minage", description="Set the minimum account age in days.")
     @app_commands.describe(days="Accounts younger than this many days score as too new. Default 7.")
     async def altconfig_minage(self, ctx: commands.Context, days: int) -> None:
         assert ctx.guild
         if days < 0 or days > 365:
-            await ctx.send(layout=build_game_layout("Invalid age", "Use a number of days from 0 to 365."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Invalid age", "Use a number of days from 0 to 365."), ephemeral=True)
             return
         await self.bot.db.set_alt_config(ctx.guild.id, min_age_days=days)
-        await ctx.send(layout=build_game_layout("Minimum age updated", f"Accounts newer than **{days}** day{'s' if days != 1 else ''} will be treated as young."))
+        await ctx.send(view=build_game_layout("Minimum age updated", f"Accounts newer than **{days}** day{'s' if days != 1 else ''} will be treated as young."))
 
     @altconfig.command(name="action", description="What to do when a high-risk account joins.")
     @app_commands.describe(action="none, log, timeout, kick, or quarantine")
@@ -550,7 +550,7 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         choice = action.strip().lower()
         if choice not in ACTIONS:
-            await ctx.send(layout=build_game_layout("Invalid action", "Use `none`, `log`, `timeout`, `kick`, or `quarantine`."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Invalid action", "Use `none`, `log`, `timeout`, `kick`, or `quarantine`."), ephemeral=True)
             return
         await self.bot.db.set_alt_config(ctx.guild.id, action=choice)
         notes = {
@@ -560,7 +560,7 @@ class AltDetect(commands.Cog):
             "kick": "High-risk joins will be kicked, and I'll still post an alert.",
             "quarantine": "High-risk joins will be given the quarantine role. Set it with `.altconfig role @role`.",
         }
-        await ctx.send(layout=build_game_layout("Alt action updated", notes[choice]))
+        await ctx.send(view=build_game_layout("Alt action updated", notes[choice]))
 
     @altconfig.command(name="role", description="Set the quarantine role given on a high-risk join.")
     @app_commands.describe(role="Role to grant when the action is quarantine. Omit to clear.")
@@ -568,28 +568,28 @@ class AltDetect(commands.Cog):
         assert ctx.guild and ctx.guild.me and isinstance(ctx.author, discord.Member)
         if role is not None:
             if role.is_default() or role.managed:
-                await ctx.send(layout=build_game_layout("Can't use that role", "Pick a normal role, not @everyone or a managed role."), ephemeral=True)
+                await ctx.send(view=build_game_layout("Can't use that role", "Pick a normal role, not @everyone or a managed role."), ephemeral=True)
                 return
             if role >= ctx.guild.me.top_role:
-                await ctx.send(layout=build_game_layout("Role too high", "That role is above or equal to me, so I couldn't assign it."), ephemeral=True)
+                await ctx.send(view=build_game_layout("Role too high", "That role is above or equal to me, so I couldn't assign it."), ephemeral=True)
                 return
         await self.bot.db.set_alt_config(ctx.guild.id, quarantine_role_id=role.id if role else None)
         if role:
-            await ctx.send(layout=build_game_layout("Quarantine role set", f"High-risk joins will receive {role.mention} when the action is `quarantine`."))
+            await ctx.send(view=build_game_layout("Quarantine role set", f"High-risk joins will receive {role.mention} when the action is `quarantine`."))
         else:
-            await ctx.send(layout=build_game_layout("Quarantine role cleared", "No quarantine role is configured."))
+            await ctx.send(view=build_game_layout("Quarantine role cleared", "No quarantine role is configured."))
 
     @altconfig.command(name="on", description="Enable alt-account detection.")
     async def altconfig_on(self, ctx: commands.Context) -> None:
         assert ctx.guild
         await self.bot.db.set_alt_config(ctx.guild.id, enabled=1)
-        await ctx.send(layout=build_game_layout("Alt detection enabled", "New joins will be scored. Use `.altconfig show` to review settings."))
+        await ctx.send(view=build_game_layout("Alt detection enabled", "New joins will be scored. Use `.altconfig show` to review settings."))
 
     @altconfig.command(name="off", description="Disable alt-account detection.")
     async def altconfig_off(self, ctx: commands.Context) -> None:
         assert ctx.guild
         await self.bot.db.set_alt_config(ctx.guild.id, enabled=0)
-        await ctx.send(layout=build_game_layout("Alt detection disabled", "I won't score or act on new joins until you turn it back on."))
+        await ctx.send(view=build_game_layout("Alt detection disabled", "I won't score or act on new joins until you turn it back on."))
 
     @altconfig.command(name="show", description="Show the current alt-detection settings.")
     async def altconfig_show(self, ctx: commands.Context) -> None:
@@ -601,7 +601,7 @@ class AltDetect(commands.Cog):
         role = ctx.guild.get_role(int(role_id)) if role_id else None
         enabled = "On" if int(cfg["enabled"] or 0) else "Off"
         await ctx.send(
-            layout=build_game_layout(
+            view=build_game_layout(
                 "Alt detection settings",
                 f"**Status:** {enabled}\n"
                 f"**Log channel:** {log_ch.mention if log_ch else 'Not set'}\n"
@@ -641,7 +641,7 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         rows = await self.bot.db.recent_alt_flags(ctx.guild.id, 15)
         if not rows:
-            await ctx.send(layout=build_game_layout("Recent alt flags", "No joins have been flagged yet."))
+            await ctx.send(view=build_game_layout("Recent alt flags", "No joins have been flagged yet."))
             return
         lines = []
         for row in rows:
@@ -649,7 +649,7 @@ class AltDetect(commands.Cog):
             lines.append(
                 f"• <@{row['user_id']}> (`{row['user_id']}`) — **{row['score']}**, {row['verdict']} — <t:{ts}:R>"
             )
-        await ctx.send(layout=build_game_layout("Recent alt flags", "\n".join(lines)))
+        await ctx.send(view=build_game_layout("Recent alt flags", "\n".join(lines)))
 
     @commands.hybrid_group(name="altwhitelist", description="Mark a user as safe so they aren't flagged.", fallback="add")
     @commands.guild_only()
@@ -659,9 +659,9 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         added = await self.bot.db.add_alt_whitelist(ctx.guild.id, user.id, ctx.author.id)
         if added:
-            await ctx.send(layout=build_game_layout("User whitelisted", f"{user.mention} (`{user.id}`) is marked safe and won't be flagged."))
+            await ctx.send(view=build_game_layout("User whitelisted", f"{user.mention} (`{user.id}`) is marked safe and won't be flagged."))
         else:
-            await ctx.send(layout=build_game_layout("Already whitelisted", f"{user.mention} is already marked safe."))
+            await ctx.send(view=build_game_layout("Already whitelisted", f"{user.mention} is already marked safe."))
 
     @altwhitelist.command(name="remove", description="Remove a user from the alt whitelist.")
     @app_commands.describe(user="The user to remove from the whitelist.")
@@ -669,11 +669,12 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         removed = await self.bot.db.remove_alt_whitelist(ctx.guild.id, user.id)
         if removed:
-            await ctx.send(layout=build_game_layout("Whitelist removed", f"{user.mention} (`{user.id}`) can be flagged again."))
+            await ctx.send(view=build_game_layout("Whitelist removed", f"{user.mention} (`{user.id}`) can be flagged again."))
         else:
-            await ctx.send(layout=build_game_layout("Not whitelisted", f"{user.mention} wasn't on the whitelist."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Not whitelisted", f"{user.mention} wasn't on the whitelist."), ephemeral=True)
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(AltDetect(bot))
+
 

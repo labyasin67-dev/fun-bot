@@ -154,11 +154,11 @@ async def refuse_if_busy(ctx: discord.Interaction | Any, bot: SocializeBot) -> b
     msg = "There's already a game running in this channel. Finish it or wait for it to end."
     if isinstance(ctx, discord.Interaction):
         if ctx.response.is_done():
-            await ctx.followup.send(layout=build_game_layout("Game in progress", msg), ephemeral=True)
+            await ctx.followup.send(view=build_game_layout("Game in progress", msg), ephemeral=True)
         else:
-            await ctx.response.send_message(layout=build_game_layout("Game in progress", msg), ephemeral=True)
+            await ctx.response.send_message(view=build_game_layout("Game in progress", msg), ephemeral=True)
     else:
-        await ctx.send(layout=build_game_layout("Game in progress", msg), ephemeral=True)
+        await ctx.send(view=build_game_layout("Game in progress", msg), ephemeral=True)
     return True
 
 
@@ -187,12 +187,12 @@ async def end_game_message_v2(message, result_embed, layout, *, timeout: bool = 
     layout.disable_items()
     # Edit the message with the updated layout
     try:
-        await message.edit(layout=layout)
+        await message.edit(view=layout)
     except discord.HTTPException:
         pass
     # Post the result as a separate message
     try:
-        await message.channel.send(layout=result_embed)
+        await message.channel.send(view=result_embed)
     except discord.HTTPException:
         pass
 
@@ -227,7 +227,8 @@ async def launch_channel_game(dest: discord.Interaction | Any, bot: Any, factory
         if isinstance(dest, discord.Interaction) and not dest.response.is_done():
             await dest.response.send_message("There's already a game running in this channel.", ephemeral=True)
         elif not isinstance(dest, discord.Interaction):
-            await dest.send(layout=build_game_layout("Game in progress", "There's already a game running in this channel."), ephemeral=True)
+            await dest.send(view=build_game_layout("Game in progress", "There's already a game running in this channel."), ephemeral=True)
         return None
     return game
+
 

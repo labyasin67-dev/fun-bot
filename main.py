@@ -151,29 +151,29 @@ class SocializeBot(commands.Bot):
 
         if isinstance(error, commands.MissingPermissions):
             perms = ", ".join(permission.replace("_", " ") for permission in error.missing_permissions)
-            await ctx.send(layout=build_game_layout("Missing permissions", f"You need: **{perms}**."))
+            await ctx.send(view=build_game_layout("Missing permissions", f"You need: **{perms}**."))
             return
         if isinstance(error, commands.BotMissingPermissions):
             perms = ", ".join(permission.replace("_", " ") for permission in error.missing_permissions)
-            await ctx.send(layout=build_game_layout("I am missing permissions", f"I need: **{perms}**."))
+            await ctx.send(view=build_game_layout("I am missing permissions", f"I need: **{perms}**."))
             return
         if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(layout=build_game_layout("Missing argument", f"Missing `{error.param.name}`. Try `.help {ctx.command.qualified_name}`." if ctx.command else "Missing an argument."))
+            await ctx.send(view=build_game_layout("Missing argument", f"Missing `{error.param.name}`. Try `.help {ctx.command.qualified_name}`." if ctx.command else "Missing an argument."))
             return
         if isinstance(error, commands.BadArgument):
-            await ctx.send(layout=build_game_layout("Invalid argument", str(error)))
+            await ctx.send(view=build_game_layout("Invalid argument", str(error)))
             return
         if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(layout=build_game_layout("Slow down", f"Try again in **{error.retry_after:.1f}s**."))
+            await ctx.send(view=build_game_layout("Slow down", f"Try again in **{error.retry_after:.1f}s**."))
             return
         if isinstance(error, commands.NoPrivateMessage):
-            await ctx.send(layout=build_game_layout("Server only", "This command can only be used in a server."))
+            await ctx.send(view=build_game_layout("Server only", "This command can only be used in a server."))
             return
         if isinstance(error, PremiumRequired):
-            await ctx.send(layout=build_game_layout("Premium required", str(error)))
+            await ctx.send(view=build_game_layout("Premium required", str(error)))
             return
         if isinstance(error, commands.CheckFailure):
-            await ctx.send(layout=build_game_layout("You can't do that", str(error) or "You don't have permission to use this command."))
+            await ctx.send(view=build_game_layout("You can't do that", str(error) or "You don't have permission to use this command."))
             return
         if isinstance(error, discord.NotFound):
             # Interaction already acknowledged or expired — nothing useful to send.
@@ -182,7 +182,7 @@ class SocializeBot(commands.Bot):
 
         log.error("Command error in %s:\n%s", ctx.command, "".join(traceback.format_exception(type(error), error, error.__traceback__)))
         try:
-            await ctx.send(layout=build_game_layout("Something went wrong", "I hit an unexpected error running that command."))
+            await ctx.send(view=build_game_layout("Something went wrong", "I hit an unexpected error running that command."))
         except Exception:
             pass
 
@@ -204,4 +204,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 

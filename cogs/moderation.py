@@ -77,7 +77,7 @@ class Moderation(commands.Cog):
         assert ctx.guild and ctx.guild.me and isinstance(ctx.author, discord.Member)
         err = hierarchy_error(ctx.author, member, ctx.guild.me)
         if err:
-            await ctx.send(layout=build_game_layout("Can't do that", err))
+            await ctx.send(view=build_game_layout("Can't do that", err))
             return False
         return True
 
@@ -97,7 +97,7 @@ class Moderation(commands.Cog):
         )
         await member.ban(reason=f"{ctx.author} : {why}", delete_message_seconds=0)
         extra = "" if dm_ok else " I couldn't DM them."
-        await ctx.send(layout=build_game_layout("Member banned", f"**{member}** was banned. Reason: {why}.{extra}"))
+        await ctx.send(view=build_game_layout("Member banned", f"**{member}** was banned. Reason: {why}.{extra}"))
         await post_modlog(self.bot, ctx.guild, "Member banned", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}", color=DANGER)
 
     @commands.hybrid_command(name="unban", description="Unban a user by their Discord ID.")
@@ -108,15 +108,15 @@ class Moderation(commands.Cog):
     async def unban(self, ctx: commands.Context, user_id: str) -> None:
         assert ctx.guild
         if not user_id.isdigit():
-            await ctx.send(layout=build_game_layout("Invalid ID", "Give a numeric Discord user ID."))
+            await ctx.send(view=build_game_layout("Invalid ID", "Give a numeric Discord user ID."))
             return
         uid = int(user_id)
         try:
             await ctx.guild.unban(discord.Object(id=uid), reason=f"Unbanned by {ctx.author}")
         except discord.NotFound:
-            await ctx.send(layout=build_game_layout("Not banned", "I couldn't find a ban for that user ID."))
+            await ctx.send(view=build_game_layout("Not banned", "I couldn't find a ban for that user ID."))
             return
-        await ctx.send(layout=build_game_layout("User unbanned", f"<@{uid}> (`{uid}`) can join again."))
+        await ctx.send(view=build_game_layout("User unbanned", f"<@{uid}> (`{uid}`) can join again."))
 
     @commands.hybrid_command(name="kick", description="Kick a member from the server.")
     @commands.guild_only()
@@ -136,7 +136,7 @@ class Moderation(commands.Cog):
         created = member.created_at.timestamp() if member.created_at else None
         await self.bot.db.add_alt_mod_action(ctx.guild.id, member.id, "kick", created)
         extra = "" if dm_ok else " I couldn't DM them."
-        await ctx.send(layout=build_game_layout("Member kicked", f"**{member}** was kicked. Reason: {why}.{extra}"))
+        await ctx.send(view=build_game_layout("Member kicked", f"**{member}** was kicked. Reason: {why}.{extra}"))
         await post_modlog(self.bot, ctx.guild, "Member kicked", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}", color=DANGER)
 
     @commands.hybrid_command(name="timeout", description="Timeout a member. Duration examples: 10m, 1h, 1d.")
@@ -149,7 +149,7 @@ class Moderation(commands.Cog):
             return
         delta = parse_duration(duration)
         if delta is None:
-            await ctx.send(layout=build_game_layout("Invalid duration", "Use a number followed by s, m, h or d — for example `10m`, `1h`, `1d`. Max 28 days."))
+            await ctx.send(view=build_game_layout("Invalid duration", "Use a number followed by s, m, h or d — for example `10m`, `1h`, `1d`. Max 28 days."))
             return
         why = reason or "No reason provided."
         assert ctx.guild
@@ -162,7 +162,7 @@ class Moderation(commands.Cog):
         )
         await member.timeout(delta, reason=f"{ctx.author} : {why}")
         extra = "" if dm_ok else " I couldn't DM them."
-        await ctx.send(layout=build_game_layout("Member timed out", f"**{member}** is timed out for **{format_delta(delta)}**. Reason: {why}.{extra}"))
+        await ctx.send(view=build_game_layout("Member timed out", f"**{member}** is timed out for **{format_delta(delta)}**. Reason: {why}.{extra}"))
         await post_modlog(self.bot, ctx.guild, "Member timed out", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Duration:** {format_delta(delta)}\n**Reason:** {why}", color=WARNING)
 
     @commands.hybrid_command(name="untimeout", description="Remove a timeout from a member.")
@@ -174,7 +174,7 @@ class Moderation(commands.Cog):
         if not await self._target_check(ctx, member):
             return
         await member.timeout(None, reason=f"Timeout removed by {ctx.author}")
-        await ctx.send(layout=build_game_layout("Timeout removed", f"**{member}** can speak again."))
+        await ctx.send(view=build_game_layout("Timeout removed", f"**{member}** can speak again."))
 
     @commands.hybrid_command(name="warn", description="Warn a member and log the reason.")
     @commands.guild_only()
@@ -189,7 +189,7 @@ class Moderation(commands.Cog):
         await self.bot.db.add_warning(ctx.guild.id, member.id, ctx.author.id, why)
         total = count_before + 1
         await try_dm(member, build_game_layout("You were warned", f"You were warned in **{ctx.guild.name}**.\nReason: {why}"))
-        await ctx.send(layout=build_game_layout("Member warned", f"**{member}** was warned. Reason: {why}\nThey now have **{total}** warning{'s' if total != 1 else ''}."))
+        await ctx.send(view=build_game_layout("Member warned", f"**{member}** was warned. Reason: {why}\nThey now have **{total}** warning{'s' if total != 1 else ''}."))
         await post_modlog(self.bot, ctx.guild, "Member warned", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}\n**Warnings:** {total}", color=WARNING)
 
     @commands.hybrid_command(name="warnings", description="List a member's warnings.")
@@ -200,13 +200,13 @@ class Moderation(commands.Cog):
         assert ctx.guild
         rows = await self.bot.db.get_warnings(ctx.guild.id, member.id)
         if not rows:
-            await ctx.send(layout=build_game_layout("Warnings", f"**{member}** has no warnings."))
+            await ctx.send(view=build_game_layout("Warnings", f"**{member}** has no warnings."))
             return
         lines = []
         for i, row in enumerate(rows, start=1):
             reason = row["reason"] or "No reason provided."
             lines.append(f"**{i}.** {reason} — by <@{row['moderator_id']}>")
-        await ctx.send(layout=build_game_layout(f"Warnings for {member}", "\n".join(lines[:25])))
+        await ctx.send(view=build_game_layout(f"Warnings for {member}", "\n".join(lines[:25])))
 
     @commands.hybrid_command(name="clearwarns", description="Clear all warnings for a member.")
     @commands.guild_only()
@@ -215,7 +215,7 @@ class Moderation(commands.Cog):
     async def clearwarns(self, ctx: commands.Context, member: discord.Member) -> None:
         assert ctx.guild
         removed = await self.bot.db.clear_warnings(ctx.guild.id, member.id)
-        await ctx.send(layout=build_game_layout("Warnings cleared", f"Removed **{removed}** warning{'s' if removed != 1 else ''} from **{member}**."))
+        await ctx.send(view=build_game_layout("Warnings cleared", f"Removed **{removed}** warning{'s' if removed != 1 else ''} from **{member}**."))
 
     @commands.hybrid_command(name="purge", description="Delete a number of recent messages in this channel.")
     @commands.guild_only()
@@ -224,17 +224,17 @@ class Moderation(commands.Cog):
     @app_commands.describe(amount="How many messages to delete (1–100).")
     async def purge(self, ctx: commands.Context, amount: int) -> None:
         if amount < 1 or amount > 100:
-            await ctx.send(layout=build_game_layout("Invalid amount", "Choose a number from 1 to 100."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Invalid amount", "Choose a number from 1 to 100."), ephemeral=True)
             return
         if not isinstance(ctx.channel, discord.TextChannel):
-            await ctx.send(layout=build_game_layout("Can't purge here", "I can only purge text channels."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Can't purge here", "I can only purge text channels."), ephemeral=True)
             return
         if ctx.interaction:
             await ctx.defer(ephemeral=True)
         deleted = await ctx.channel.purge(limit=amount + (0 if ctx.interaction else 1), check=lambda m: True)
         # For prefix commands, the invoke message is included in the purge window; that's intended.
         count = len(deleted)
-        await ctx.send(layout=build_game_layout("Messages deleted", f"Deleted **{count}** message{'s' if count != 1 else ''}."), ephemeral=True, delete_after=5)
+        await ctx.send(view=build_game_layout("Messages deleted", f"Deleted **{count}** message{'s' if count != 1 else ''}."), ephemeral=True, delete_after=5)
         await post_modlog(self.bot, ctx.guild, "Messages purged", f"**Channel:** {ctx.channel.mention}\n**Staff:** {ctx.author.mention}\n**Deleted:** {count}", color=WARNING)
 
     @commands.hybrid_command(name="slowmode", description="Set slowmode in this channel, in seconds. 0 turns it off.")
@@ -244,16 +244,16 @@ class Moderation(commands.Cog):
     @app_commands.describe(seconds="Slowmode delay in seconds (0–21600). 0 disables it.")
     async def slowmode(self, ctx: commands.Context, seconds: int) -> None:
         if seconds < 0 or seconds > 21600:
-            await ctx.send(layout=build_game_layout("Invalid slowmode", "Use a value from 0 to 21600 seconds."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Invalid slowmode", "Use a value from 0 to 21600 seconds."), ephemeral=True)
             return
         if not isinstance(ctx.channel, (discord.TextChannel, discord.Thread)):
-            await ctx.send(layout=build_game_layout("Can't set slowmode here", "Slowmode only works in text channels."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Can't set slowmode here", "Slowmode only works in text channels."), ephemeral=True)
             return
         await ctx.channel.edit(slowmode_delay=seconds, reason=f"Slowmode set by {ctx.author}")
         if seconds == 0:
-            await ctx.send(layout=build_game_layout("Slowmode off", "Slowmode has been disabled in this channel."))
+            await ctx.send(view=build_game_layout("Slowmode off", "Slowmode has been disabled in this channel."))
         else:
-            await ctx.send(layout=build_game_layout("Slowmode updated", f"Members can send one message every **{seconds}** second{'s' if seconds != 1 else ''}."))
+            await ctx.send(view=build_game_layout("Slowmode updated", f"Members can send one message every **{seconds}** second{'s' if seconds != 1 else ''}."))
 
     @commands.hybrid_command(name="lock", description="Lock a channel so @everyone can't send messages.")
     @commands.guild_only()
@@ -264,12 +264,12 @@ class Moderation(commands.Cog):
         assert ctx.guild
         target = channel or ctx.channel
         if not isinstance(target, discord.TextChannel):
-            await ctx.send(layout=build_game_layout("Can't lock that", "I can only lock text channels."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Can't lock that", "I can only lock text channels."), ephemeral=True)
             return
         overwrite = target.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = False
         await target.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Locked by {ctx.author}")
-        await ctx.send(layout=build_game_layout("Channel locked", f"{target.mention} is locked. @everyone can no longer send messages."))
+        await ctx.send(view=build_game_layout("Channel locked", f"{target.mention} is locked. @everyone can no longer send messages."))
 
     @commands.hybrid_command(name="unlock", description="Unlock a channel so @everyone can send messages again.")
     @commands.guild_only()
@@ -280,14 +280,15 @@ class Moderation(commands.Cog):
         assert ctx.guild
         target = channel or ctx.channel
         if not isinstance(target, discord.TextChannel):
-            await ctx.send(layout=build_game_layout("Can't unlock that", "I can only unlock text channels."), ephemeral=True)
+            await ctx.send(view=build_game_layout("Can't unlock that", "I can only unlock text channels."), ephemeral=True)
             return
         overwrite = target.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = None
         await target.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Unlocked by {ctx.author}")
-        await ctx.send(layout=build_game_layout("Channel unlocked", f"{target.mention} is unlocked."))
+        await ctx.send(view=build_game_layout("Channel unlocked", f"{target.mention} is unlocked."))
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Moderation(bot))
+
 

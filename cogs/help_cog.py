@@ -101,7 +101,7 @@ class Help(commands.Cog):
         if command:
             cmd = self.bot.get_command(command.lower())
             if cmd is None:
-                await ctx.send(layout=build_game_layout("Unknown command", f"I don't have a command called `{command}`. Try `.help`."))
+                await ctx.send(view=build_game_layout("Unknown command", f"I don't have a command called `{command}`. Try `.help`."))
                 return
             usage = f".{cmd.qualified_name}"
             if cmd.signature:
@@ -112,7 +112,7 @@ class Help(commands.Cog):
                 subs = "\n".join(f"• `.{c.qualified_name}` — {c.description or c.help or '—'}" for c in sorted(cmd.commands, key=lambda c: c.name))
                 body = f"{body}\n\n**Subcommands**\n{subs}"
             body = f"{body}\n\n{CREDIT}"
-            await ctx.send(layout=build_game_layout(f"Help: .{cmd.qualified_name}", body))
+            await ctx.send(view=build_game_layout(f"Help: .{cmd.qualified_name}", body))
             return
 
         body = (
@@ -121,12 +121,12 @@ class Help(commands.Cog):
         for title, body_text in HELP_SECTIONS:
             body = f"{body}\n\n**{title}**\n{body_text}"
         body = f"{body}\n\n{CREDIT}"
-        await ctx.send(layout=build_game_layout("Help", body))
+        await ctx.send(view=build_game_layout("Help", body))
 
     @commands.hybrid_command(name="ping", description="Check that the bot is online.")
     async def ping(self, ctx: commands.Context) -> None:
         latency = round(self.bot.latency * 1000)
-        await ctx.send(layout=build_game_layout("Pong", f"Latency: **{latency}ms**."))
+        await ctx.send(view=build_game_layout("Pong", f"Latency: **{latency}ms**."))
 
     @commands.hybrid_command(name="sync", description="Resync slash commands (bot owner only).")
     @commands.is_owner()
@@ -134,9 +134,10 @@ class Help(commands.Cog):
         if ctx.interaction:
             await ctx.defer(ephemeral=True)
         synced = await self.bot.tree.sync()
-        await ctx.send(layout=build_game_layout("Commands synced", f"Synced **{len(synced)}** slash commands.", phase="win"))
+        await ctx.send(view=build_game_layout("Commands synced", f"Synced **{len(synced)}** slash commands.", phase="win"))
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Help(bot))
+
 
