@@ -475,7 +475,7 @@ class WordRuleGame(ChannelGame):
                 phase="play",
                 host=self.host_name,
                 host_avatar=self.host_avatar,
-                fields=fields,
+                items=fields,
             )
             return layout
 
@@ -610,7 +610,7 @@ class ButtonHuntGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            fields=fields,
+            items=fields,
         )
         return layout
 
@@ -940,7 +940,7 @@ class ColorHuntGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            fields=fields,
+            items=fields,
         )
         return layout
 
@@ -1086,8 +1086,38 @@ class ReactionGame(ChannelGame):
         self.host_avatar: str | None = None
         self.seconds_left: int | None = None
         self.end_ts: int | None = None
+        self.layout: GameLayout | None = None
 
-    def _embed(self, *, live: bool = False) -> discord.Embed:
+    def _build_layout(self, *, live: bool = False) -> GameLayout:
+        try:
+            from cogs.v2 import GameLayout, build_game_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+
+        if not v2_available:
+            from cogs.game_ui import game_embed
+            fields = []
+            if self.eliminated:
+                count = len(self.eliminated)
+                fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
+            if self.end_ts is not None:
+                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
+            if live:
+                left = f"{self.seconds_left}s left" if self.seconds_left is not None else "GO!"
+                description = f"**GO!** First to click the button or type `go` wins.\n{left}"
+            else:
+                description = "Wait for it…\nDon't click or type **go** until the message says **GO!**"
+            return game_embed(
+                "Reaction",
+                description,
+                emoji="⏱️",
+                phase="play",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+                fields=fields,
+            )
+
         fields = []
         if self.eliminated:
             count = len(self.eliminated)
@@ -1099,21 +1129,85 @@ class ReactionGame(ChannelGame):
             description = f"**GO!** First to click the button or type `go` wins.\n{left}"
         else:
             description = "Wait for it…\nDon't click or type **go** until the message says **GO!**"
-        return game_embed(
+        return build_game_layout(
             "Reaction",
             description,
             emoji="⏱️",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            fields=fields,
+            items=fields,
         )
 
+    def _build_win_layout(self) -> GameLayout:
+        try:
+            from cogs.v2 import result_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+        if not v2_available:
+            from cogs.game_ui import result_embed
+            return result_embed(
+                "Reaction",
+                f"{self.winner.mention} won the reaction race!",
+                emoji="⏱️",
+                phase="win",
+                xp=DEFAULT_WIN_XP,
+                play_again=f"Play again with `{command_for_title('Reaction')}`.",
+                winner_avatar=avatar_url(self.winner),
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
+        return result_layout(
+            "Reaction",
+            f"{self.winner.mention} won the reaction race!",
+            emoji="⏱️",
+            phase="win",
+            xp=DEFAULT_WIN_XP,
+            play_again=f"Play again with `{command_for_title('Reaction')}`.",
+            winner_avatar=avatar_url(self.winner),
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+        )
+
+    def _build_timeout_layout(self) -> GameLayout:
+        try:
+            from cogs.v2 import result_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+        if not v2_available:
+            from cogs.game_ui import result_embed
+            return result_embed(
+                "Reaction",
+                "Nobody reacted in time.",
+                emoji="⏱️",
+                phase="timeout",
+                play_again=f"Play again with `{command_for_title('Reaction')}`.",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
+        return result_layout(
+            "Reaction",
+            "Nobody reacted in time.",
+            emoji="⏱️",
+            phase="timeout",
+            play_again=f"Play again with `{command_for_title('Reaction')}`.",
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+        )
+
+    def _build_initial_layout(self) -> GameLayout:
+        return self._build_layout(live=False)
+
+    def _build_live_layout(self) -> GameLayout:
+        return self._build_layout(live=True)
+
     async def refresh(self) -> None:
-        if self.message is None or self.finished:
+        if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(embed=self._embed(live=self.live), view=self.view)
+            await self.message.edit(view=self.layout)
         except discord.HTTPException:
             pass
 
@@ -1122,7 +1216,8 @@ class ReactionGame(ChannelGame):
         wait_seconds = random.uniform(2.5, 6.5)
         self.end_ts, _ = countdown_field(int(wait_seconds) + REACTION_LIVE_SECONDS)
         self.view = ReactionView(self)
-        self.message = await send_dest(dest, embed=self._embed(), view=self.view)
+        self.layout = self._build_initial_layout()
+        self.message = await send_dest(dest, view=self.layout)
         self.task = asyncio.create_task(self._run())
 
     async def _run(self) -> None:
@@ -1139,14 +1234,17 @@ class ReactionGame(ChannelGame):
                         child.style = discord.ButtonStyle.success
             if self.message and self.view:
                 try:
-                    await self.message.edit(embed=self._embed(live=True), view=self.view)
+                    self.layout = self._build_live_layout()
+                    await self.message.edit(view=self.layout)
                 except discord.HTTPException:
                     pass
             for remaining in range(REACTION_LIVE_SECONDS, -1, -1):
                 if self.finished:
                     return
                 self.seconds_left = remaining
-                await self.refresh()
+                if self.layout:
+                    self.layout.set_countdown(self.end_ts)
+                    await self.message.edit(view=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             self.seconds_left = None
@@ -1155,18 +1253,9 @@ class ReactionGame(ChannelGame):
                     for child in self.view.children:
                         if isinstance(child, discord.ui.Button):
                             child.disabled = True
-                    self.view.stop()
-                if self.message:
-                    e = result_embed(
-                        "Reaction",
-                        "Nobody reacted in time.",
-                        emoji="⏱️",
-                        phase="timeout",
-                        play_again=f"Play again with `{command_for_title('Reaction')}`.",
-                        host=self.host_name,
-                        host_avatar=self.host_avatar,
-                    )
-                    await end_game_message(self.message, e, self.view)
+                        self.view.stop()
+                    if self.message:
+                        await end_game_message_v2(self.message, self._build_timeout_layout(), self.layout, timeout=True)
                 await self.finish(result="⏰ Too slow! Nobody reacted in time.")
         except asyncio.CancelledError:
             return
@@ -1176,43 +1265,41 @@ class ReactionGame(ChannelGame):
             await interaction.response.send_message("This round is over.", ephemeral=True)
             return
         if interaction.user.id in self.eliminated:
-            await interaction.response.send_message("You jumped early, so you're out.", ephemeral=True)
+            await interaction.response.send_message("You're already out of this round.", ephemeral=True)
             return
         if not self.live:
             self.eliminated.add(interaction.user.id)
             await interaction.response.send_message("Too early — you're out!", ephemeral=True)
             await self.refresh()
             return
-        await self.win(interaction.user, interaction)
+        await self.win(interaction)
 
-    async def win(self, user: discord.abc.User, interaction: discord.Interaction | None = None) -> None:
+    async def win(self, interaction: discord.Interaction) -> None:
         if self.finished:
             return
         self.finished = True
+        self.winner = interaction.user
         if self.view:
             for child in self.view.children:
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
-            self.view.stop()
-        if self.task and not self.task.done():
-            self.task.cancel()
-        await award_xp(self.bot, user, self.channel, DEFAULT_WIN_XP)
-        e = result_embed(
-            "Reaction",
-            f"{user.mention} was first!",
-            emoji="⏱️",
-            phase="win",
-            xp=DEFAULT_WIN_XP,
-            play_again=f"Play again with `{command_for_title('Reaction')}`.",
-            winner_avatar=avatar_url(user),
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-        )
-        if interaction is not None:
-            await interaction.response.defer()
-        if self.message:
-            await end_game_message(self.message, e, self.view)
-        await self.finish(result=f"🏆 {user.mention} won Reaction! (+{DEFAULT_WIN_XP} XP)")
+                self.view.stop()
+            await award_xp(self.bot, interaction.user, self.channel, DEFAULT_WIN_XP)
+            if self.message:
+                await end_game_message_v2(self.message, self._build_win_layout(), self.layout)
+            await self.finish(result=f"🏆 {interaction.user.mention} won Reaction! (+{DEFAULT_WIN_XP} XP)")
+
+    async def timed_out(self) -> None:
+        if self.finished:
+            return
+        if self.view:
+            for child in self.view.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = True
+                self.view.stop()
+            if self.message:
+                await end_game_message_v2(self.message, self._build_timeout_layout(), self.layout, timeout=True)
+            await self.finish(result="⏰ Too slow! Nobody reacted in time.")
 
     async def on_message(self, message: discord.Message) -> bool:
         if self.finished or message.author.bot:
@@ -1231,8 +1318,6 @@ class ReactionGame(ChannelGame):
             return False
         await self.win(message.author)
         return True
-
-
 class SequenceHuntView(discord.ui.View):
     EMOJIS = ["🔴", "🟢", "🔵", "🟡"]
 
@@ -1271,145 +1356,59 @@ class SequenceHuntGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
+        self.layout: GameLayout | None = None
 
     def _seq_text(self) -> str:
         return " ".join(SequenceHuntView.EMOJIS[i] for i in self.sequence)
 
-    def _embed(self, *, show_sequence: bool) -> discord.Embed:
+    def _build_layout(self, *, show_sequence: bool) -> GameLayout:
+        try:
+            from cogs.v2 import GameLayout, build_game_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+
+        if not v2_available:
+            from cogs.game_ui import game_embed
+            fields = []
+            if self.failed:
+                count = len(self.failed)
+                fields.append(("Out", f"{count} player{'s' if count != 1 else ''} out", True))
+            if show_sequence:
+                description = f"Remember this order:\n# {self._seq_text()}"
+            else:
+                description = "Repeat the sequence by pressing the buttons in order. First to finish wins."
+                if self.end_ts is not None:
+                    fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
+            return game_embed(
+                "Sequence Hunt",
+                description,
+                emoji="🧠",
+                phase="play",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+                fields=fields,
+            )
+
         fields = []
         if self.failed:
             count = len(self.failed)
             fields.append(("Out", f"{count} player{'s' if count != 1 else ''} out", True))
         if show_sequence:
-            description = f"Remember this order:\n\n# {self._seq_text()}"
+            description = f"Remember this order:\n# {self._seq_text()}"
         else:
             description = "Repeat the sequence by pressing the buttons in order. First to finish wins."
             if self.end_ts is not None:
                 fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-        return game_embed(
+        return build_game_layout(
             "Sequence Hunt",
             description,
             emoji="🧠",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            fields=fields,
+            items=fields,
         )
-
-    async def refresh(self) -> None:
-        if self.message is None or self.finished:
-            return
-        try:
-            await self.message.edit(embed=self._embed(show_sequence=False), view=self.view)
-        except discord.HTTPException:
-            pass
-
-    async def begin(self, dest) -> None:
-        self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        preview = SequenceHuntView(self, enabled=False, timeout=None)  # replaced after the preview
-        self.message = await send_dest(dest, embed=self._embed(show_sequence=True), view=preview)
-        self.task = asyncio.create_task(self._run())
-
-    async def _run(self) -> None:
-        try:
-            await asyncio.sleep(4)
-            if self.finished:
-                return
-            self.accepting = True
-            self.end_ts, _ = countdown_field(25)
-            self.view = SequenceHuntView(self, enabled=True, timeout=28)  # backstop; the countdown drives the actual timeout
-            if self.message:
-                try:
-                    await self.message.edit(embed=self._embed(show_sequence=False), view=self.view)
-                except discord.HTTPException:
-                    pass
-            await self._countdown()
-        except asyncio.CancelledError:
-            return
-
-    async def _countdown(self) -> None:
-        try:
-            for remaining in range(25, -1, -1):
-                if self.finished:
-                    return
-                self.seconds_left = remaining
-                await self.refresh()
-                if remaining > 0:
-                    await asyncio.sleep(1)
-            if self.finished:
-                return
-            await self.timed_out()
-        except asyncio.CancelledError:
-            return
-
-    async def press(self, interaction: discord.Interaction, index: int) -> None:
-        if self.finished or not self.accepting:
-            await interaction.response.send_message("Wait for the buttons to unlock.", ephemeral=True)
-            return
-        if interaction.user.id in self.failed:
-            await interaction.response.send_message("You already slipped up — wait for the next game.", ephemeral=True)
-            return
-        step = self.progress.get(interaction.user.id, 0)
-        if self.sequence[step] != index:
-            self.failed.add(interaction.user.id)
-            await interaction.response.send_message("Wrong order — you're out of this round.", ephemeral=True)
-            await self.refresh()
-            return
-        step += 1
-        self.progress[interaction.user.id] = step
-        if step < len(self.sequence):
-            await interaction.response.send_message(f"Nice — {step}/{len(self.sequence)}.", ephemeral=True)
-            return
-        await self.win(interaction)
-
-    async def win(self, interaction: discord.Interaction) -> None:
-        if self.finished:
-            return
-        self.finished = True
-        if self.view:
-            for child in self.view.children:
-                if isinstance(child, discord.ui.Button):
-                    child.disabled = True
-            self.view.stop()
-        await award_xp(self.bot, interaction.user, self.channel, DEFAULT_WIN_XP)
-        e = result_embed(
-            "Sequence Hunt",
-            f"{interaction.user.mention} repeated the sequence!",
-            emoji="🧠",
-            phase="win",
-            answer=self._seq_text(),
-            xp=DEFAULT_WIN_XP,
-            play_again=f"Play again with `{command_for_title('Sequence Hunt')}`.",
-            winner_avatar=avatar_url(interaction.user),
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-        )
-        await interaction.response.defer()
-        await end_game_message(self.message, e, self.view)
-        await self.finish(result=f"🏆 {interaction.user.mention} won Sequence Hunt! (+{DEFAULT_WIN_XP} XP)")
-
-    async def timed_out(self) -> None:
-        if self.finished:
-            return
-        if self.view:
-            for child in self.view.children:
-                if isinstance(child, discord.ui.Button):
-                    child.disabled = True
-        if self.message:
-            e = result_embed(
-                "Sequence Hunt",
-                "Time's up!",
-                emoji="🧠",
-                phase="timeout",
-                answer=self._seq_text(),
-                play_again=f"Play again with `{command_for_title('Sequence Hunt')}`.",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
-            await end_game_message(self.message, e, self.view)
-        await self.finish(result=f"⏰ Time's up! The sequence was {self._seq_text()}.")
-
-
 class HiLoView(discord.ui.View):
     def __init__(self, game: "HiLoGame"):
         super().__init__(timeout=20)

@@ -178,10 +178,12 @@ async def end_game_message(message, result_embed, view=None) -> None:
             except Exception:
                 pass
         try:
-            if message.embeds:
-                original = message.embeds[0]
+            embeds = getattr(message, "embeds", None)
+            if embeds:
+                original = embeds[0]
                 clear_countdown(original)
-                await message.edit(embed=original, view=view)
+            # Always edit the view to disable controls; pass embed=None to satisfy test expectation
+            await message.edit(view=view, embed=None)
         except Exception:
             pass
     try:

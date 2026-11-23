@@ -417,8 +417,9 @@ class GamesMenuEmbedTests(unittest.TestCase):
         game.host_name = None
         game.host_avatar = None
         game.seconds_left = None
-        game.end_ts = None
-        e = game._embed(live=False)
+        game.end_ts = 1700000000
+        game.layout = game._build_initial_layout()
+        e = game.layout
         self.assertIsNotNone(e)
 
     def test_sequence_hunt_embed(self):
@@ -431,10 +432,11 @@ class GamesMenuEmbedTests(unittest.TestCase):
         game.message = None
         game.view = None
         game.seconds_left = None
-        game.end_ts = None
+        game.end_ts = 1700000000
         game.host_name = None
         game.host_avatar = None
-        e = game._embed(show_sequence=False)
+        game.layout = game._build_layout(show_sequence=False)
+        e = game.layout
         self.assertIsNotNone(e)
 
     def test_hilo_embed(self):
