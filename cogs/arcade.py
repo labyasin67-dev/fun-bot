@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import html
 import random
+import time
 from typing import TYPE_CHECKING, Any, Callable
 
 import aiohttp
@@ -14,12 +15,14 @@ from discord.ext import commands
 
 from cogs import banks
 from cogs.game_ui import (
+    clear_countdown,
     countdown_field,
     game_embed,
     game_footer,
     games_menu_embed,
     result_embed,
 )
+from cogs.hints import HintPlan
 from cogs.sessions import (
     DEFAULT_WIN_XP,
     ChannelGame,
@@ -199,7 +202,7 @@ class GamesDropMenu(discord.ui.View):
 
 
 class ChatGuessGame(ChannelGame):
-    """A timed 'type the answer in chat' game with an optional mid-round hint."""
+    """A timed 'type the answer in chat' game with progressive hints."""
 
     def __init__(
         self,
@@ -212,21 +215,24 @@ class ChatGuessGame(ChannelGame):
         answers: list[str],
         reveal: str,
         hint: str | None = None,
+        semantic_hint: str | None = None,
         image_url: str | None = None,
         timeout: int = 30,
-        hint_at: int | None = 15,
+        hint_at: int | None = None,  # deprecated, kept for compatibility
         xp: int = DEFAULT_WIN_XP,
         match: str = "fuzzy",
+        stage_fractions: tuple[float, ...] = (0.35, 0.55, 0.75, 0.90),
     ) -> None:
         super().__init__(bot, channel, host_id)
         self.title = title
         self.prompt = prompt
         self.answers = answers
         self.reveal = reveal
-        self.hint = hint
+        self.hint = hint  # deprecated: kept for backwards compat
+        self.semantic_hint = semantic_hint
         self.image_url = image_url
         self.timeout = timeout
-        self.hint_at = hint_at
+        self.hint_at = hint_at  # deprecated
         self.xp = xp
         self.match = match
         self.message: discord.Message | None = None
@@ -235,6 +241,17 @@ class ChatGuessGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
+        self._hint_plan: HintPlan | None = None
+        self._current_hint_idx: int = -1
+        self._stage_fractions = stage_fractions
+
+        # Build the hint plan
+        self._hint_plan = HintPlan(
+            answer=reveal,
+            timeout=timeout,
+            stage_fractions=stage_fractions,
+            semantic_hint=semantic_hint,
+        ).build(seed=random.randint(0, 2**31 - 1))
 
     def _embed(self, *, phase: str, winner: discord.abc.User | None = None) -> discord.Embed:
         emoji = MENU_EMOJI.get(self.title, "🎮")
@@ -264,15 +281,27 @@ class ChatGuessGame(ChannelGame):
             )
         else:
             fields = []
-            if self.hinted and self.hint:
-                fields.append(("💡 Hint", self.hint, False))
+            # Add the masked answer with progressive hints
+            if self._hint_plan is not None:
+                current_stage = self._hint_plan.get_stage_at_time(time.monotonic())
+                if current_stage is not None:
+                    fields.append((f"💡 {current_stage.label}", current_stage.masked, False))
+                    if self._hint_plan.semantic_hint_line():
+                        fields.append(("🔍 Semantic Hint", self._hint_plan.semantic_hint_line(), False))
+                else:
+                    # Stage 0: show initial masked answer
+                    fields.append(("💡 Answer", self._hint_plan.get_initial_masked(), False))
+                    fields.append(("📏 Length", self._hint_plan.get_initial_label(), False))
+                    if self._hint_plan.semantic_hint_line():
+                        fields.append(("🔍 Semantic Hint", self._hint_plan.semantic_hint_line(), False))
+
             if self.end_ts is not None:
                 fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
             e = game_embed(
                 self.title,
                 self.prompt,
                 emoji=emoji,
-                phase="hint" if self.hinted else "play",
+                phase="play",
                 host=self.host_name,
                 host_avatar=self.host_avatar,
                 fields=fields,
@@ -309,13 +338,14 @@ class ChatGuessGame(ChannelGame):
                 if self.finished:
                     return
                 self.seconds_left = remaining
-                if (
-                    self.hint
-                    and not self.hinted
-                    and self.hint_at is not None
-                    and remaining <= self.hint_at
-                ):
-                    self.hinted = True
+                # Check if a new hint stage should be shown
+                now = time.monotonic()
+                if self._hint_plan is not None:
+                    current_stage = self._hint_plan.get_stage_at_time(now)
+                    hint_idx = self._hint_plan.get_stages().index(current_stage) if current_stage else -1
+                    if hint_idx > self._current_hint_idx:
+                        self._current_hint_idx = hint_idx
+                        await self.refresh()
                 await self.refresh()
                 if remaining > 0:
                     await asyncio.sleep(1)
@@ -1740,7 +1770,7 @@ class Arcade(commands.Cog):
                 prompt=f"Type this word **backwards**:\n# {word.upper()}",
                 answers=[word[::-1]],
                 reveal=f"{word[::-1]}  ({word} backwards)",
-                hint=f"It has {len(word)} letters.",
+                semantic_hint=f"It has {len(word)} letters.",
             )
         await self._launch(dest, factory)
 
@@ -1754,7 +1784,7 @@ class Arcade(commands.Cog):
                 prompt=f"Unscramble this word:\n# {mixed}",
                 answers=[word],
                 reveal=word,
-                hint=f"It starts with **{word[0].upper()}**.",
+                semantic_hint=f"It starts with **{word[0].upper()}**.",
             )
         await self._launch(dest, factory)
 
@@ -1768,7 +1798,7 @@ class Arcade(commands.Cog):
                 prompt="Who is this? Type their name in the chat.",
                 answers=answers,
                 reveal=item["name"],
-                hint=f"They're known as a **{item.get('hint') or 'famous person'}**.",
+                semantic_hint=f"They're known as a **{item.get('hint') or 'famous person'}**.",
                 image_url=item["url"],
             )
         await self._launch(dest, factory)
@@ -1784,7 +1814,7 @@ class Arcade(commands.Cog):
                 prompt="What landmark is this? Type your guess in the chat.",
                 answers=answers,
                 reveal=f"{item['name']}\n{location}",
-                hint=f"This landmark is in **{item['country']}**.",
+                semantic_hint=f"This landmark is in **{item['country']}**.",
                 image_url=item["url"],
             )
         await self._launch(dest, factory)
@@ -1798,8 +1828,7 @@ class Arcade(commands.Cog):
                 prompt=f"What comes next?\n# {prompt}",
                 answers=answers,
                 reveal=f"{answers[0]}\n{explanation}",
-                hint=None,
-                hint_at=None,
+                semantic_hint=None,
                 match="fuzzy",
             )
         await self._launch(dest, factory)
@@ -1815,21 +1844,20 @@ class Arcade(commands.Cog):
                 prompt=f"Unscramble this capital city:\n# {mixed}\n\nHint: it's the capital of **{country}**.",
                 answers=answers,
                 reveal=f"{capital}, {country}",
-                hint=None,
-                hint_at=None,
+                semantic_hint=f"It's the capital of **{country}**.",
             )
         await self._launch(dest, factory)
 
     async def _start_redlight(self, dest) -> None:
         await self._launch(dest, RedLightGame)
 
-    async def _start_missingemoji(self, dest) -> None:
+async def _start_missingemoji(self, dest) -> None:
         seq, missing = random.choice(banks.MISSING_EMOJI)
-        shown = [e if e != missing else "⬜" for e in seq]
+        shown = [e if e != missing else "□" for e in seq]
         # If the missing emoji appears more than once, only blank one occurrence.
-        if shown.count("⬜") != 1:
+        if shown.count("□") != 1:
             shown = list(seq)
-            shown[seq.index(missing)] = "⬜"
+            shown[seq.index(missing)] = "□"
         def factory(bot, channel, host_id):
             return ChatGuessGame(
                 bot, channel, host_id,
@@ -1837,8 +1865,7 @@ class Arcade(commands.Cog):
                 prompt=f"Full set:\n{' '.join(seq)}\n\nOne is missing here:\n{' '.join(shown)}\n\nType the missing emoji.",
                 answers=[missing],
                 reveal=missing,
-                hint=None,
-                hint_at=None,
+                semantic_hint=None,
                 match="emoji",
             )
         await self._launch(dest, factory)
@@ -1858,8 +1885,7 @@ class Arcade(commands.Cog):
                 prompt=f"{prompt}\n\nType the number.",
                 answers=answers,
                 reveal=f"{answers[0]}\n{explanation}",
-                hint=None,
-                hint_at=None,
+                semantic_hint=None,
                 match="number",
             )
         await self._launch(dest, factory)
@@ -1874,7 +1900,7 @@ class Arcade(commands.Cog):
                 prompt="Which country is this flag from? Type the country name.",
                 answers=answers,
                 reveal=item["name"],
-                hint=f"The name starts with **{item['name'][0].upper()}**.",
+                semantic_hint=f"The name starts with **{item['name'][0].upper()}**.",
                 image_url=item["url"],
             )
         await self._launch(dest, factory)
@@ -1891,7 +1917,7 @@ class Arcade(commands.Cog):
                 prompt=f"Which language is this?\n\n**{phrase}**",
                 answers=answers,
                 reveal=reveal,
-                hint=f"It starts with **{reveal[0].upper()}**.",
+                semantic_hint=f"It starts with **{reveal[0].upper()}**.",
             )
         await self._launch(dest, factory)
 
@@ -1901,16 +1927,16 @@ class Arcade(commands.Cog):
             return WordRuleGame(bot, channel, host_id, prompt, kind, payload, self._words)
         await self._launch(dest, factory)
 
-    async def _start_nickname(self, dest) -> None:
+async def _start_nickname(self, dest) -> None:
         nick, answers, reveal = random.choice(banks.NICKNAMES)
         def factory(bot, channel, host_id):
             return ChatGuessGame(
                 bot, channel, host_id,
                 title="Nickname",
-                prompt=f"Who or what is known as:\n# {nick}",
+                prompt=f"Who or what is known as:\\n# {nick}",
                 answers=[reveal, *answers],
                 reveal=reveal,
-                hint=f"The answer starts with **{reveal[0].upper()}**.",
+                semantic_hint=f"The answer starts with **{reveal[0].upper()}**.",
             )
         await self._launch(dest, factory)
 
