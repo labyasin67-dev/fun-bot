@@ -7,6 +7,7 @@ the game classes themselves.
 
 from __future__ import annotations
 
+import time
 from typing import Any, Callable
 
 import discord
@@ -123,6 +124,41 @@ def game_embed(
     for name, value, inline in fields or []:
         embed.add_field(name=_clip(name, MAX_FIELD_NAME), value=_clip(value, MAX_FIELD_VALUE), inline=inline)
     return embed
+
+
+def countdown_field(seconds_or_end_ts: int) -> tuple[int, str]:
+    """Return ``(end_ts, text)`` for a Discord relative-timestamp countdown.
+
+    If the value looks like a unix timestamp (> 100_000_000) it is used as-is;
+    otherwise it is treated as seconds from now. The text is
+    ``⏳ Ends <t:{end_ts}:R>`` which Discord renders as a live countdown.
+    """
+    if seconds_or_end_ts > 100_000_000:
+        end_ts = seconds_or_end_ts
+    else:
+        end_ts = int(time.time()) + seconds_or_end_ts
+    return end_ts, f"⏳ Ends <t:{end_ts}:R>"
+
+
+def with_countdown(embed: discord.Embed, end_ts: int) -> None:
+    """Add or replace the ``Time left`` field on ``embed``.
+
+    Never duplicates the field; if one already exists it is replaced in place.
+    """
+    text = f"⏳ Ends <t:{end_ts}:R>"
+    for i, field in enumerate(embed.fields):
+        if field.name == "Time left":
+            embed.set_field_at(i, name="Time left", value=text, inline=False)
+            return
+    embed.add_field(name="Time left", value=text, inline=False)
+
+
+def clear_countdown(embed: discord.Embed) -> None:
+    """Remove the ``Time left`` field from ``embed`` if it exists."""
+    for i, field in enumerate(embed.fields):
+        if field.name == "Time left":
+            embed.remove_field(i)
+            return
 
 
 def result_embed(

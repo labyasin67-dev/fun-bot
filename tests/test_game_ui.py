@@ -12,6 +12,13 @@ import unittest
 from pathlib import Path
 
 
+class FakeEmbedField:
+    def __init__(self, name, value, inline=True):
+        self.name = name
+        self.value = value
+        self.inline = inline
+
+
 class FakeEmbed:
     def __init__(self, *, title=None, description=None, color=None):
         self.title = title
@@ -21,7 +28,7 @@ class FakeEmbed:
         self.author = None
         self.thumbnail = None
         self.image = None
-        self.fields: list[tuple[str, str, bool]] = []
+        self.fields: list[FakeEmbedField] = []
 
     def set_footer(self, *, text=None):
         self.footer = text
@@ -40,8 +47,14 @@ class FakeEmbed:
         return self
 
     def add_field(self, *, name, value, inline=True):
-        self.fields.append((name, value, inline))
+        self.fields.append(FakeEmbedField(name, value, inline))
         return self
+
+    def set_field_at(self, index, *, name, value, inline):
+        self.fields[index] = FakeEmbedField(name, value, inline)
+
+    def remove_field(self, index):
+        del self.fields[index]
 
 
 discord_stub = sys.modules.get("discord")
@@ -63,6 +76,8 @@ from cogs.game_ui import (  # noqa: E402
     MAX_FIELD_VALUE,
     MAX_TITLE,
     PHASE_COLORS,
+    clear_countdown,
+    countdown_field,
     game_embed,
     game_footer,
     game_menu_line,
@@ -70,6 +85,7 @@ from cogs.game_ui import (  # noqa: E402
     phase_color,
     phase_emoji,
     result_embed,
+    with_countdown,
 )
 from utils import COLOR, DANGER, SUCCESS, WARNING  # noqa: E402
 
@@ -135,9 +151,9 @@ class GameEmbedTests(unittest.TestCase):
             "Trivia",
             fields=[("n" * 400, "v" * 2000, False)],
         )
-        name, value, _inline = embed.fields[0]
-        self.assertLessEqual(len(name), 256)
-        self.assertLessEqual(len(value), MAX_FIELD_VALUE)
+        field = embed.fields[0]
+        self.assertLessEqual(len(field.name), 256)
+        self.assertLessEqual(len(field.value), MAX_FIELD_VALUE)
 
     def test_image_and_thumbnail(self):
         embed = game_embed("Flag", thumbnail="https://x/t.png", image="https://x/i.png")
@@ -158,7 +174,7 @@ class ResultEmbedTests(unittest.TestCase):
         self.assertIn("Canberra", embed.description)
         self.assertEqual(embed.color, SUCCESS)
         self.assertEqual(embed.thumbnail, "https://x/w.png")
-        fields = dict((name, value) for name, value, _inline in embed.fields)
+        fields = dict((f.name, f.value) for f in embed.fields)
         self.assertEqual(fields["XP earned"], "+25 XP")
         self.assertEqual(fields["Play again"], "Run `.trivia` again.")
 
@@ -220,11 +236,11 @@ class GamesMenuEmbedTests(unittest.TestCase):
 
     def test_one_field_per_nonempty_category(self):
         embed = self._build()
-        self.assertEqual([name for name, _v, _i in embed.fields], ["**Quick reflex**", "**Multiplayer**"])
+        self.assertEqual([f.name for f in embed.fields], ["**Quick reflex**", "**Multiplayer**"])
 
     def test_each_game_is_a_single_line(self):
         embed = self._build()
-        values = {name: value for name, value, _i in embed.fields}
+        values = {f.name: f.value for f in embed.fields}
         quick_lines = values["**Quick reflex**"].split("\n")
         self.assertEqual(quick_lines, ["🔘 **Button Hunt** · .buttonhunt"])
         multi_lines = values["**Multiplayer**"].split("\n")
@@ -240,13 +256,82 @@ class GamesMenuEmbedTests(unittest.TestCase):
         embed = self._build()
         self.assertIsNone(embed.footer)
         self.assertIsNone(embed.thumbnail)
-        for _name, value, _inline in embed.fields:
-            self.assertNotIn("30s", value)
-            self.assertNotIn("min", value)
+        for f in embed.fields:
+            self.assertNotIn("30s", f.value)
+            self.assertNotIn("min", f.value)
 
     def test_empty_categories_are_skipped(self):
         embed = self._build(games=[("diceduel", "⚔️", "Dice Roll Duel", "blurb")])
-        self.assertEqual([name for name, _v, _i in embed.fields], ["**Multiplayer**"])
+        self.assertEqual([f.name for f in embed.fields], ["**Multiplayer**"])
+
+
+class CountdownFieldTests(unittest.TestCase):
+    def test_seconds_become_end_ts(self):
+        end_ts, text = countdown_field(30)
+        self.assertGreater(end_ts, 0)
+        self.assertEqual(text, f"⏳ Ends <t:{end_ts}:R>")
+
+    def test_end_ts_passed_through_is_used_as_is(self):
+        fake_ts = 1_700_000_000
+        end_ts, text = countdown_field(fake_ts)
+        self.assertEqual(end_ts, fake_ts)
+        self.assertEqual(text, f"⏳ Ends <t:{fake_ts}:R>")
+
+    def test_includes_zero_seconds(self):
+        end_ts, text = countdown_field(0)
+        self.assertEqual(text, f"⏳ Ends <t:{end_ts}:R>")
+
+
+class WithCountdownTests(unittest.TestCase):
+    def _embed(self):
+        return game_embed("Trivia", "What is 2+2?", emoji="💡", phase="play")
+
+    def test_adds_time_left_field(self):
+        embed = self._embed()
+        end_ts, _ = countdown_field(25)
+        with_countdown(embed, end_ts)
+        names = [f.name for f in embed.fields]
+        self.assertIn("Time left", names)
+        value = next(f.value for f in embed.fields if f.name == "Time left")
+        self.assertEqual(value, f"⏳ Ends <t:{end_ts}:R>")
+
+    def test_replaces_existing_time_left_field(self):
+        embed = self._embed()
+        end_ts1, _ = countdown_field(25)
+        end_ts2, _ = countdown_field(60)
+        with_countdown(embed, end_ts1)
+        with_countdown(embed, end_ts2)
+        time_fields = [(f.name, f.value) for f in embed.fields if f.name == "Time left"]
+        self.assertEqual(len(time_fields), 1)
+        self.assertEqual(time_fields[0][1], f"⏳ Ends <t:{end_ts2}:R>")
+
+    def test_total_under_discord_limit(self):
+        embed = self._embed()
+        end_ts, _ = countdown_field(25)
+        with_countdown(embed, end_ts)
+        total = len(embed.title or "") + len(embed.description or "") + sum(len(f.name) + len(f.value) for f in embed.fields)
+        self.assertLessEqual(total, 6000)
+
+
+class ClearCountdownTests(unittest.TestCase):
+    def _embed_with_countdown(self):
+        embed = game_embed("Trivia", "What is 2+2?", emoji="💡", phase="play")
+        end_ts, _ = countdown_field(25)
+        with_countdown(embed, end_ts)
+        return embed
+
+    def test_removes_time_left_field(self):
+        embed = self._embed_with_countdown()
+        self.assertTrue(any(f.name == "Time left" for f in embed.fields))
+        clear_countdown(embed)
+        self.assertFalse(any(f.name == "Time left" for f in embed.fields))
+
+    def test_noop_when_no_countdown(self):
+        embed = game_embed("Trivia", "What is 2+2?", emoji="💡", phase="play")
+        try:
+            clear_countdown(embed)
+        except Exception:
+            self.fail("clear_countdown raised on embed without Time left field")
 
 
 if __name__ == "__main__":
