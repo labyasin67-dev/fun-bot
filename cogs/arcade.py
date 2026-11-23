@@ -900,30 +900,113 @@ class ColorHuntGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
+        self.layout: GameLayout | None = None
 
-    def _embed(self) -> discord.Embed:
-        target = self.view.target_name if self.view else "?"
+    def _build_layout(self) -> GameLayout:
+        try:
+            from cogs.v2 import GameLayout, build_game_layout, result_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+
+        if not v2_available:
+            from cogs.game_ui import game_embed
+            fields = []
+            if self.eliminated:
+                count = len(self.eliminated)
+                fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
+            if self.end_ts is not None:
+                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
+            return game_embed(
+                "Color Hunt",
+                f"Click the **{self.view.target_name if self.view else '?'}** button.\nThat's the actual button colour, not the word written on it.",
+                emoji="🌈",
+                phase="play",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+                fields=fields,
+            )
+
         fields = []
         if self.eliminated:
             count = len(self.eliminated)
             fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
         if self.end_ts is not None:
             fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-        return game_embed(
+        layout = build_game_layout(
             "Color Hunt",
-            f"Click the **{target}** button.\nThat's the actual button colour, not the word written on it.",
+            f"Click the **{self.view.target_name if self.view else '?'}** button.\nThat's the actual button colour, not the word written on it.",
             emoji="🌈",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
             fields=fields,
         )
+        return layout
+
+    def _build_win_layout(self, winner: discord.abc.User) -> GameLayout:
+        try:
+            from cogs.v2 import result_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+        if not v2_available:
+            from cogs.game_ui import result_embed
+            return result_embed(
+                "Color Hunt",
+                f"{winner.mention} clicked the right colour!",
+                emoji="🌈",
+                phase="win",
+                xp=DEFAULT_WIN_XP,
+                play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
+                winner_avatar=avatar_url(winner),
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
+        return result_layout(
+            "Color Hunt",
+            f"{winner.mention} clicked the right colour!",
+            emoji="🌈",
+            phase="win",
+            xp=DEFAULT_WIN_XP,
+            play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
+            winner_avatar=avatar_url(winner),
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+        )
+
+    def _build_timeout_layout(self) -> GameLayout:
+        try:
+            from cogs.v2 import result_layout
+            v2_available = True
+        except ImportError:
+            v2_available = False
+        if not v2_available:
+            from cogs.game_ui import result_embed
+            return result_embed(
+                "Color Hunt",
+                "Nobody clicked the right colour.",
+                emoji="🌈",
+                phase="timeout",
+                play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
+        return result_layout(
+            "Color Hunt",
+            "Nobody clicked the right colour.",
+            emoji="🌈",
+            phase="timeout",
+            play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+        )
 
     async def refresh(self) -> None:
-        if self.message is None or self.finished:
+        if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(embed=self._embed(), view=self.view)
+            await self.message.edit(view=self.layout)
         except discord.HTTPException:
             pass
 
@@ -931,7 +1014,8 @@ class ColorHuntGame(ChannelGame):
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(20)
         self.view = ColorHuntView(self, timeout=23)  # backstop; the countdown drives the actual timeout
-        self.message = await send_dest(dest, embed=self._embed(), view=self.view)
+        self.layout = self._build_layout()
+        self.message = await send_dest(dest, view=self.layout)
         self.task = asyncio.create_task(self._countdown())
 
     async def _countdown(self) -> None:
@@ -940,7 +1024,9 @@ class ColorHuntGame(ChannelGame):
                 if self.finished:
                     return
                 self.seconds_left = remaining
-                await self.refresh()
+                if self.layout:
+                    self.layout.set_countdown(self.end_ts)
+                    await self.message.edit(view=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             if self.finished:
@@ -959,19 +1045,8 @@ class ColorHuntGame(ChannelGame):
                     child.disabled = True
             self.view.stop()
         await award_xp(self.bot, interaction.user, self.channel, DEFAULT_WIN_XP)
-        e = result_embed(
-            "Color Hunt",
-            f"{interaction.user.mention} clicked the right colour!",
-            emoji="🌈",
-            phase="win",
-            xp=DEFAULT_WIN_XP,
-            play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
-            winner_avatar=avatar_url(interaction.user),
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-        )
-        await interaction.response.defer()
-        await end_game_message(self.message, e, self.view)
+        if self.message:
+            await end_game_message_v2(self.message, self._build_win_layout(interaction.user), self.layout)
         await self.finish(result=f"🏆 {interaction.user.mention} won Color Hunt! (+{DEFAULT_WIN_XP} XP)")
 
     async def timed_out(self) -> None:
@@ -982,16 +1057,7 @@ class ColorHuntGame(ChannelGame):
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
         if self.message:
-            e = result_embed(
-                "Color Hunt",
-                "Nobody clicked the right colour.",
-                emoji="🌈",
-                phase="timeout",
-                play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
-            await end_game_message(self.message, e, self.view)
+            await end_game_message_v2(self.message, self._build_timeout_layout(), self.layout)
         await self.finish(result="⏰ Time's up! Nobody clicked the right colour.")
 
 
