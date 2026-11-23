@@ -165,7 +165,7 @@ def build_menu_layout(cog: "Arcade", games: list):
         lines.append(f"{emoji} **{title}** — {blurb}")
     body = "\n".join(lines) or "No games available."
     options = [
-        discord.SelectOption(label=title, value=key, emoji=emoji, description=blurb[:100])
+        discord.SelectOption(label=title, value=key, emoji=emoji)
         for key, emoji, title, blurb in games[:25]
     ]
     select = discord.ui.Select(placeholder="Choose a game to drop into this channel...", min_values=1, max_values=1, options=options)
