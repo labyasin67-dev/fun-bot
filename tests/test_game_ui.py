@@ -44,9 +44,16 @@ class FakeEmbed:
         return self
 
 
-discord_stub = types.ModuleType("discord")
-discord_stub.Embed = FakeEmbed
-sys.modules.setdefault("discord", discord_stub)
+discord_stub = sys.modules.get("discord")
+if discord_stub is None:
+    discord_stub = types.ModuleType("discord")
+    sys.modules["discord"] = discord_stub
+if not hasattr(discord_stub, "Embed"):
+    discord_stub.Embed = FakeEmbed
+if not hasattr(discord_stub, "Interaction"):
+    discord_stub.Interaction = type("Interaction", (), {})
+if not hasattr(discord_stub, "abc"):
+    discord_stub.abc = types.SimpleNamespace(User=type("User", (), {}))
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
