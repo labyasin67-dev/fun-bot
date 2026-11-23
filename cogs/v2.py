@@ -343,3 +343,49 @@ def result_layout(
         container.add_item(row)
 
     return layout
+
+
+def build_report_layout(
+    user: Any,
+    assessment: Any,
+    *,
+    title: str | None = None,
+    age_label: str = "",
+    accent: int | None = None,
+) -> GameLayout:
+    """Build a Components V2 report layout for an alt-account check."""
+    layout = GameLayout()
+    container = layout.container
+    container.accent_color = accent if accent is not None else COLOR
+
+    resolved_title = title or f"Alt check — {assessment.verdict}"
+    layout.title_td = discord.ui.TextDisplay(f"# {_clip(resolved_title, MAX_TEXT_DISPLAY)}")
+    container.add_item(layout.title_td)
+
+    joined = "Unknown"
+    if getattr(assessment, "joined_at", None):
+        jt = int(assessment.joined_at.timestamp())
+        joined = f"<t:{jt}:D> (<t:{jt}:R>)"
+    ct = int(assessment.created_at.timestamp())
+    lines = [
+        f"**User:** {user.mention} `{user}` (`{user.id}`)",
+        f"**Account created:** <t:{ct}:D> (<t:{ct}:R>)",
+        f"**Joined server:** {joined}",
+        f"**Account age:** {age_label}",
+        f"**Default avatar:** {'Yes' if assessment.default_avatar else 'No'}",
+        f"**Score:** **{assessment.score}**/100 — **{assessment.verdict}**",
+    ]
+    if assessment.reasons:
+        lines.append("")
+        lines.append("**Signals**")
+        lines.extend(f"• {reason}" for reason in assessment.reasons)
+    layout.body_td = discord.ui.TextDisplay(_clip("\n".join(lines), MAX_TEXT_DISPLAY))
+    container.add_item(layout.body_td)
+
+    thumbnail = getattr(getattr(user, "display_avatar", None), "url", None)
+    if thumbnail:
+        section = discord.ui.Section(accessory=discord.ui.Thumbnail(UnfurledMediaItem(thumbnail)))
+        layout.section = section
+        container.add_item(section)
+
+    return layout

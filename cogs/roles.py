@@ -8,7 +8,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils import COLOR, DANGER, SUCCESS, embed as make_embed
+from cogs.v2 import build_game_layout
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -96,7 +96,7 @@ class Roles(commands.Cog):
     @commands.bot_has_guild_permissions(manage_roles=True)
     async def role(self, ctx: commands.Context) -> None:
         await ctx.send(
-            embed=make_embed(
+            layout=build_game_layout(
                 "Role commands",
                 "• `.role add @user @role` / `/role add`\n"
                 "• `.role remove @user @role` / `/role remove`\n"
@@ -113,13 +113,13 @@ class Roles(commands.Cog):
         assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
         err = can_manage_role(ctx.author, ctx.guild.me, role)
         if err:
-            await ctx.send(embed=make_embed("Can't add that role", err, color=DANGER), ephemeral=True)
+            await ctx.send(layout=build_game_layout("Can't add that role", err), ephemeral=True)
             return
         if role in member.roles:
-            await ctx.send(embed=make_embed("Already has it", f"{member.mention} already has {role.mention}."), ephemeral=True)
+            await ctx.send(layout=build_game_layout("Already has it", f"{member.mention} already has {role.mention}."), ephemeral=True)
             return
         await member.add_roles(role, reason=f"Added by {ctx.author}")
-        await ctx.send(embed=make_embed("Role added", f"Gave {role.mention} to {member.mention}.", color=SUCCESS))
+        await ctx.send(layout=build_game_layout("Role added", f"Gave {role.mention} to {member.mention}."))
 
     @role.command(name="remove", description="Remove a role from a member.")
     @commands.guild_only()
@@ -130,20 +130,20 @@ class Roles(commands.Cog):
         assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
         err = can_manage_role(ctx.author, ctx.guild.me, role)
         if err:
-            await ctx.send(embed=make_embed("Can't remove that role", err, color=DANGER), ephemeral=True)
+            await ctx.send(layout=build_game_layout("Can't remove that role", err), ephemeral=True)
             return
         if role not in member.roles:
-            await ctx.send(embed=make_embed("Doesn't have it", f"{member.mention} doesn't have {role.mention}."), ephemeral=True)
+            await ctx.send(layout=build_game_layout("Doesn't have it", f"{member.mention} doesn't have {role.mention}."), ephemeral=True)
             return
         await member.remove_roles(role, reason=f"Removed by {ctx.author}")
-        await ctx.send(embed=make_embed("Role removed", f"Removed {role.mention} from {member.mention}.", color=SUCCESS))
+        await ctx.send(layout=build_game_layout("Role removed", f"Removed {role.mention} from {member.mention}."))
 
     @commands.hybrid_group(name="selfrole", description="Manage the self-role button panel.", invoke_without_command=True)
     @commands.guild_only()
     @commands.has_guild_permissions(manage_roles=True)
     async def selfrole(self, ctx: commands.Context) -> None:
         await ctx.send(
-            embed=make_embed(
+            layout=build_game_layout(
                 "Self-roles",
                 "• `.selfrole add @role [label] [emoji]` — add a role to the panel\n"
                 "• `.selfrole remove @role` — take it off the panel\n"
@@ -160,14 +160,14 @@ class Roles(commands.Cog):
         assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
         err = can_manage_role(ctx.author, ctx.guild.me, role)
         if err:
-            await ctx.send(embed=make_embed("Can't use that role", err, color=DANGER), ephemeral=True)
+            await ctx.send(layout=build_game_layout("Can't use that role", err), ephemeral=True)
             return
         existing = await self.bot.db.self_roles(ctx.guild.id)
         if any(int(r["role_id"]) == role.id for r in existing) is False and len(existing) >= 25:
-            await ctx.send(embed=make_embed("Panel is full", "You can have at most 25 self-roles.", color=DANGER), ephemeral=True)
+            await ctx.send(layout=build_game_layout("Panel is full", "You can have at most 25 self-roles."), ephemeral=True)
             return
         await self.bot.db.add_self_role(ctx.guild.id, role.id, (label or role.name)[:80], emoji)
-        await ctx.send(embed=make_embed("Self-role added", f"{role.mention} is on the panel. Run `.selfrole panel` to post or refresh it.", color=SUCCESS))
+        await ctx.send(layout=build_game_layout("Self-role added", f"{role.mention} is on the panel. Run `.selfrole panel` to post or refresh it."))
 
     @selfrole.command(name="remove", description="Remove a role from the self-role panel.")
     @commands.guild_only()
@@ -176,9 +176,9 @@ class Roles(commands.Cog):
         assert ctx.guild
         ok = await self.bot.db.remove_self_role(ctx.guild.id, role.id)
         if not ok:
-            await ctx.send(embed=make_embed("Not on the panel", f"{role.mention} isn't a self-role.", color=DANGER), ephemeral=True)
+            await ctx.send(layout=build_game_layout("Not on the panel", f"{role.mention} isn't a self-role."), ephemeral=True)
             return
-        await ctx.send(embed=make_embed("Self-role removed", f"{role.mention} is no longer on the panel. Post a new panel with `.selfrole panel`.", color=SUCCESS))
+        await ctx.send(layout=build_game_layout("Self-role removed", f"{role.mention} is no longer on the panel. Post a new panel with `.selfrole panel`."))
 
     @selfrole.command(name="list", description="List the roles on the self-role panel.")
     @commands.guild_only()
@@ -187,7 +187,7 @@ class Roles(commands.Cog):
         assert ctx.guild
         rows = await self.bot.db.self_roles(ctx.guild.id)
         if not rows:
-            await ctx.send(embed=make_embed("No self-roles", "Add some with `.selfrole add @role`."))
+            await ctx.send(layout=build_game_layout("No self-roles", "Add some with `.selfrole add @role`."))
             return
         lines = []
         for row in rows:
@@ -195,7 +195,7 @@ class Roles(commands.Cog):
             mention = role.mention if role else f"`{row['role_id']}` (deleted)"
             emoji = f"{row['emoji']} " if row["emoji"] else ""
             lines.append(f"{emoji}{mention} — {row['label']}")
-        await ctx.send(embed=make_embed("Self-roles", "\n".join(lines)))
+        await ctx.send(layout=build_game_layout("Self-roles", "\n".join(lines)))
 
     @selfrole.command(name="panel", description="Post the self-role button panel in this channel.")
     @commands.guild_only()
@@ -203,21 +203,21 @@ class Roles(commands.Cog):
     async def selfrole_panel(self, ctx: commands.Context) -> None:
         assert ctx.guild
         if not isinstance(ctx.channel, discord.TextChannel):
-            await ctx.send(embed=make_embed("Can't post here", "Use a text channel.", color=DANGER), ephemeral=True)
+            await ctx.send(layout=build_game_layout("Can't post here", "Use a text channel."), ephemeral=True)
             return
         try:
             await self.post_panel(ctx.channel)
         except ValueError as err:
-            await ctx.send(embed=make_embed("No self-roles", str(err), color=DANGER), ephemeral=True)
+            await ctx.send(layout=build_game_layout("No self-roles", str(err)), ephemeral=True)
 
     async def post_panel(self, channel: discord.TextChannel) -> discord.Message:
         rows = await self.bot.db.self_roles(channel.guild.id)
         if not rows:
             raise ValueError("Add some first with `.selfrole add @role`.")
         view = build_self_role_view(rows)
-        e = make_embed("Pick your roles", "Click a button to add or remove a role.")
-        return await channel.send(embed=e, view=view)
+        return await channel.send(layout=build_game_layout("Pick your roles", "Click a button to add or remove a role.", components=[view]))
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Roles(bot))
+

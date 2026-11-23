@@ -1,20 +1,11 @@
-"""Shared helpers for embeds, leveling math, and time formatting."""
+"""Shared helpers for leveling math, time formatting, and V2 colors."""
 
 from __future__ import annotations
-
-import discord
 
 COLOR = 0x7B5CFA
 SUCCESS = 0x3BA55D
 DANGER = 0xED4245
 WARNING = 0xFEE75C
-
-
-def embed(title: str | None = None, description: str | None = None, *, color: int = COLOR, footer: str | None = None) -> discord.Embed:
-    e = discord.Embed(title=title, description=description, color=color)
-    if footer:
-        e.set_footer(text=footer)
-    return e
 
 
 def level_from_xp(xp: int) -> int:

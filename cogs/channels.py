@@ -8,7 +8,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
+from utils import COLOR
+from cogs.v2 import build_game_layout
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -111,7 +112,7 @@ async def post_modlog(
     if not isinstance(channel, discord.TextChannel):
         return
     try:
-        await channel.send(embed=make_embed(title, description, color=color))
+        await channel.send(layout=build_game_layout(title, description))
     except discord.HTTPException:
         pass
 
@@ -150,10 +151,7 @@ class ChannelAssignments(commands.Cog):
         key = normalize_feature(feature)
         if key is None:
             names = ", ".join(f"`{name}`" for name in FEATURES)
-            await ctx.send(
-                embed=make_embed("Unknown feature", f"Use one of: {names}.", color=DANGER),
-                ephemeral=True,
-            )
+            await ctx.send(layout=build_game_layout("Unknown feature", f"Use one of: {names}."))
             return
         raw = channel.strip()
         if raw.lower() in {"none", "off", "clear", "disable", "reset"}:
@@ -162,48 +160,20 @@ class ChannelAssignments(commands.Cog):
                     ctx.guild.id, counting_next=1, counting_last_user=None
                 )
             await self.bot.db.set_feature_channel(ctx.guild.id, key, None)
-            await ctx.send(
-                embed=make_embed(
-                    "Channel cleared",
-                    f"**{key}** is no longer assigned to a channel.",
-                    color=SUCCESS,
-                )
-            )
+            await ctx.send(layout=build_game_layout("Channel cleared", f"**{key}** is no longer assigned to a channel."))
             return
         try:
             target = await commands.TextChannelConverter().convert(ctx, raw)
         except commands.BadArgument:
-            await ctx.send(
-                embed=make_embed(
-                    "Invalid channel",
-                    "Mention a text channel, or type `none` to clear the assignment.",
-                    color=DANGER,
-                ),
-                ephemeral=True,
-            )
+            await ctx.send(layout=build_game_layout("Invalid channel", "Mention a text channel, or type `none` to clear the assignment."))
             return
         if key in MULTI_FEATURES:
             added = await self.bot.db.add_feature_channel(ctx.guild.id, key, target.id)
             if not added:
-                await ctx.send(
-                    embed=make_embed(
-                        "Already set",
-                        f"{target.mention} is already a **{key}** channel.",
-                        color=WARNING,
-                    ),
-                    ephemeral=True,
-                )
+                await ctx.send(layout=build_game_layout("Already set", f"{target.mention} is already a **{key}** channel."))
                 return
             all_ids = await self.bot.db.get_feature_channels(ctx.guild.id, key)
-            await ctx.send(
-                embed=make_embed(
-                    "Channel added",
-                    f"Added {target.mention} as a **{key}** channel.\n"
-                    f"Current: {format_channel_list(ctx.guild, all_ids)}\n"
-                    f"Use `.removechannel {key} {target.mention}` to remove one.",
-                    color=SUCCESS,
-                )
-            )
+            await ctx.send(layout=build_game_layout("Channel added", f"Added {target.mention} as a **{key}** channel.\nCurrent: {format_channel_list(ctx.guild, all_ids)}\nUse `.removechannel {key} {target.mention}` to remove one."))
             return
         extra = ""
         if key == "counting":
@@ -214,13 +184,7 @@ class ChannelAssignments(commands.Cog):
                 )
                 extra = " Start at **1**."
         await self.bot.db.set_feature_channel(ctx.guild.id, key, target.id)
-        await ctx.send(
-            embed=make_embed(
-                "Channel set",
-                f"**{key}** will use {target.mention}.{extra}",
-                color=SUCCESS,
-            )
-        )
+        await ctx.send(layout=build_game_layout("Channel set", f"**{key}** will use {target.mention}.{extra}"))
 
     @commands.hybrid_command(name="removechannel", description="Remove a channel assignment. For games, remove one channel.")
     @commands.guild_only()
@@ -237,21 +201,10 @@ class ChannelAssignments(commands.Cog):
         key = normalize_feature(feature)
         if key is None:
             names = ", ".join(f"`{name}`" for name in FEATURES)
-            await ctx.send(
-                embed=make_embed("Unknown feature", f"Use one of: {names}.", color=DANGER),
-                ephemeral=True,
-            )
+            await ctx.send(layout=build_game_layout("Unknown feature", f"Use one of: {names}."))
             return
         if key in MULTI_FEATURES and channel is None:
-            await ctx.send(
-                embed=make_embed(
-                    "Channel required",
-                    f"Use `.removechannel {key} #channel` to remove one {key} channel, "
-                    f"or `.setchannel {key} none` to clear them all.",
-                    color=DANGER,
-                ),
-                ephemeral=True,
-            )
+            await ctx.send(layout=build_game_layout("Channel required", f"Use `.removechannel {key} #channel` to remove one {key} channel, or `.setchannel {key} none` to clear them all."))
             return
         if key == "counting" and channel is None:
             await self.bot.db.update_settings(
@@ -261,29 +214,14 @@ class ChannelAssignments(commands.Cog):
             ctx.guild.id, key, channel.id if channel else None
         )
         if not removed:
-            await ctx.send(
-                embed=make_embed(
-                    "Nothing to remove",
-                    f"That channel isn't assigned to **{key}**." if channel else f"**{key}** has no channel set.",
-                    color=DANGER,
-                ),
-                ephemeral=True,
-            )
+            await ctx.send(layout=build_game_layout("Nothing to remove", f"That channel isn't assigned to **{key}**." if channel else f"**{key}** has no channel set."))
             return
         if key in MULTI_FEATURES:
             remaining = await self.bot.db.get_feature_channels(ctx.guild.id, key)
             leftover = format_channel_list(ctx.guild, remaining)
-            await ctx.send(
-                embed=make_embed(
-                    "Channel removed",
-                    f"Removed {channel.mention if channel else 'that channel'} from **{key}**.\nCurrent: {leftover}",
-                    color=SUCCESS,
-                )
-            )
+            await ctx.send(layout=build_game_layout("Channel removed", f"Removed {channel.mention if channel else 'that channel'} from **{key}**.\nCurrent: {leftover}"))
             return
-        await ctx.send(
-            embed=make_embed("Channel cleared", f"**{key}** is no longer assigned to a channel.", color=SUCCESS)
-        )
+        await ctx.send(layout=build_game_layout("Channel cleared", f"**{key}** is no longer assigned to a channel."))
 
     @commands.hybrid_command(name="channels", description="Show which channels are assigned to bot features.")
     @commands.guild_only()
@@ -293,14 +231,9 @@ class ChannelAssignments(commands.Cog):
         lines = []
         for key, label in FEATURES.items():
             lines.append(f"• **{key}** — {format_channel_list(ctx.guild, assigned.get(key) or [])}\n  _{label}_")
-        e = make_embed(
-            "Feature channels",
-            "\n".join(lines)
-            + "\n\nUse `.setchannel <feature> #channel` to assign, or `.setchannel <feature> none` to clear. "
-            "`.setwelcome`, `.setlevelchannel`, `.setcounting` and `.altconfig channel` stay in sync.",
-        )
-        await ctx.send(embed=e)
+        await ctx.send(layout=build_game_layout("Feature channels", "\n".join(lines) + "\n\nUse `.setchannel <feature> #channel` to assign, or `.setchannel <feature> none` to clear. `.setwelcome`, `.setlevelchannel`, `.setcounting` and `.altconfig channel` stay in sync."))
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(ChannelAssignments(bot))
+

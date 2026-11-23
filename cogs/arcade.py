@@ -6,22 +6,13 @@ import asyncio
 import html
 import random
 import time
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from cogs import banks
-from cogs.game_ui import (
-    clear_countdown,
-    countdown_field,
-    game_embed,
-    game_footer,
-    games_menu_embed,
-    result_embed,
-)
 from cogs.hints import HintPlan
 from cogs.sessions import (
     DEFAULT_WIN_XP,
@@ -29,13 +20,12 @@ from cogs.sessions import (
     answers_match,
     award_xp,
     dest_user,
-    end_game_message,
     end_game_message_v2,
     launch_channel_game,
     normalize_answer,
     send_dest,
 )
-from utils import DANGER, WARNING, embed as make_embed
+from cogs.v2 import build_game_layout, result_layout, countdown_field
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -168,38 +158,23 @@ def command_for_title(title: str) -> str:
     return ".games"
 
 
-def build_menu_embed(games: list) -> discord.Embed:
-    """Compact menu: one line per game, grouped by category."""
-    return games_menu_embed(games, MENU_CATEGORIES, GAME_META, command_for=command_name)
+def build_menu_layout(cog: "Arcade", games: list):
+    """Compact menu: one line per game, with a select to drop one into this channel."""
+    lines = []
+    for key, emoji, title, blurb in games:
+        lines.append(f"{emoji} **{title}** — {blurb}")
+    body = "\n".join(lines) or "No games available."
+    options = [
+        discord.SelectOption(label=title, value=key, emoji=emoji, description=blurb[:100])
+        for key, emoji, title, blurb in games[:25]
+    ]
+    select = discord.ui.Select(placeholder="Choose a game to drop into this channel...", min_values=1, max_values=1, options=options)
 
+    async def pick(interaction: discord.Interaction) -> None:
+        await cog.drop_game(interaction, select.values[0])
 
-class GamesDropMenu(discord.ui.View):
-    def __init__(self, cog: "Arcade", games: list | None = None):
-        super().__init__(timeout=180)
-        self.cog = cog
-        self.message: discord.Message | None = None
-        self.games = list(games if games is not None else MENU_GAMES)
-        self._set_game_options(self.games)
-
-    def _set_game_options(self, games: list) -> None:
-        self.select.options = [
-            discord.SelectOption(label=title, value=key, emoji=emoji, description=blurb[:100])
-            for key, emoji, title, blurb in games
-        ]
-
-    async def on_timeout(self) -> None:
-        for child in self.children:
-            if isinstance(child, (discord.ui.Button, discord.ui.Select)):
-                child.disabled = True
-        if self.message:
-            try:
-                await self.message.edit(view=self)
-            except discord.HTTPException:
-                pass
-
-    @discord.ui.select(placeholder="Choose a game to drop into this channel...")
-    async def select(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
-        await self.cog.drop_game(interaction, select.values[0])
+    select.callback = pick
+    return build_game_layout("Drop-in Games", body, items=(select,))
 
 
 class ChatGuessGame(ChannelGame):
@@ -254,10 +229,10 @@ class ChatGuessGame(ChannelGame):
             semantic_hint=semantic_hint,
         ).build(seed=random.randint(0, 2**31 - 1))
 
-    def _embed(self, *, phase: str, winner: discord.abc.User | None = None) -> discord.Embed:
+    def _layout(self, *, phase: str, winner: discord.abc.User | None = None):
         emoji = MENU_EMOJI.get(self.title, "🎮")
         if phase == "win" and winner is not None:
-            e = result_embed(
+            return result_layout(
                 self.title,
                 f"{winner.mention} got it!",
                 emoji=emoji,
@@ -269,8 +244,8 @@ class ChatGuessGame(ChannelGame):
                 host=self.host_name,
                 host_avatar=self.host_avatar,
             )
-        elif phase == "timeout":
-            e = result_embed(
+        if phase == "timeout":
+            return result_layout(
                 self.title,
                 "Nobody got it in time.",
                 emoji=emoji,
@@ -280,36 +255,33 @@ class ChatGuessGame(ChannelGame):
                 host=self.host_name,
                 host_avatar=self.host_avatar,
             )
-        else:
-            fields = []
-            # Add the masked answer with progressive hints
-            if self._hint_plan is not None:
-                current_stage = self._hint_plan.get_stage_at_time(time.monotonic())
-                if current_stage is not None:
-                    fields.append((f"💡 {current_stage.label}", current_stage.masked, False))
-                    if self._hint_plan.semantic_hint_line():
-                        fields.append(("🔍 Semantic Hint", self._hint_plan.semantic_hint_line(), False))
-                else:
-                    # Stage 0: show initial masked answer
-                    fields.append(("💡 Answer", self._hint_plan.get_initial_masked(), False))
-                    fields.append(("📏 Length", self._hint_plan.get_initial_label(), False))
-                    if self._hint_plan.semantic_hint_line():
-                        fields.append(("🔍 Semantic Hint", self._hint_plan.semantic_hint_line(), False))
+        fields = []
+        # Add the masked answer with progressive hints
+        if self._hint_plan is not None:
+            current_stage = self._hint_plan.get_stage_at_time(time.monotonic())
+            if current_stage is not None:
+                fields.append((f"💡 {current_stage.label}", current_stage.masked, False))
+                if self._hint_plan.semantic_hint_line():
+                    fields.append(("🔍 Semantic Hint", self._hint_plan.semantic_hint_line(), False))
+            else:
+                # Stage 0: show initial masked answer
+                fields.append(("💡 Answer", self._hint_plan.get_initial_masked(), False))
+                fields.append(("📏 Length", self._hint_plan.get_initial_label(), False))
+                if self._hint_plan.semantic_hint_line():
+                    fields.append(("🔍 Semantic Hint", self._hint_plan.semantic_hint_line(), False))
 
-            if self.end_ts is not None:
-                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-            e = game_embed(
-                self.title,
-                self.prompt,
-                emoji=emoji,
-                phase="play",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-                fields=fields,
-            )
-        if self.image_url:
-            e.set_image(url=self.image_url)
-        return e
+        if self.end_ts is not None:
+            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
+        return build_game_layout(
+            self.title,
+            self.prompt,
+            emoji=emoji,
+            phase="play",
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+            fields=fields,
+            image_url=self.image_url,
+        )
 
     def is_correct(self, text: str) -> bool:
         if self.match == "emoji":
@@ -323,14 +295,14 @@ class ChatGuessGame(ChannelGame):
         if self.message is None or self.finished:
             return
         try:
-            await self.message.edit(embed=self._embed(phase="play"))
+            await self.message.edit(layout=self._layout(phase="play"))
         except discord.HTTPException:
             pass
 
     async def begin(self, dest: commands.Context | discord.Interaction) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(self.timeout)
-        self.message = await send_dest(dest, embed=self._embed(phase="play"))
+        self.message = await send_dest(dest, layout=self._layout(phase="play"))
         self.task = asyncio.create_task(self._timer())
 
     async def _timer(self) -> None:
@@ -353,7 +325,10 @@ class ChatGuessGame(ChannelGame):
             if self.finished:
                 return
             if self.message:
-                await end_game_message(self.message, self._embed(phase="timeout"))
+                try:
+                    await self.message.edit(layout=self._layout(phase="timeout"))
+                except discord.HTTPException:
+                    pass
             await self.finish(result=f"⏰ Time's up! The answer was **{self.reveal}**.")
         except asyncio.CancelledError:
             return
@@ -374,10 +349,13 @@ class ChatGuessGame(ChannelGame):
             pass
         await award_xp(self.bot, message.author, message.channel, self.xp)
         if self.message:
-            await end_game_message(self.message, self._embed(phase="win", winner=message.author))
+            try:
+                await self.message.edit(layout=self._layout(phase="win", winner=message.author))
+            except discord.HTTPException:
+                pass
         else:
             try:
-                await message.channel.send(embed=self._embed(phase="win", winner=message.author))
+                await message.channel.send(layout=self._layout(phase="win", winner=message.author))
             except discord.HTTPException:
                 pass
         await self.finish(result=f"🏆 {message.author.mention} won {self.title}! Answer: **{self.reveal}** (+{self.xp} XP)")
@@ -396,52 +374,9 @@ class WordRuleGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
-        self.layout: GameLayout | None = None
+        self.layout = None
 
     def _build_layout(self, *, phase: str, winner: discord.abc.User | None = None, word: str | None = None):
-        try:
-            from cogs.v2 import GameLayout, build_game_layout, result_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-        if not v2_available:
-            # Fallback to old embed system for test environments
-            from cogs.game_ui import game_embed
-            if phase == "win" and winner is not None:
-                return game_embed(
-                    "Word",
-                    f"{winner.mention} played **{word}**",
-                    emoji="📝",
-                    phase="win",
-                    xp=DEFAULT_WIN_XP,
-                    play_again=f"Play again with `{command_for_title('Word')}`.",
-                    winner_avatar=avatar_url(winner),
-                    host=self.host_name,
-                    host_avatar=self.host_avatar,
-                )
-            elif phase == "timeout":
-                return game_embed(
-                    "Word",
-                    "Nobody found a word that fits.",
-                    emoji="📝",
-                    phase="timeout",
-                    play_again=f"Play again with `{command_for_title('Word')}`.",
-                    host=self.host_name,
-                    host_avatar=self.host_avatar,
-                )
-            else:
-                fields = []
-                if self.end_ts is not None:
-                    fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-                return game_embed(
-                    "Word",
-                    f"{self.prompt}\n\nFirst valid English word wins.",
-                    emoji="📝",
-                    phase="play",
-                    host=self.host_name,
-                    host_avatar=self.host_avatar,
-                    fields=fields,
-                )
         if phase == "win" and winner is not None:
             return result_layout(
                 "Word",
@@ -483,7 +418,7 @@ class WordRuleGame(ChannelGame):
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(30)
         self.layout = self._build_layout(phase="play")
-        self.message = await send_dest(dest, view=self.layout)
+        self.message = await send_dest(dest, layout=self.layout)
         self.seconds_left = 30
         self.task = asyncio.create_task(self._timer())
 
@@ -495,7 +430,7 @@ class WordRuleGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.layout:
                     self.layout.set_countdown(self.end_ts)
-                    await self.message.edit(view=self.layout)
+                    await self.message.edit(layout=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             if self.finished:
@@ -570,33 +505,9 @@ class ButtonHuntGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
-        self.layout: GameLayout | None = None
+        self.layout = None
 
-    def _build_layout(self) -> GameLayout:
-        try:
-            from cogs.v2 import GameLayout, build_game_layout, result_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-
-        if not v2_available:
-            from cogs.game_ui import game_embed
-            fields = []
-            if self.eliminated:
-                count = len(self.eliminated)
-                fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
-            if self.end_ts is not None:
-                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-            return game_embed(
-                "Button Hunt",
-                "One of these buttons is the winner. First to press it wins. A wrong press puts you out.",
-                emoji="🔘",
-                phase="play",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-                fields=fields,
-            )
-
+    def _build_layout(self):
         fields = []
         if self.eliminated:
             count = len(self.eliminated)
@@ -614,25 +525,7 @@ class ButtonHuntGame(ChannelGame):
         )
         return layout
 
-    def _build_win_layout(self, winner: discord.abc.User) -> GameLayout:
-        try:
-            from cogs.v2 import result_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-        if not v2_available:
-            from cogs.game_ui import result_embed
-            return result_embed(
-                "Button Hunt",
-                f"{winner.mention} found the right button!",
-                emoji="🔘",
-                phase="win",
-                xp=DEFAULT_WIN_XP,
-                play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
-                winner_avatar=avatar_url(winner),
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
+    def _build_win_layout(self, winner: discord.abc.User):
         return result_layout(
             "Button Hunt",
             f"{winner.mention} found the right button!",
@@ -645,23 +538,7 @@ class ButtonHuntGame(ChannelGame):
             host_avatar=self.host_avatar,
         )
 
-    def _build_timeout_layout(self) -> GameLayout:
-        try:
-            from cogs.v2 import result_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-        if not v2_available:
-            from cogs.game_ui import result_embed
-            return result_embed(
-                "Button Hunt",
-                "Nobody found the right button.",
-                emoji="🔘",
-                phase="timeout",
-                play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
+    def _build_timeout_layout(self):
         return result_layout(
             "Button Hunt",
             "Nobody found the right button.",
@@ -676,16 +553,15 @@ class ButtonHuntGame(ChannelGame):
         if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(view=self.layout)
+            await self.message.edit(layout=self.layout)
         except discord.HTTPException:
             pass
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(30)
-        self.view = ButtonHuntView(self, timeout=33)  # backstop; the countdown drives the actual timeout
         self.layout = self._build_layout()
-        self.message = await send_dest(dest, view=self.layout)
+        self.message = await send_dest(dest, layout=self.layout)
         self.task = asyncio.create_task(self._countdown())
 
     async def _countdown(self) -> None:
@@ -696,7 +572,7 @@ class ButtonHuntGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.layout:
                     self.layout.set_countdown(self.end_ts)
-                    await self.message.edit(view=self.layout)
+                    await self.message.edit(layout=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             if self.finished:
@@ -733,52 +609,41 @@ class ButtonHuntGame(ChannelGame):
         await self.finish(result="⏰ Time's up! Nobody found the right button.")
 
 
-class DiceJoinView(discord.ui.View):
-    def __init__(self, game: "DiceDuelGame"):
-        super().__init__(timeout=30)
-        self.game = game
-
-    async def on_timeout(self) -> None:
-        await self.game.timed_out()
-
-    @discord.ui.button(label="🎲 Join", style=discord.ButtonStyle.primary)
-    async def join(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self.game.join(interaction)
-
-
 class DiceDuelGame(ChannelGame):
     def __init__(self, bot, channel, host_id: int) -> None:
         super().__init__(bot, channel, host_id)
         self.players: list[discord.abc.User] = []
         self.message: discord.Message | None = None
-        self.view: DiceJoinView | None = None
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
-    def _embed(self) -> discord.Embed:
+    def _layout(self):
         remaining = max(0, 2 - len(self.players))
         extra = f"Waiting for {remaining} more player{'s' if remaining != 1 else ''}" if remaining else "Rolling…"
         roster = "\n".join(f"• {player.mention}" for player in self.players) or "Waiting for players…"
         fields = [("Players", roster, False)]
         if self.end_ts is not None:
             fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-        return game_embed(
+        items = []
+        if len(self.players) < 2 and not self.finished:
+            items.append(discord.ui.Button(label="🎲 Join", style=discord.ButtonStyle.primary, custom_id="duel:join", callback=self.join))
+        return build_game_layout(
             "Dice Roll Duel",
             "First two players to join will each roll a d6. Highest roll wins.",
             emoji="⚔️",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Dice Roll Duel", self.host_name, extra=extra),
+            footer=extra,
             fields=fields,
+            items=tuple(items),
         )
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(30)
-        self.view = DiceJoinView(self)
-        self.message = await send_dest(dest, embed=self._embed(), view=self.view)
+        self.message = await send_dest(dest, layout=self._layout())
 
     async def join(self, interaction: discord.Interaction) -> None:
         if self.finished:
@@ -789,7 +654,7 @@ class DiceDuelGame(ChannelGame):
             return
         self.players.append(interaction.user)
         if len(self.players) < 2:
-            await interaction.response.edit_message(embed=self._embed(), view=self.view)
+            await interaction.response.edit_message(layout=self._layout())
             return
         await interaction.response.defer()
         await self.resolve()
@@ -798,11 +663,6 @@ class DiceDuelGame(ChannelGame):
         if self.finished or len(self.players) < 2:
             return
         self.finished = True
-        if self.view:
-            for child in self.view.children:
-                if isinstance(child, discord.ui.Button):
-                    child.disabled = True
-            self.view.stop()
         a, b = self.players[0], self.players[1]
         while True:
             ra, rb = random.randint(1, 6), random.randint(1, 6)
@@ -810,7 +670,7 @@ class DiceDuelGame(ChannelGame):
                 break
         winner, loser, wr, lr = (a, b, ra, rb) if ra > rb else (b, a, rb, ra)
         await award_xp(self.bot, winner, self.channel, DEFAULT_WIN_XP)
-        e = result_embed(
+        e = result_layout(
             "Dice Roll Duel",
             f"{a.mention} rolled **{ra}**.\n{b.mention} rolled **{rb}**.\n\n{winner.mention} wins!",
             emoji="⚔️",
@@ -822,18 +682,17 @@ class DiceDuelGame(ChannelGame):
             host_avatar=self.host_avatar,
         )
         if self.message:
-            await end_game_message(self.message, e, self.view)
+            try:
+                await self.message.edit(layout=e)
+            except discord.HTTPException:
+                pass
         await self.finish(result=f"🏆 {winner.mention} won Dice Roll Duel! {wr}–{lr} (+{DEFAULT_WIN_XP} XP)")
 
     async def timed_out(self) -> None:
         if self.finished:
             return
-        if self.view:
-            for child in self.view.children:
-                if isinstance(child, discord.ui.Button):
-                    child.disabled = True
         if self.message:
-            e = result_embed(
+            e = result_layout(
                 "Dice Roll Duel",
                 "Not enough players joined.",
                 emoji="⚔️",
@@ -842,7 +701,10 @@ class DiceDuelGame(ChannelGame):
                 host=self.host_name,
                 host_avatar=self.host_avatar,
             )
-            await end_game_message(self.message, e, self.view)
+            try:
+                await self.message.edit(layout=e)
+            except discord.HTTPException:
+                pass
         await self.finish(result="⏰ Dice Roll Duel ended — not enough players joined.")
 
 
@@ -900,33 +762,9 @@ class ColorHuntGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
-        self.layout: GameLayout | None = None
+        self.layout = None
 
-    def _build_layout(self) -> GameLayout:
-        try:
-            from cogs.v2 import GameLayout, build_game_layout, result_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-
-        if not v2_available:
-            from cogs.game_ui import game_embed
-            fields = []
-            if self.eliminated:
-                count = len(self.eliminated)
-                fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
-            if self.end_ts is not None:
-                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-            return game_embed(
-                "Color Hunt",
-                f"Click the **{self.view.target_name if self.view else '?'}** button.\nThat's the actual button colour, not the word written on it.",
-                emoji="🌈",
-                phase="play",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-                fields=fields,
-            )
-
+    def _build_layout(self):
         fields = []
         if self.eliminated:
             count = len(self.eliminated)
@@ -944,25 +782,7 @@ class ColorHuntGame(ChannelGame):
         )
         return layout
 
-    def _build_win_layout(self, winner: discord.abc.User) -> GameLayout:
-        try:
-            from cogs.v2 import result_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-        if not v2_available:
-            from cogs.game_ui import result_embed
-            return result_embed(
-                "Color Hunt",
-                f"{winner.mention} clicked the right colour!",
-                emoji="🌈",
-                phase="win",
-                xp=DEFAULT_WIN_XP,
-                play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
-                winner_avatar=avatar_url(winner),
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
+    def _build_win_layout(self, winner: discord.abc.User):
         return result_layout(
             "Color Hunt",
             f"{winner.mention} clicked the right colour!",
@@ -975,23 +795,7 @@ class ColorHuntGame(ChannelGame):
             host_avatar=self.host_avatar,
         )
 
-    def _build_timeout_layout(self) -> GameLayout:
-        try:
-            from cogs.v2 import result_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-        if not v2_available:
-            from cogs.game_ui import result_embed
-            return result_embed(
-                "Color Hunt",
-                "Nobody clicked the right colour.",
-                emoji="🌈",
-                phase="timeout",
-                play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
+    def _build_timeout_layout(self):
         return result_layout(
             "Color Hunt",
             "Nobody clicked the right colour.",
@@ -1006,7 +810,7 @@ class ColorHuntGame(ChannelGame):
         if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(view=self.layout)
+            await self.message.edit(layout=self.layout)
         except discord.HTTPException:
             pass
 
@@ -1015,7 +819,7 @@ class ColorHuntGame(ChannelGame):
         self.end_ts, _ = countdown_field(20)
         self.view = ColorHuntView(self, timeout=23)  # backstop; the countdown drives the actual timeout
         self.layout = self._build_layout()
-        self.message = await send_dest(dest, view=self.layout)
+        self.message = await send_dest(dest, layout=self.layout)
         self.task = asyncio.create_task(self._countdown())
 
     async def _countdown(self) -> None:
@@ -1026,7 +830,7 @@ class ColorHuntGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.layout:
                     self.layout.set_countdown(self.end_ts)
-                    await self.message.edit(view=self.layout)
+                    await self.message.edit(layout=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             if self.finished:
@@ -1086,38 +890,9 @@ class ReactionGame(ChannelGame):
         self.host_avatar: str | None = None
         self.seconds_left: int | None = None
         self.end_ts: int | None = None
-        self.layout: GameLayout | None = None
+        self.layout = None
 
-    def _build_layout(self, *, live: bool = False) -> GameLayout:
-        try:
-            from cogs.v2 import GameLayout, build_game_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-
-        if not v2_available:
-            from cogs.game_ui import game_embed
-            fields = []
-            if self.eliminated:
-                count = len(self.eliminated)
-                fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
-            if self.end_ts is not None:
-                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-            if live:
-                left = f"{self.seconds_left}s left" if self.seconds_left is not None else "GO!"
-                description = f"**GO!** First to click the button or type `go` wins.\n{left}"
-            else:
-                description = "Wait for it…\nDon't click or type **go** until the message says **GO!**"
-            return game_embed(
-                "Reaction",
-                description,
-                emoji="⏱️",
-                phase="play",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-                fields=fields,
-            )
-
+    def _build_layout(self, *, live: bool = False):
         fields = []
         if self.eliminated:
             count = len(self.eliminated)
@@ -1139,25 +914,7 @@ class ReactionGame(ChannelGame):
             items=fields,
         )
 
-    def _build_win_layout(self) -> GameLayout:
-        try:
-            from cogs.v2 import result_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-        if not v2_available:
-            from cogs.game_ui import result_embed
-            return result_embed(
-                "Reaction",
-                f"{self.winner.mention} won the reaction race!",
-                emoji="⏱️",
-                phase="win",
-                xp=DEFAULT_WIN_XP,
-                play_again=f"Play again with `{command_for_title('Reaction')}`.",
-                winner_avatar=avatar_url(self.winner),
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
+    def _build_win_layout(self):
         return result_layout(
             "Reaction",
             f"{self.winner.mention} won the reaction race!",
@@ -1170,23 +927,7 @@ class ReactionGame(ChannelGame):
             host_avatar=self.host_avatar,
         )
 
-    def _build_timeout_layout(self) -> GameLayout:
-        try:
-            from cogs.v2 import result_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-        if not v2_available:
-            from cogs.game_ui import result_embed
-            return result_embed(
-                "Reaction",
-                "Nobody reacted in time.",
-                emoji="⏱️",
-                phase="timeout",
-                play_again=f"Play again with `{command_for_title('Reaction')}`.",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
+    def _build_timeout_layout(self):
         return result_layout(
             "Reaction",
             "Nobody reacted in time.",
@@ -1197,17 +938,17 @@ class ReactionGame(ChannelGame):
             host_avatar=self.host_avatar,
         )
 
-    def _build_initial_layout(self) -> GameLayout:
+    def _build_initial_layout(self):
         return self._build_layout(live=False)
 
-    def _build_live_layout(self) -> GameLayout:
+    def _build_live_layout(self):
         return self._build_layout(live=True)
 
     async def refresh(self) -> None:
         if self.message is None or self.finished or self.layout is None:
             return
         try:
-            await self.message.edit(view=self.layout)
+            await self.message.edit(layout=self.layout)
         except discord.HTTPException:
             pass
 
@@ -1217,7 +958,7 @@ class ReactionGame(ChannelGame):
         self.end_ts, _ = countdown_field(int(wait_seconds) + REACTION_LIVE_SECONDS)
         self.view = ReactionView(self)
         self.layout = self._build_initial_layout()
-        self.message = await send_dest(dest, view=self.layout)
+        self.message = await send_dest(dest, layout=self.layout)
         self.task = asyncio.create_task(self._run())
 
     async def _run(self) -> None:
@@ -1235,7 +976,7 @@ class ReactionGame(ChannelGame):
             if self.message and self.view:
                 try:
                     self.layout = self._build_live_layout()
-                    await self.message.edit(view=self.layout)
+                    await self.message.edit(layout=self.layout)
                 except discord.HTTPException:
                     pass
             for remaining in range(REACTION_LIVE_SECONDS, -1, -1):
@@ -1244,7 +985,7 @@ class ReactionGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.layout:
                     self.layout.set_countdown(self.end_ts)
-                    await self.message.edit(view=self.layout)
+                    await self.message.edit(layout=self.layout)
                 if remaining > 0:
                     await asyncio.sleep(1)
             self.seconds_left = None
@@ -1356,40 +1097,12 @@ class SequenceHuntGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
-        self.layout: GameLayout | None = None
+        self.layout = None
 
     def _seq_text(self) -> str:
         return " ".join(SequenceHuntView.EMOJIS[i] for i in self.sequence)
 
-    def _build_layout(self, *, show_sequence: bool) -> GameLayout:
-        try:
-            from cogs.v2 import GameLayout, build_game_layout
-            v2_available = True
-        except ImportError:
-            v2_available = False
-
-        if not v2_available:
-            from cogs.game_ui import game_embed
-            fields = []
-            if self.failed:
-                count = len(self.failed)
-                fields.append(("Out", f"{count} player{'s' if count != 1 else ''} out", True))
-            if show_sequence:
-                description = f"Remember this order:\n# {self._seq_text()}"
-            else:
-                description = "Repeat the sequence by pressing the buttons in order. First to finish wins."
-                if self.end_ts is not None:
-                    fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-            return game_embed(
-                "Sequence Hunt",
-                description,
-                emoji="🧠",
-                phase="play",
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-                fields=fields,
-            )
-
+    def _build_layout(self, *, show_sequence: bool):
         fields = []
         if self.failed:
             count = len(self.failed)
@@ -1439,6 +1152,7 @@ class HiLoGame(ChannelGame):
         self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
+        self.layout = None
 
     def _next(self) -> int:
         n = random.randint(1, 100)
@@ -1446,46 +1160,46 @@ class HiLoGame(ChannelGame):
             n = random.randint(1, 100)
         return n
 
-    def _embed(
-        self,
-        *,
-        over: bool = False,
-        wrong: str | None = None,
-        title: str | None = None,
-        phase: str | None = None,
-        extra: str | None = None,
-    ) -> discord.Embed:
+    def _build_layout(self, *, over: bool = False, wrong: str | None = None, title: str | None = None, phase: str | None = None, extra: str | None = None):
         if over:
             body = f"The next number was **{self.next_number}** (current was {self.current}).\nStreak: **{self.streak}**."
             if wrong:
                 body = f"{wrong}\n\n" + body
-            return game_embed(
+            return build_game_layout(
                 title or "HILO over",
                 body,
                 emoji="📈",
                 phase=phase or ("win" if self.streak else "lose"),
                 host=self.host_name,
                 host_avatar=self.host_avatar,
-                footer=game_footer("HILO", self.host_name, extra=extra),
             )
-        fields = []
+        countdown = None
         if self.end_ts is not None:
-            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-        return game_embed(
-            "HILO",
-            f"The number is **{self.current}**.\nWill the next number (1–100) be higher or lower?\n\nStreak: **{self.streak}**",
+            countdown = f"⏳ Ends <t:{self.end_ts}:R>"
+        return build_game_layout(
+            title or "HILO",
+            f"The number is **{self.current}**.\nWill the next number (1-100) be higher or lower?\n\nStreak: **{self.streak}**",
             emoji="📈",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            fields=fields,
+            countdown=countdown,
         )
+
+    async def refresh(self) -> None:
+        if self.message is None or self.finished or self.layout is None:
+            return
+        try:
+            await self.message.edit(layout=self.layout)
+        except discord.HTTPException:
+            pass
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(20)
         self.view = HiLoView(self)
-        self.message = await send_dest(dest, embed=self._embed(), view=self.view)
+        self.layout = self._build_layout()
+        self.message = await send_dest(dest, layout=self.layout)
 
     async def guess(self, interaction: discord.Interaction, choice: str) -> None:
         if self.finished or not self.round_open:
@@ -1503,13 +1217,16 @@ class HiLoGame(ChannelGame):
             extra = ""
             if self.streak:
                 extra = f" The streak ended at **{self.streak}**."
-            e = self._embed(
+            e = self._build_layout(
                 over=True,
                 phase="lose",
                 wrong=f"{interaction.user.mention} guessed **{choice}** — not quite.{extra}",
             )
             await interaction.response.defer()
-            await end_game_message(self.message, e, self.view)
+            try:
+                await self.message.edit(layout=e)
+            except discord.HTTPException:
+                pass
             await self.finish(result=f"HILO ended — the streak stopped at **{self.streak}**.")
             return
         self.streak += 1
@@ -1521,7 +1238,7 @@ class HiLoGame(ChannelGame):
                     if isinstance(child, discord.ui.Button):
                         child.disabled = True
                 self.view.stop()
-            e = result_embed(
+            e = result_layout(
                 "HILO",
                 f"{interaction.user.mention} got it right!\n**{self.current}** → **{self.next_number}**\nStreak of **{self.streak}** — that's the limit.",
                 emoji="📈",
@@ -1533,7 +1250,10 @@ class HiLoGame(ChannelGame):
                 host_avatar=self.host_avatar,
             )
             await interaction.response.defer()
-            await end_game_message(self.message, e, self.view)
+            try:
+                await self.message.edit(layout=e)
+            except discord.HTTPException:
+                pass
             await self.finish(result=f"🏆 {interaction.user.mention} won HILO with a streak of **{self.streak}**! (+10 XP)")
             return
         self.current = self.next_number
@@ -1541,8 +1261,8 @@ class HiLoGame(ChannelGame):
         self.view = HiLoView(self)
         self.round_open = True
         self.end_ts, _ = countdown_field(20)
-        e = self._embed(extra=f"{interaction.user.display_name} was right • +10 XP")
-        await interaction.response.edit_message(embed=e, view=self.view)
+        self.layout = self._build_layout(extra=f"{interaction.user.display_name} was right • +10 XP")
+        await interaction.response.edit_message(layout=self.layout)
 
     async def round_timeout(self) -> None:
         if self.finished or not self.round_open:
@@ -1553,7 +1273,10 @@ class HiLoGame(ChannelGame):
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
         if self.message:
-            await end_game_message(self.message, self._embed(over=True, phase="timeout", title="HILO timed out"), self.view)
+            try:
+                await self.message.edit(layout=self._build_layout(over=True, phase="timeout", title="HILO timed out"))
+            except discord.HTTPException:
+                pass
         await self.finish(result=f"⏰ HILO timed out. The streak ended at **{self.streak}**.")
 
 
@@ -1607,11 +1330,11 @@ class TriviaGame(ChannelGame):
         self.end_ts, _ = countdown_field(25)
         self.view = TriviaChannelView(self, self.options, self.correct, timeout=28)  # backstop; the countdown drives the actual timeout
         self.seconds_left = 25
-        self.message = await send_dest(dest, embed=self._play_embed(), view=self.view)
+        self.message = await send_dest(dest, layout=self._play_layout())
         self.task = asyncio.create_task(self._countdown())
 
-    def _play_embed(self) -> discord.Embed:
-        return game_embed(
+    def _play_layout(self):
+        return build_game_layout(
             "Trivia",
             self.question,
             emoji="💡",
@@ -1629,7 +1352,7 @@ class TriviaGame(ChannelGame):
                 self.seconds_left = remaining
                 if self.message:
                     try:
-                        await self.message.edit(embed=self._play_embed())
+                        await self.message.edit(layout=self._play_layout())
                     except discord.HTTPException:
                         pass
                 if remaining > 0:
@@ -1652,7 +1375,7 @@ class TriviaGame(ChannelGame):
                         child.style = discord.ButtonStyle.success
             self.view.stop()
         await award_xp(self.bot, interaction.user, self.channel, DEFAULT_WIN_XP)
-        e = result_embed(
+        e = result_layout(
             "Trivia",
             f"{interaction.user.mention} answered correctly!",
             emoji="💡",
@@ -1665,7 +1388,10 @@ class TriviaGame(ChannelGame):
             host_avatar=self.host_avatar,
         )
         await interaction.response.defer()
-        await end_game_message(self.message, e, self.view)
+        try:
+            await self.message.edit(layout=e)
+        except discord.HTTPException:
+            pass
         await self.finish(result=f"🏆 {interaction.user.mention} won Trivia! Answer: **{self.correct}** (+{DEFAULT_WIN_XP} XP)")
 
     async def timed_out(self) -> None:
@@ -1678,7 +1404,7 @@ class TriviaGame(ChannelGame):
                     if child.is_correct:
                         child.style = discord.ButtonStyle.success
         if self.message:
-            e = result_embed(
+            e = result_layout(
                 "Trivia",
                 "Time's up!",
                 emoji="💡",
@@ -1688,7 +1414,10 @@ class TriviaGame(ChannelGame):
                 host=self.host_name,
                 host_avatar=self.host_avatar,
             )
-            await end_game_message(self.message, e, self.view)
+            try:
+                await self.message.edit(layout=e)
+            except discord.HTTPException:
+                pass
         await self.finish(result=f"⏰ Time's up! The answer was **{self.correct}**.")
 
 
@@ -1706,7 +1435,7 @@ class RedLightGame(ChannelGame):
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
-    def _embed(self) -> discord.Embed:
+    def _layout(self):
         light = "🟢 **GREEN LIGHT** — type in chat to score!" if self.green else "🔴 **RED LIGHT** — don't type or you're out!"
         lines = []
         for uid, score in sorted(self.scores.items(), key=lambda kv: kv[1], reverse=True)[:10]:
@@ -1718,7 +1447,7 @@ class RedLightGame(ChannelGame):
         fields = []
         if self.end_ts is not None:
             fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-        return game_embed(
+        return build_game_layout(
             "Red Light Green Light",
             body,
             emoji="🟢",
@@ -1731,7 +1460,7 @@ class RedLightGame(ChannelGame):
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(30)
-        self.message = await send_dest(dest, embed=self._embed())
+        self.message = await send_dest(dest, layout=self._layout())
         self.task = asyncio.create_task(self._run())
 
     async def _run(self) -> None:
@@ -1743,7 +1472,7 @@ class RedLightGame(ChannelGame):
                 self.green = not self.green
                 if self.message:
                     try:
-                        await self.message.edit(embed=self._embed())
+                        await self.message.edit(layout=self._layout())
                     except discord.HTTPException:
                         pass
             if self.finished:
@@ -1781,7 +1510,7 @@ class RedLightGame(ChannelGame):
         alive = {uid: sc for uid, sc in self.scores.items() if uid not in self.eliminated}
         pool = alive if alive else self.scores
         if not pool:
-            e = result_embed(
+            e = result_layout(
                 "Red Light Green Light",
                 "Nobody scored this time.",
                 emoji="🟢",
@@ -1804,7 +1533,7 @@ class RedLightGame(ChannelGame):
                         winner_avatar = avatar_url(member)
                     await award_xp(self.bot, member, self.channel, DEFAULT_WIN_XP)
             label = "Winner" if len(winners) == 1 else "Winners"
-            e = result_embed(
+            e = result_layout(
                 "Red Light Green Light",
                 f"{label}: {mentions} with **{best}** point{'s' if best != 1 else ''}!",
                 emoji="🟢",
@@ -1815,15 +1544,12 @@ class RedLightGame(ChannelGame):
                 host=self.host_name,
                 host_avatar=self.host_avatar,
             )
-            if len(self.scores) > 1:
-                board = "\n".join(
-                    f"{self.names.get(uid, uid)} — **{sc}**"
-                    for uid, sc in sorted(self.scores.items(), key=lambda kv: kv[1], reverse=True)[:10]
-                )
-                e.add_field(name="Scoreboard", value=board[:1024], inline=False)
             result = f"🏆 {mentions} won Red Light Green Light with **{best}** point{'s' if best != 1 else ''}! (+{DEFAULT_WIN_XP} XP)"
         if self.message:
-            await end_game_message(self.message, e)
+            try:
+                await self.message.edit(layout=e)
+            except discord.HTTPException:
+                pass
         await self.finish(result=result)
 
 
@@ -1858,12 +1584,10 @@ class Arcade(commands.Cog):
             disabled = await self.bot.db.disabled_game_keys(guild.id)
             games = [item for item in MENU_GAMES if item[0] not in disabled]
         if not games:
-            await send_dest(dest, embed=make_embed("Games disabled", "All drop-in games are disabled in this server.", color=WARNING))
+            await send_dest(dest, layout=build_game_layout("Games disabled", "All drop-in games are disabled in this server.", phase="lose"))
             return
-        e = build_menu_embed(games)
-        view = GamesDropMenu(self, games)
-        msg = await send_dest(dest, embed=e, view=view)
-        view.message = msg
+        layout = build_menu_layout(self, games)
+        msg = await send_dest(dest, layout=layout)
         channel_id = getattr(getattr(dest, "channel", None), "id", None)
         if channel_id and msg is not None:
             self.bot.game_sessions.remember_menu(channel_id, msg)
@@ -1871,12 +1595,12 @@ class Arcade(commands.Cog):
     async def drop_game(self, dest: commands.Context | discord.Interaction, key: str) -> None:
         guild = getattr(dest, "guild", None)
         if guild is not None and not await self.bot.db.is_game_enabled(guild.id, key):
-            await send_dest(dest, embed=make_embed("Game disabled", "That game is disabled in this server.", color=DANGER), ephemeral=True)
+            await send_dest(dest, layout=build_game_layout("Game disabled", "That game is disabled in this server.", phase="lose"), ephemeral=True)
             return
         if key == "uno":
             uno = self.bot.get_cog("Uno")
             if uno is None:
-                await send_dest(dest, embed=make_embed("UNO isn't loaded", "Try again in a moment.", color=DANGER), ephemeral=True)
+                await send_dest(dest, layout=build_game_layout("UNO isn't loaded", "Try again in a moment.", phase="lose"), ephemeral=True)
                 return
             await uno.start_lobby(dest)  # type: ignore[attr-defined]
             return
@@ -1903,7 +1627,7 @@ class Arcade(commands.Cog):
             "hilo": self._start_hilo,
         }.get(key)
         if starter is None:
-            await send_dest(dest, content="I don't know that game.", ephemeral=True)
+            await send_dest(dest, layout=build_game_layout("Unknown game", "I don't know that game.", phase="lose"), ephemeral=True)
             return
         await starter(dest)
 

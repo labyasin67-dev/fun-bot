@@ -10,9 +10,8 @@ from typing import TYPE_CHECKING, Any
 import discord
 from discord.ext import commands
 
-from cogs.game_ui import game_embed, game_footer, result_embed
 from cogs.sessions import ChannelGame, award_xp, dest_user, launch_channel_game, send_dest
-from utils import WARNING, embed as make_embed
+from cogs.v2 import build_game_layout, result_layout
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -123,22 +122,26 @@ class UnoGame(ChannelGame):
         self.hands.setdefault(user_id, []).extend(taken)
         return taken
 
-    def lobby_embed(self) -> discord.Embed:
+    def lobby_layout(self):
         names = "\n".join(f"• {self.mention(uid)}" + (" (host)" if uid == self.host_id else "") for uid in self.players)
-        return game_embed(
+        return build_game_layout(
             "UNO lobby",
-            f"2–10 players. The host presses **Start** when you're ready.",
+            "2–10 players. The host presses **Start** when you're ready.",
             emoji="🃏",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("UNO lobby", self.host_name, extra=f"{len(self.players)}/{MAX_PLAYERS} players"),
+            footer=f"{len(self.players)}/{MAX_PLAYERS} players",
             fields=[("Players", names or "None yet", False)],
+            items=(
+                discord.ui.Button(label="➕ Join", style=discord.ButtonStyle.primary, custom_id="uno:join", callback=self.add_player),
+                discord.ui.Button(label="▶️ Start", style=discord.ButtonStyle.success, custom_id="uno:start", callback=self.start_game),
+                discord.ui.Button(label="🚪 Leave", style=discord.ButtonStyle.secondary, custom_id="uno:leave", callback=self.remove_player),
+            ),
         )
 
-    def board_embed(self) -> discord.Embed:
+    def board_layout(self):
         order = self.players if self.direction == 1 else list(reversed(self.players))
-        # Show turn order starting at current.
         start = order.index(self.current_id)
         cycle = order[start:] + order[:start]
         arrow = "↓ clockwise" if self.direction == 1 else "↑ counter-clockwise"
@@ -149,7 +152,7 @@ class UnoGame(ChannelGame):
         pending = ""
         if self.uno_pending and not self.uno_called:
             pending = f"\n\n⚠️ {self.mention(self.uno_pending)} has one card and hasn't called UNO!"
-        return game_embed(
+        return build_game_layout(
             "UNO",
             f"Top card: **{self.top().label()}**\nColour in play: {COLOR_EMOJI[self.current_color]}\n"
             f"Current turn: {self.mention(self.current_id)}\nDirection: {arrow}",
@@ -157,27 +160,31 @@ class UnoGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("UNO", self.host_name, extra=f"{len(self.players)} players"),
+            footer=f"{len(self.players)} players",
             fields=[("Turn order", counts + pending, False)],
+            items=(
+                discord.ui.Button(label="🃏 View Hand", style=discord.ButtonStyle.primary, custom_id="uno:hand", callback=self.show_hand),
+                discord.ui.Button(label="📣 UNO!", style=discord.ButtonStyle.success, custom_id="uno:uno", callback=self.call_uno),
+                discord.ui.Button(label="🙋 Catch", style=discord.ButtonStyle.danger, custom_id="uno:catch", callback=self.catch_uno),
+                discord.ui.Button(label="🚪 Leave", style=discord.ButtonStyle.secondary, custom_id="uno:leave", callback=self.remove_player),
+            ),
         )
 
     async def begin(self, dest: commands.Context | discord.Interaction) -> None:
         user = dest_user(dest)
         self.host_name = getattr(user, "display_name", user.name)
         self.host_avatar = _avatar_url(user)
-        self.lobby_view = LobbyView(self)
-        self.message = await send_dest(dest, embed=self.lobby_embed(), view=self.lobby_view)
+        self.message = await send_dest(dest, layout=self.lobby_layout())
 
-    async def refresh(self, interaction: discord.Interaction | None = None, *, view: discord.ui.View | None = None) -> None:
+    async def refresh(self, interaction: discord.Interaction | None = None) -> None:
         if self.message is None:
             return
-        embed = self.board_embed() if self.started else self.lobby_embed()
-        use_view = view if view is not None else (self.play_view if self.started else self.lobby_view)
+        layout = self.board_layout() if self.started else self.lobby_layout()
         try:
             if interaction is not None and not interaction.response.is_done():
-                await interaction.response.edit_message(embed=embed, view=use_view)
+                await interaction.response.edit_message(layout=layout)
             else:
-                await self.message.edit(embed=embed, view=use_view)
+                await self.message.edit(layout=layout)
         except discord.HTTPException:
             pass
 
@@ -207,11 +214,8 @@ class UnoGame(ChannelGame):
                 self.host_id = self.players[0]
             elif uid == self.host_id:
                 await interaction.response.edit_message(
-                    embed=make_embed("UNO lobby closed", "The host left before the game started.", color=WARNING),
-                    view=None,
+                    layout=build_game_layout("UNO lobby closed", "The host left before the game started.", phase="lose")
                 )
-                if self.lobby_view:
-                    self.lobby_view.stop()
                 await self.finish(result="UNO lobby closed — the host left.")
                 return
             else:
@@ -226,14 +230,8 @@ class UnoGame(ChannelGame):
         if self.uno_pending == uid:
             self.uno_pending = None
         if len(self.players) < 2:
-            if self.play_view:
-                for child in self.play_view.children:
-                    if isinstance(child, (discord.ui.Button, discord.ui.Select)):
-                        child.disabled = True
-                self.play_view.stop()
             await interaction.response.edit_message(
-                embed=make_embed("UNO ended", f"{interaction.user.mention} left, and there aren't enough players to continue.", color=WARNING),
-                view=self.play_view,
+                layout=build_game_layout("UNO ended", f"{interaction.user.mention} left, and there aren't enough players to continue.", phase="lose")
             )
             self._cancel_turn()
             await self.finish(result=f"UNO ended — {interaction.user.mention} left, and there aren't enough players to continue.")
@@ -284,8 +282,7 @@ class UnoGame(ChannelGame):
         elif first.kind == "draw2":
             self.draw_cards(self.current_id, 2)
             self.turn_index = 1 % len(self.players)
-        self.play_view = PlayView(self)
-        await self.refresh(interaction, view=self.play_view)
+        await self.refresh(interaction)
         self._arm_turn_timer()
 
     def _cancel_turn(self) -> None:
@@ -355,20 +352,35 @@ class UnoGame(ChannelGame):
         hand = self.hands.get(uid, [])
         playable = [c for c in hand if c.playable_on(self.top(), self.current_color, hand)]
         lines = [c.label() for c in hand] or ["(no cards)"]
-        e = game_embed(
-            "Your hand",
-            "\n".join(f"• {line}" for line in lines),
-            emoji="🃏",
-            phase="play",
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-            footer=game_footer("UNO", self.host_name, extra="your hand"),
-        )
+        body = "\n".join(f"• {line}" for line in lines)
+        footer = "your hand"
         if uid != self.current_id:
-            e.set_footer(text="It's not your turn — you can look, but you can't play yet.")
-            await interaction.response.send_message(embed=e, ephemeral=True)
+            footer = "It's not your turn — you can look, but you can't play yet."
+            await interaction.response.send_message(
+                layout=build_game_layout("Your hand", body, emoji="🃏", phase="play", host=self.host_name, host_avatar=self.host_avatar, footer=footer),
+                ephemeral=True,
+            )
             return
-        await interaction.response.send_message(embed=e, view=HandView(self, uid, playable), ephemeral=True)
+        items = []
+        if playable:
+            options = [discord.SelectOption(label=c.label()[:100], value=str(i)) for i, c in enumerate(playable[:25])]
+            select = discord.ui.Select(placeholder="Play a card…", min_values=1, max_values=1, options=options)
+
+            async def pick(interaction: discord.Interaction) -> None:
+                if interaction.user.id != uid:
+                    await interaction.response.send_message("This isn't your hand.", ephemeral=True)
+                    return
+                idx = int(select.values[0])
+                card = playable[idx]
+                await self.play_card(interaction, card)
+
+            select.callback = pick
+            items.append(select)
+        items.append(discord.ui.Button(label="🃏 Draw", style=discord.ButtonStyle.secondary, custom_id=f"uno:draw:{uid}", callback=self.draw_from_hand))
+        await interaction.response.send_message(
+            layout=build_game_layout("Your hand", body, emoji="🃏", phase="play", host=self.host_name, host_avatar=self.host_avatar, footer=footer, items=tuple(items)),
+            ephemeral=True,
+        )
 
     async def play_card(self, interaction: discord.Interaction, card: Card) -> None:
         uid = interaction.user.id
@@ -380,9 +392,16 @@ class UnoGame(ChannelGame):
             await interaction.response.send_message("You can't play that card.", ephemeral=True)
             return
         if card.kind in ("wild", "wild4"):
+            items = []
+            for color, emoji, label in (
+                ("red", "🔴", "Red"),
+                ("yellow", "🟡", "Yellow"),
+                ("green", "🟢", "Green"),
+                ("blue", "🔵", "Blue"),
+            ):
+                items.append(discord.ui.Button(label=f"{emoji} {label}", style=discord.ButtonStyle.secondary, custom_id=f"uno:wild:{color}", callback=lambda inter, c=color: self.play_wild(inter, card, c)))
             await interaction.response.send_message(
-                "Choose a colour for your wild.",
-                view=WildColorView(self, uid, card),
+                layout=build_game_layout("Choose a colour for your wild.", "", emoji="🃏", phase="play", items=tuple(items)),
                 ephemeral=True,
             )
             return
@@ -412,17 +431,12 @@ class UnoGame(ChannelGame):
         if remaining == 0:
             self.finished = True
             self._cancel_turn()
-            if self.play_view:
-                for child in self.play_view.children:
-                    if isinstance(child, (discord.ui.Button, discord.ui.Select)):
-                        child.disabled = True
-                self.play_view.stop()
             await award_xp(self.bot, interaction.user, self.channel, UNO_XP)
-            e = result_embed(
+            e = result_layout(
                 "UNO!",
                 f"{interaction.user.mention} played {card.label()} and went out!",
-                emoji="🃏",
                 phase="win",
+                emoji="🃏",
                 xp=UNO_XP,
                 play_again="Start a fresh lobby with `.uno`.",
                 winner_avatar=_avatar_url(interaction.user),
@@ -430,10 +444,10 @@ class UnoGame(ChannelGame):
                 host_avatar=self.host_avatar,
             )
             if not interaction.response.is_done():
-                await interaction.response.edit_message(content="You win!", embed=None, view=None)
+                await interaction.response.edit_message(layout=build_game_layout("You win!", ""))
             if self.message:
                 try:
-                    await self.message.edit(embed=e, view=self.play_view)
+                    await self.message.edit(layout=e)
                 except discord.HTTPException:
                     pass
             await self.finish(result=f"🏆 {interaction.user.mention} won UNO! (+{UNO_XP} XP)")
@@ -458,10 +472,10 @@ class UnoGame(ChannelGame):
         else:
             self._advance(1)
         if not interaction.response.is_done():
-            await interaction.response.edit_message(content=f"Played {card.label()}.", embed=None, view=None)
+            await interaction.response.edit_message(layout=build_game_layout(f"Played {card.label()}.", ""))
         else:
             try:
-                await interaction.edit_original_response(content=f"Played {card.label()}.", embed=None, view=None)
+                await interaction.edit_original_response(layout=build_game_layout(f"Played {card.label()}.", ""))
             except discord.HTTPException:
                 pass
         await self.refresh()
@@ -475,9 +489,13 @@ class UnoGame(ChannelGame):
         taken = self.draw_cards(uid, 1)
         self._open_catch_window_clear()
         if taken and taken[0].playable_on(self.top(), self.current_color, self.hands[uid]):
+            card = taken[0]
+            items = [
+                discord.ui.Button(label="▶️ Play it", style=discord.ButtonStyle.success, custom_id=f"uno:drawn:play:{uid}", callback=lambda inter: self.play_card(inter, card)),
+                discord.ui.Button(label="✋ Keep it", style=discord.ButtonStyle.secondary, custom_id=f"uno:drawn:keep:{uid}", callback=self.keep_drawn),
+            ]
             await interaction.response.send_message(
-                f"You drew {taken[0].label()}. You can play it or keep it.",
-                view=DrawnCardView(self, uid, taken[0]),
+                layout=build_game_layout(f"You drew {card.label()}. You can play it or keep it.", "", emoji="🃏", phase="play", items=tuple(items)),
                 ephemeral=True,
             )
             return
@@ -492,145 +510,9 @@ class UnoGame(ChannelGame):
             await interaction.response.send_message("It's not your turn.", ephemeral=True)
             return
         self._advance(1)
-        await interaction.response.edit_message(content="Kept the card. Turn passed.", view=None)
+        await interaction.response.edit_message(layout=build_game_layout("Kept the card.", "Turn passed."))
         await self.refresh()
         self._arm_turn_timer()
-
-
-class LobbyView(discord.ui.View):
-    def __init__(self, game: UnoGame):
-        super().__init__(timeout=300)
-        self.game = game
-
-    async def on_timeout(self) -> None:
-        if self.game.started or self.game.finished:
-            return
-        if self.game.message:
-            try:
-                await self.game.message.edit(embed=make_embed("UNO lobby closed", "The lobby timed out.", color=WARNING), view=None)
-            except discord.HTTPException:
-                pass
-        await self.game.finish(result="⏰ UNO lobby timed out.")
-
-    @discord.ui.button(label="➕ Join", style=discord.ButtonStyle.primary)
-    async def join(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self.game.add_player(interaction)
-
-    @discord.ui.button(label="▶️ Start", style=discord.ButtonStyle.success)
-    async def start(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self.game.start_game(interaction)
-
-    @discord.ui.button(label="🚪 Leave", style=discord.ButtonStyle.secondary)
-    async def leave(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self.game.remove_player(interaction)
-
-
-class PlayView(discord.ui.View):
-    def __init__(self, game: UnoGame):
-        super().__init__(timeout=None)
-        self.game = game
-
-    @discord.ui.button(label="🃏 View Hand", style=discord.ButtonStyle.primary)
-    async def hand(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self.game.show_hand(interaction)
-
-    @discord.ui.button(label="📣 UNO!", style=discord.ButtonStyle.success)
-    async def uno(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self.game.call_uno(interaction)
-
-    @discord.ui.button(label="🙋 Catch", style=discord.ButtonStyle.danger)
-    async def catch(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self.game.catch_uno(interaction)
-
-    @discord.ui.button(label="🚪 Leave", style=discord.ButtonStyle.secondary)
-    async def leave(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self.game.remove_player(interaction)
-
-
-class HandView(discord.ui.View):
-    def __init__(self, game: UnoGame, user_id: int, playable: list[Card]):
-        super().__init__(timeout=60)
-        self.game = game
-        self.user_id = user_id
-        self.playable = playable
-        if playable:
-            options = []
-            for i, card in enumerate(playable[:25]):
-                options.append(discord.SelectOption(label=card.label()[:100], value=str(i)))
-            self.add_item(PlaySelect(options))
-
-    @discord.ui.button(label="🃏 Draw", style=discord.ButtonStyle.secondary)
-    async def draw(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        if interaction.user.id != self.user_id:
-            await interaction.response.send_message("This isn't your hand.", ephemeral=True)
-            return
-        await self.game.draw_from_hand(interaction)
-
-
-class PlaySelect(discord.ui.Select):
-    def __init__(self, options: list[discord.SelectOption]):
-        super().__init__(placeholder="Play a card…", min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: discord.Interaction) -> None:
-        view = self.view
-        assert isinstance(view, HandView)
-        if interaction.user.id != view.user_id:
-            await interaction.response.send_message("This isn't your hand.", ephemeral=True)
-            return
-        idx = int(self.values[0])
-        card = view.playable[idx]
-        await view.game.play_card(interaction, card)
-
-
-class WildColorView(discord.ui.View):
-    def __init__(self, game: UnoGame, user_id: int, card: Card):
-        super().__init__(timeout=30)
-        self.game = game
-        self.user_id = user_id
-        self.card = card
-        for color, emoji, style in (
-            ("red", "🔴 Red", discord.ButtonStyle.danger),
-            ("yellow", "🟡 Yellow", discord.ButtonStyle.secondary),
-            ("green", "🟢 Green", discord.ButtonStyle.success),
-            ("blue", "🔵 Blue", discord.ButtonStyle.primary),
-        ):
-            self.add_item(ColorButton(color, emoji, style))
-
-
-class ColorButton(discord.ui.Button):
-    def __init__(self, color: str, label: str, style: discord.ButtonStyle):
-        super().__init__(label=label, style=style)
-        self.color = color
-
-    async def callback(self, interaction: discord.Interaction) -> None:
-        view = self.view
-        assert isinstance(view, WildColorView)
-        if interaction.user.id != view.user_id:
-            await interaction.response.send_message("This isn't your play.", ephemeral=True)
-            return
-        await view.game.play_wild(interaction, view.card, self.color)
-
-
-class DrawnCardView(discord.ui.View):
-    def __init__(self, game: UnoGame, user_id: int, card: Card):
-        super().__init__(timeout=30)
-        self.game = game
-        self.user_id = user_id
-        self.card = card
-
-    @discord.ui.button(label="▶️ Play it", style=discord.ButtonStyle.success)
-    async def play(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        if interaction.user.id != self.user_id:
-            await interaction.response.send_message("This isn't your card.", ephemeral=True)
-            return
-        await self.game.play_card(interaction, self.card)
-
-    @discord.ui.button(label="✋ Keep it", style=discord.ButtonStyle.secondary)
-    async def keep(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        if interaction.user.id != self.user_id:
-            await interaction.response.send_message("This isn't your card.", ephemeral=True)
-            return
-        await self.game.keep_drawn(interaction)
 
 
 class Uno(commands.Cog):
@@ -642,9 +524,7 @@ class Uno(commands.Cog):
     async def start_lobby(self, dest: commands.Context | discord.Interaction) -> None:
         guild = getattr(dest, "guild", None)
         if guild is not None and not await self.bot.db.is_game_enabled(guild.id, "uno"):
-            from cogs.sessions import send_dest
-            from utils import DANGER, embed as make_embed
-            await send_dest(dest, embed=make_embed("Game disabled", "UNO is disabled in this server.", color=DANGER), ephemeral=True)
+            await send_dest(dest, layout=build_game_layout("Game disabled", "UNO is disabled in this server.", phase="lose"), ephemeral=True)
             return
         async def factory(bot, channel, host_id):
             return UnoGame(bot, channel, host_id)

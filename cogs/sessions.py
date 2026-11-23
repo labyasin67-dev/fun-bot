@@ -11,8 +11,6 @@ from typing import TYPE_CHECKING, Any
 
 import discord
 
-from cogs.game_ui import clear_countdown
-
 if TYPE_CHECKING:
     from main import SocializeBot
 
@@ -144,7 +142,7 @@ async def award_xp(bot: SocializeBot, user: discord.abc.User, channel: discord.a
 
 async def refuse_if_busy(ctx: discord.Interaction | Any, bot: SocializeBot) -> bool:
     """If a game is already running in this channel, tell the user and return True."""
-    from utils import DANGER, embed as make_embed
+    from cogs.v2 import build_game_layout
 
     channel = ctx.channel
     channel_id = getattr(channel, "id", None)
@@ -156,40 +154,17 @@ async def refuse_if_busy(ctx: discord.Interaction | Any, bot: SocializeBot) -> b
     msg = "There's already a game running in this channel. Finish it or wait for it to end."
     if isinstance(ctx, discord.Interaction):
         if ctx.response.is_done():
-            await ctx.followup.send(msg, ephemeral=True)
+            await ctx.followup.send(layout=build_game_layout("Game in progress", msg), ephemeral=True)
         else:
-            await ctx.response.send_message(msg, ephemeral=True)
+            await ctx.response.send_message(layout=build_game_layout("Game in progress", msg), ephemeral=True)
     else:
-        await ctx.send(embed=make_embed("Game in progress", msg, color=DANGER), ephemeral=True)
+        await ctx.send(layout=build_game_layout("Game in progress", msg), ephemeral=True)
     return True
 
 
 
 def dest_user(dest: discord.Interaction | Any) -> discord.abc.User:
     return dest.user if isinstance(dest, discord.Interaction) else dest.author
-
-
-async def end_game_message(message, result_embed, view=None) -> None:
-    """Keep the original game embed, disable its controls, and post the result separately."""
-    if view is not None:
-        for child in getattr(view, "children", []):
-            try:
-                child.disabled = True
-            except Exception:
-                pass
-        try:
-            embeds = getattr(message, "embeds", None)
-            if embeds:
-                original = embeds[0]
-                clear_countdown(original)
-            # Always edit the view to disable controls; pass embed=None to satisfy test expectation
-            await message.edit(view=view, embed=None)
-        except Exception:
-            pass
-    try:
-        await message.channel.send(embed=result_embed)
-    except Exception:
-        pass
 
 
 async def end_game_message_v2(message, result_embed, layout, *, timeout: bool = False, ended_at: int | None = None) -> None:
@@ -212,13 +187,13 @@ async def end_game_message_v2(message, result_embed, layout, *, timeout: bool = 
     layout.disable_items()
     # Edit the message with the updated layout
     try:
-        await message.edit(view=layout)
-    except Exception:
+        await message.edit(layout=layout)
+    except discord.HTTPException:
         pass
     # Post the result as a separate message
     try:
-        await message.channel.send(embed=result_embed)
-    except Exception:
+        await message.channel.send(layout=result_embed)
+    except discord.HTTPException:
         pass
 
 
@@ -226,20 +201,21 @@ async def send_dest(
     dest: discord.Interaction | Any,
     *,
     view: discord.ui.View | None = None,
-    embed: discord.Embed | None = None,
     **kwargs,
 ) -> discord.Message | None:
     if isinstance(dest, discord.Interaction):
         if dest.response.is_done():
-            msg = await dest.followup.send(view=view, embed=embed, **kwargs)
+            msg = await dest.followup.send(view=view, **kwargs)
             return msg  # type: ignore[return-value]
-        await dest.response.send_message(view=view, embed=embed, **kwargs)
+        await dest.response.send_message(view=view, **kwargs)
         return await dest.original_response()
-    return await dest.send(view=view, embed=embed, **kwargs)
+    return await dest.send(view=view, **kwargs)
 
 
 async def launch_channel_game(dest: discord.Interaction | Any, bot: Any, factory) -> ChannelGame | None:
     """Create and register a channel game, or refuse if one is already running."""
+    from cogs.v2 import build_game_layout
+
     if await refuse_if_busy(dest, bot):
         return None
     channel = dest.channel
@@ -251,7 +227,7 @@ async def launch_channel_game(dest: discord.Interaction | Any, bot: Any, factory
         if isinstance(dest, discord.Interaction) and not dest.response.is_done():
             await dest.response.send_message("There's already a game running in this channel.", ephemeral=True)
         elif not isinstance(dest, discord.Interaction):
-            from utils import DANGER, embed as make_embed
-            await dest.send(embed=make_embed("Game in progress", "There's already a game running in this channel.", color=DANGER), ephemeral=True)
+            await dest.send(layout=build_game_layout("Game in progress", "There's already a game running in this channel."), ephemeral=True)
         return None
     return game
+
