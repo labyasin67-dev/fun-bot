@@ -329,6 +329,7 @@ class GamesMenuEmbedTests(unittest.TestCase):
 
     def test_chat_guess_embed(self):
         import cogs.arcade
+        from cogs.hints import HintPlan
         game = cogs.arcade.ChatGuessGame.__new__(cogs.arcade.ChatGuessGame)
         game.title = "Test"
         game.prompt = "What is 2+2?"
@@ -346,6 +347,7 @@ class GamesMenuEmbedTests(unittest.TestCase):
         game.end_ts = None
         game.host_name = None
         game.host_avatar = None
+        game._hint_plan = HintPlan("4", timeout=30, stage_fractions=(0.35, 0.55, 0.75, 0.90)).build(seed=42)
         e = game._embed(phase="play")
         self.assertIsNotNone(e)
 
