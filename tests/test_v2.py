@@ -70,6 +70,12 @@ class CountdownTextTests(_V2Base):
         end_ts, text = countdown_field(0)
         self.assertEqual(text, f"⏳ Ends <t:{end_ts}:R>")
 
+    def test_timeout_wording(self):
+        self.assertEqual(countdown_text(1_700_000_000, timeout=True), "⌛ Time's up <t:1700000000:R>")
+
+    def test_ended_at_custom_timestamp(self):
+        self.assertEqual(countdown_text(1_700_000_000, ended=True), "✅ Ended <t:1700000000:R>")
+
 
 class BuildGameLayoutTests(_V2Base):
     def test_layout_is_layout_view(self):
@@ -107,6 +113,17 @@ class BuildGameLayoutTests(_V2Base):
         layout = build_game_layout("G", "b", countdown="⏳ Ends <t:100:R>")
         layout.set_countdown(100, ended=True)
         self.assertEqual(layout.countdown_td.content, "✅ Ended <t:100:R>")
+
+    def test_countdown_timeout_wording(self):
+        layout = build_game_layout("G", "b", countdown="⏳ Ends <t:100:R>")
+        layout.set_countdown(100, timeout=True)
+        self.assertEqual(layout.countdown_td.content, "⌛ Time's up <t:100:R>")
+
+    def test_countdown_ended_at_custom(self):
+        layout = build_game_layout("G", "b", countdown="⏳ Ends <t:100:R>")
+        layout.set_countdown(200, ended=True)
+        self.assertEqual(layout.countdown_td.content, "✅ Ended <t:200:R>")
+        self.assertEqual(layout.end_ts, 200)
 
     def test_host_avatar_section(self):
         layout = build_game_layout("G", "b", host="Alice", host_avatar="https://example.com/a.png")

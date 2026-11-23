@@ -190,6 +190,36 @@ async def end_game_message(message, result_embed, view=None) -> None:
         pass
 
 
+async def end_game_message_v2(message, result_embed, layout, *, timeout: bool = False, ended_at: int | None = None) -> None:
+    """End a V2 game message: update countdown to ended/timeout, disable controls, post result.
+
+    Args:
+        message: The message to edit (the original game message)
+        result_embed: The result embed to send as a followup message
+        layout: The GameLayout instance to update
+        timeout: If True, use "Time's up" wording instead of "Ended"
+        ended_at: Optional custom end timestamp (for "finished early" case).
+                  If provided, this timestamp is used for the countdown instead of the layout's original end_ts.
+    """
+    # Update countdown to ended/timeout state
+    if layout.countdown_td is not None:
+        end_ts = ended_at if ended_at is not None else layout.end_ts
+        if end_ts is not None:
+            layout.set_countdown(end_ts, ended=not timeout, timeout=timeout)
+    # Disable all interactive components
+    layout.disable_items()
+    # Edit the message with the updated layout
+    try:
+        await message.edit(view=layout)
+    except Exception:
+        pass
+    # Post the result as a separate message
+    try:
+        await message.channel.send(embed=result_embed)
+    except Exception:
+        pass
+
+
 async def send_dest(
     dest: discord.Interaction | Any,
     *,

@@ -81,12 +81,15 @@ def _styled_title(title: str, emoji: str | None) -> str:
     return title
 
 
-def countdown_text(end_ts: int, *, ended: bool = False) -> str:
+def countdown_text(end_ts: int, *, ended: bool = False, timeout: bool = False) -> str:
     """Return the countdown TextDisplay content for a given end timestamp.
 
     While the game is live: ``⏳ Ends <t:END:R>`` (Discord renders "in N seconds").
     Once the game is over: ``✅ Ended <t:END:R>`` (Discord renders "N seconds ago").
+    On timeout: ``⌛ Time's up <t:END:R>``.
     """
+    if timeout:
+        return f"⌛ Time's up <t:{end_ts}:R>"
     if ended:
         return f"✅ Ended <t:{end_ts}:R>"
     return f"⏳ Ends <t:{end_ts}:R>"
@@ -128,6 +131,7 @@ class GameLayout(discord.ui.LayoutView):
         self.media_gallery: discord.MediaGallery | None = None
         self.footer_td: discord.TextDisplay | None = None
         self.action_rows: list[discord.ActionRow] = []
+        self._end_ts: int | None = None
 
     # -- mutation helpers -------------------------------------------------
 
@@ -144,11 +148,17 @@ class GameLayout(discord.ui.LayoutView):
         else:
             self.hint_td.content = _clip(text, MAX_TEXT_DISPLAY)
 
-    def set_countdown(self, end_ts: int, *, ended: bool = False) -> None:
-        """Replace the countdown TextDisplay content (live -> ended wording)."""
+    def set_countdown(self, end_ts: int, *, ended: bool = False, timeout: bool = False) -> None:
+        """Replace the countdown TextDisplay content (live -> ended/timeout wording)."""
         if self.countdown_td is None:
             return
-        self.countdown_td.content = countdown_text(end_ts, ended=ended)
+        self._end_ts = end_ts
+        self.countdown_td.content = countdown_text(end_ts, ended=ended, timeout=timeout)
+
+    @property
+    def end_ts(self) -> int | None:
+        """Return the stored end timestamp, if any."""
+        return self._end_ts
 
     def disable_items(self) -> None:
         """Disable every Button and Select in every ActionRow."""
