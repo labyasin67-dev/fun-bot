@@ -800,6 +800,10 @@ class ReactionView(discord.ui.View):
         await self.game.on_click(interaction)
 
 
+# How many seconds the Reaction button stays live after it flips to GO!.
+REACTION_LIVE_SECONDS = 10
+
+
 class ReactionGame(ChannelGame):
     def __init__(self, bot, channel, host_id: int) -> None:
         super().__init__(bot, channel, host_id)
@@ -809,17 +813,20 @@ class ReactionGame(ChannelGame):
         self.view: ReactionView | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
+        self.seconds_left: int | None = None
 
     def _embed(self, *, live: bool = False) -> discord.Embed:
         fields = []
         if self.eliminated:
             count = len(self.eliminated)
             fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
-        description = (
-            "**GO!** First to click the button or type `go` wins."
-            if live
-            else "Wait for it…\nDon't click or type **go** until the message says **GO!**"
-        )
+        if live:
+            left = f"{self.seconds_left}s left" if self.seconds_left is not None else "GO!"
+            description = f"**GO!** First to click the button or type `go` wins.\n{left}"
+            extra = left
+        else:
+            description = "Wait for it…\nDon't click or type **go** until the message says **GO!**"
+            extra = f"{REACTION_LIVE_SECONDS}s max"
         return game_embed(
             "Reaction",
             description,
@@ -827,7 +834,7 @@ class ReactionGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Reaction", self.host_name, extra="GO!" if live else "20s max"),
+            footer=game_footer("Reaction", self.host_name, extra=extra),
             fields=fields,
         )
 
@@ -861,7 +868,13 @@ class ReactionGame(ChannelGame):
                     await self.message.edit(embed=self._embed(live=True), view=self.view)
                 except discord.HTTPException:
                     pass
-            await asyncio.sleep(10)
+            for remaining in range(REACTION_LIVE_SECONDS, 0, -1):
+                if self.finished:
+                    return
+                self.seconds_left = remaining
+                await self.refresh()
+                await asyncio.sleep(1)
+            self.seconds_left = None
             if not self.finished:
                 if self.view:
                     for child in self.view.children:
