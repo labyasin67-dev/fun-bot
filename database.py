@@ -259,6 +259,9 @@ class Database:
                 "UPDATE members SET xp = xp + ? WHERE guild_id = ? AND user_id = ?",
                 (amount, guild_id, user_id),
             )
+        await self.db.commit()
+        return old, old + amount
+
     async def set_xp(self, guild_id: int, user_id: int, xp: int) -> tuple[int, int]:
         """Set XP to an exact value (clamped at 0) and return (old_xp, new_xp)."""
         await self.ensure_member(guild_id, user_id)

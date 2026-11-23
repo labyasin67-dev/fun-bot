@@ -14,6 +14,7 @@ from utils import (
     COLOR,
     DANGER,
     SUCCESS,
+    WARNING,
     embed as make_embed,
     format_duration,
     level_from_xp,

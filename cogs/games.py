@@ -13,7 +13,7 @@ from discord.ext import commands
 
 from utils import DANGER, SUCCESS, WARNING, embed as make_embed
 
-from cogs.game_ui import clear_countdown, countdown_field, game_embed, game_footer, result_embed
+from cogs.game_ui import countdown_field, clear_countdown, game_embed, result_embed
 from cogs.sessions import end_game_message
 
 if TYPE_CHECKING:

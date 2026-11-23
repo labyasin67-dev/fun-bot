@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import html
 import random
-import string
 from typing import TYPE_CHECKING, Any, Callable
 
 import aiohttp
@@ -14,7 +13,13 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs import banks
-from cogs.game_ui import game_embed, game_footer, games_menu_embed, result_embed
+from cogs.game_ui import (
+    countdown_field,
+    game_embed,
+    game_footer,
+    games_menu_embed,
+    result_embed,
+)
 from cogs.sessions import (
     DEFAULT_WIN_XP,
     ChannelGame,

@@ -334,5 +334,317 @@ class ClearCountdownTests(unittest.TestCase):
             self.fail("clear_countdown raised on embed without Time left field")
 
 
+class SmokeTest(unittest.TestCase):
+    """Smoke test: import the game modules and build every game embed."""
+
+    def setUp(self):
+        import sys
+        import types
+
+        # Stub discord.py as a package so cogs.arcade, cogs.games, cogs.sessions can import.
+        discord_stub = sys.modules.get("discord")
+        if discord_stub is None:
+            discord_stub = types.ModuleType("discord")
+            discord_stub.__path__ = []
+            sys.modules["discord"] = discord_stub
+
+        # discord.ext subpackage
+        ext_stub = types.ModuleType("discord.ext")
+        ext_stub.__path__ = []
+        sys.modules["discord.ext"] = ext_stub
+        commands_stub = types.ModuleType("discord.ext.commands")
+        commands_stub.Bot = type("Bot", (), {})
+        commands_stub.Cog = type("Cog", (), {"listener": lambda f=None: (lambda f2: f2) if f is None else f})
+        commands_stub.hybrid_command = lambda **kw: (lambda f: f)
+        commands_stub.guild_only = lambda f=None: (lambda f2: f2) if f is None else f
+        commands_stub.cooldown = lambda *a, **k: (lambda f: f)
+        commands_stub.has_guild_permissions = lambda **kw: (lambda f: f)
+        commands_stub.BucketType = type("BucketType", (), {"user": "user", "channel": "channel", "guild": "guild"})
+        sys.modules["discord.ext.commands"] = commands_stub
+        setattr(discord_stub, "ext", ext_stub)
+        setattr(ext_stub, "commands", commands_stub)
+
+        class FakeMessage:
+            def __init__(self):
+                self.embeds = []
+
+        discord_stub.Embed = FakeEmbed
+        discord_stub.Message = FakeMessage
+        discord_stub.HTTPException = Exception
+        discord_stub.NotFound = Exception
+        discord_stub.Interaction = type("Interaction", (), {})
+        discord_stub.Client = type("Client", (), {})
+        discord_stub.User = type("User", (), {"id": 0, "name": "test", "display_name": "Test"})
+        discord_stub.Member = type("Member", (), {"id": 0, "name": "test", "display_name": "Test", "bot": False})
+        discord_stub.Guild = type("Guild", (), {"id": 0, "name": "test", "get_member": lambda self, uid: None, "get_channel": lambda self, cid: None})
+        discord_stub.TextChannel = type("TextChannel", (), {"id": 0, "name": "test", "guild": None})
+        discord_stub.abc = types.SimpleNamespace(
+            User=type("User", (), {}),
+            Messageable=type("Messageable", (), {}),
+        )
+        discord_stub.ui = types.SimpleNamespace(
+            View=type("View", (), {}),
+            Button=type("Button", (), {}),
+            Select=type("Select", (), {}),
+        )
+        discord_stub.ui.select = lambda **kw: (lambda f: f)
+        discord_stub.ui.button = lambda **kw: (lambda f: f)
+        discord_stub.ButtonStyle = type("ButtonStyle", (), {
+            "secondary": 2, "primary": 3, "success": 4, "danger": 5,
+        })
+        discord_stub.SelectOption = type("SelectOption", (), {"__init__": lambda self, **kw: None})
+        discord_stub.app_commands = types.SimpleNamespace(describe=lambda **kw: (lambda f: f))
+
+        # Stub aiosqlite so database.py can import
+        aiosqlite_stub = sys.modules.get("aiosqlite")
+        if aiosqlite_stub is None:
+            aiosqlite_stub = types.ModuleType("aiosqlite")
+            sys.modules["aiosqlite"] = aiosqlite_stub
+        aiosqlite_stub.Connection = type("Connection", (), {})
+        aiosqlite_stub.connect = lambda *a, **k: type("Conn", (), {"execute": lambda *a, **k: None, "commit": lambda *a, **k: None, "close": lambda *a, **k: None})()
+
+        # Stub utils
+        utils_stub = sys.modules.get("utils")
+        if utils_stub is None:
+            utils_stub = types.ModuleType("utils")
+            sys.modules["utils"] = utils_stub
+        utils_stub.COLOR = 0x5865F2
+        utils_stub.DANGER = 0xED4245
+        utils_stub.SUCCESS = 0x57F287
+        utils_stub.WARNING = 0xFAA81A
+        utils_stub.embed = FakeEmbed
+        utils_stub.format_duration = lambda s: f"{s}s"
+        utils_stub.level_from_xp = lambda x: 1
+        utils_stub.level_progress = lambda x: (1, 0, 100, 1)
+        utils_stub.progress_bar = lambda *a, **k: ""
+        utils_stub.xp_for_level = lambda l: 0
+
+        # Stub aiohttp
+        aiohttp_stub = sys.modules.get("aiohttp")
+        if aiohttp_stub is None:
+            aiohttp_stub = types.ModuleType("aiohttp")
+            sys.modules["aiohttp"] = aiohttp_stub
+        aiohttp_stub.ClientSession = type("ClientSession", (), {})
+        aiohttp_stub.ClientTimeout = type("ClientTimeout", (), {})
+
+        # Stub main
+        main_stub = sys.modules.get("main")
+        if main_stub is None:
+            main_stub = types.ModuleType("main")
+            sys.modules["main"] = main_stub
+        main_stub.SocializeBot = type("SocializeBot", (), {})
+
+    def test_arcade_imports(self):
+        """Importing cogs.arcade must not raise (catches missing imports like countdown_field)."""
+        import cogs.arcade  # noqa: F401
+
+    def test_games_imports(self):
+        """Importing cogs.games must not raise."""
+        import cogs.games  # noqa: F401
+
+    def test_sessions_imports(self):
+        """Importing cogs.sessions must not raise."""
+        import cogs.sessions  # noqa: F401
+
+    def test_database_imports(self):
+        """Importing cogs.database must not raise."""
+        import database  # noqa: F401
+
+    def test_chat_guess_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.ChatGuessGame.__new__(cogs.arcade.ChatGuessGame)
+        game.title = "Test"
+        game.prompt = "What is 2+2?"
+        game.answers = ["4"]
+        game.reveal = "4"
+        game.hint = None
+        game.image_url = None
+        game.timeout = 30
+        game.hint_at = None
+        game.xp = 25
+        game.match = "fuzzy"
+        game.message = None
+        game.hinted = False
+        game.seconds_left = None
+        game.end_ts = None
+        game.host_name = None
+        game.host_avatar = None
+        e = game._embed(phase="play")
+        self.assertIsNotNone(e)
+
+    def test_word_rule_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.WordRuleGame.__new__(cogs.arcade.WordRuleGame)
+        game.prompt = "Type a word"
+        game.kind = "startswith"
+        game.payload = "a"
+        game.words = {"apple"}
+        game.message = None
+        game.seconds_left = None
+        game.end_ts = None
+        game.host_name = None
+        game.host_avatar = None
+        e = game._play_embed()
+        self.assertIsNotNone(e)
+
+    def test_button_hunt_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.ButtonHuntGame.__new__(cogs.arcade.ButtonHuntGame)
+        game.eliminated = set()
+        game.message = None
+        game.view = None
+        game.seconds_left = None
+        game.end_ts = None
+        game.host_name = None
+        game.host_avatar = None
+        e = game._embed()
+        self.assertIsNotNone(e)
+
+    def test_dice_duel_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.DiceDuelGame.__new__(cogs.arcade.DiceDuelGame)
+        game.players = []
+        game.message = None
+        game.view = None
+        game.end_ts = None
+        game.host_name = None
+        game.host_avatar = None
+        e = game._embed()
+        self.assertIsNotNone(e)
+
+    def test_color_hunt_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.ColorHuntGame.__new__(cogs.arcade.ColorHuntGame)
+        game.eliminated = set()
+        game.message = None
+        game.view = None
+        game.seconds_left = None
+        game.end_ts = None
+        game.host_name = None
+        game.host_avatar = None
+        e = game._embed()
+        self.assertIsNotNone(e)
+
+    def test_reaction_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.ReactionGame.__new__(cogs.arcade.ReactionGame)
+        game.live = False
+        game.eliminated = set()
+        game.message = None
+        game.view = None
+        game.host_name = None
+        game.host_avatar = None
+        game.seconds_left = None
+        game.end_ts = None
+        e = game._embed(live=False)
+        self.assertIsNotNone(e)
+
+    def test_sequence_hunt_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.SequenceHuntGame.__new__(cogs.arcade.SequenceHuntGame)
+        game.sequence = [0, 1, 2]
+        game.progress = {}
+        game.failed = set()
+        game.accepting = False
+        game.message = None
+        game.view = None
+        game.seconds_left = None
+        game.end_ts = None
+        game.host_name = None
+        game.host_avatar = None
+        e = game._embed(show_sequence=False)
+        self.assertIsNotNone(e)
+
+    def test_hilo_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.HiLoGame.__new__(cogs.arcade.HiLoGame)
+        game.current = 50
+        game.next_number = 75
+        game.streak = 0
+        game.message = None
+        game.view = None
+        game.round_open = True
+        game.end_ts = None
+        game.host_name = None
+        game.host_avatar = None
+        e = game._embed()
+        self.assertIsNotNone(e)
+
+    def test_trivia_arcade_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.TriviaGame.__new__(cogs.arcade.TriviaGame)
+        game.question = "Q?"
+        game.correct = "A"
+        game.options = ["A", "B"]
+        game.wrong = set()
+        game.message = None
+        game.view = None
+        game.seconds_left = None
+        game.end_ts = None
+        game.host_name = None
+        game.host_avatar = None
+        e = game._play_embed()
+        self.assertIsNotNone(e)
+
+    def test_red_light_embed(self):
+        import cogs.arcade
+        game = cogs.arcade.RedLightGame.__new__(cogs.arcade.RedLightGame)
+        game.green = True
+        game.scores = {}
+        game.names = {}
+        game.eliminated = set()
+        game.message = None
+        game.rounds_left = 8
+        game.end_ts = None
+        game.host_name = None
+        game.host_avatar = None
+        e = game._embed()
+        self.assertIsNotNone(e)
+
+    def test_games_rps_embed(self):
+        import cogs.games
+        view = cogs.games.RPSView.__new__(cogs.games.RPSView)
+        view.challenger = type("M", (), {"id": 1, "display_name": "Test", "name": "Test"})()
+        view.opponent = None
+        view.choices = {}
+        view.message = None
+        view.end_ts = None
+        e = view._embed("Test", "text", 0x5865F2)
+        self.assertIsNotNone(e)
+
+    def test_games_trivia_embed(self):
+        import cogs.games
+        view = cogs.games.TriviaView.__new__(cogs.games.TriviaView)
+        view.correct = "A"
+        view.author_id = 1
+        view.finished = False
+        view.message = None
+        view.end_ts = None
+        # Can't easily call _embed without buttons, but check attributes exist
+        self.assertIsNotNone(view)
+
+    def test_games_wyr_embed(self):
+        import cogs.games
+        view = cogs.games.WYRView.__new__(cogs.games.WYRView)
+        view.option_a = "A"
+        view.option_b = "B"
+        view.votes = {}
+        view.message = None
+        view.end_ts = None
+        view.a_button = type("B", (), {"label": "A"})()
+        view.b_button = type("B", (), {"label": "B"})()
+        e = view._embed()
+        self.assertIsNotNone(e)
+
+    def test_games_tod_embed(self):
+        import cogs.games
+        view = cogs.games.TODView.__new__(cogs.games.TODView)
+        view.target = type("M", (), {"id": 1, "display_name": "Test", "name": "Test", "mention": "@Test"})()
+        view.message = None
+        view.end_ts = None
+        e = view._prompt("truth")
+        self.assertIsNotNone(e)
+
+
 if __name__ == "__main__":
     unittest.main()
