@@ -301,18 +301,50 @@ class ChatGuessGame(ChannelGame):
         self.match = match
         self.message: discord.Message | None = None
         self.hinted = False
+        self.host_name: str | None = None
+        self.host_avatar: str | None = None
 
     def _embed(self, *, phase: str, winner: discord.abc.User | None = None) -> discord.Embed:
+        emoji = MENU_EMOJI.get(self.title, "🎮")
         if phase == "win" and winner is not None:
-            e = make_embed("Correct!", f"{winner.mention} got it!\n\n**{self.reveal}**\n+{self.xp} XP", color=SUCCESS)
+            e = result_embed(
+                self.title,
+                f"{winner.mention} got it!",
+                emoji=emoji,
+                phase="win",
+                answer=self.reveal,
+                xp=self.xp,
+                play_again=f"Play again with `{command_for_title(self.title)}`.",
+                winner_avatar=avatar_url(winner),
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
         elif phase == "timeout":
-            e = make_embed("Time's up!", f"The answer was **{self.reveal}**.", color=WARNING)
+            e = result_embed(
+                self.title,
+                "Nobody got it in time.",
+                emoji=emoji,
+                phase="timeout",
+                answer=self.reveal,
+                play_again=f"Play again with `{command_for_title(self.title)}`.",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
         else:
-            e = make_embed(self.title, self.prompt)
+            fields = []
             if phase == "hint" and self.hint:
-                e.add_field(name="Hint", value=self.hint, inline=False)
+                fields.append(("💡 Hint", self.hint, False))
             remaining = self.timeout if phase == "play" else max(1, self.timeout - (self.hint_at or 0))
-            e.set_footer(text=f"{remaining}s left")
+            e = game_embed(
+                self.title,
+                self.prompt,
+                emoji=emoji,
+                phase="play",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+                footer=game_footer(self.title, self.host_name, extra=f"{remaining}s left"),
+                fields=fields,
+            )
         if self.image_url:
             e.set_image(url=self.image_url)
         return e
@@ -326,6 +358,7 @@ class ChatGuessGame(ChannelGame):
         return answers_match(text, self.answers)
 
     async def begin(self, dest: commands.Context | discord.Interaction) -> None:
+        self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.message = await send_dest(dest, embed=self._embed(phase="play"))
         self.task = asyncio.create_task(self._timer())
 
@@ -382,6 +415,8 @@ class WordRuleGame(ChannelGame):
         self.payload = payload
         self.words = words
         self.message: discord.Message | None = None
+        self.host_name: str | None = None
+        self.host_avatar: str | None = None
 
     def valid(self, text: str) -> bool:
         word = normalize_answer(text)
@@ -404,8 +439,16 @@ class WordRuleGame(ChannelGame):
         return False
 
     async def begin(self, dest) -> None:
-        e = make_embed("Word", f"{self.prompt}\n\nFirst valid English word wins. You have 30 seconds.")
-        e.set_footer(text="30s left")
+        self.host_name, self.host_avatar = host_details(dest, self.host_id)
+        e = game_embed(
+            "Word",
+            f"{self.prompt}\n\nFirst valid English word wins. You have 30 seconds.",
+            emoji="📝",
+            phase="play",
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+            footer=game_footer("Word", self.host_name, extra="30s left"),
+        )
         self.message = await send_dest(dest, embed=e)
         self.task = asyncio.create_task(self._timer())
 
@@ -415,7 +458,16 @@ class WordRuleGame(ChannelGame):
             if self.finished:
                 return
             if self.message:
-                await end_game_message(self.message, make_embed("Time's up!", "Nobody found a word that fits.", color=WARNING))
+                e = result_embed(
+                    "Word",
+                    "Nobody found a word that fits.",
+                    emoji="📝",
+                    phase="timeout",
+                    play_again=f"Play again with `{command_for_title('Word')}`.",
+                    host=self.host_name,
+                    host_avatar=self.host_avatar,
+                )
+                await end_game_message(self.message, e)
             await self.finish(result="⏰ Time's up! Nobody found a word that fits.")
         except asyncio.CancelledError:
             return
@@ -430,7 +482,17 @@ class WordRuleGame(ChannelGame):
             self.task.cancel()
         word = normalize_answer(message.content)
         await award_xp(self.bot, message.author, message.channel, DEFAULT_WIN_XP)
-        e = make_embed("Correct!", f"{message.author.mention} played **{word}**.\n+{DEFAULT_WIN_XP} XP", color=SUCCESS)
+        e = result_embed(
+            "Word",
+            f"{message.author.mention} played **{word}**",
+            emoji="📝",
+            phase="win",
+            xp=DEFAULT_WIN_XP,
+            play_again=f"Play again with `{command_for_title('Word')}`.",
+            winner_avatar=avatar_url(message.author),
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+        )
         if self.message:
             await end_game_message(self.message, e)
         await self.finish(result=f"🏆 {message.author.mention} won Word! Answer: **{word}** (+{DEFAULT_WIN_XP} XP)")
@@ -1371,6 +1433,8 @@ class RedLightGame(ChannelGame):
         self.eliminated: set[int] = set()
         self.message: discord.Message | None = None
         self.rounds_left = 8
+        self.host_name: str | None = None
+        self.host_avatar: str | None = None
 
     def _embed(self) -> discord.Embed:
         light = "🟢 **GREEN LIGHT** — type in chat to score!" if self.green else "🔴 **RED LIGHT** — don't type or you're out!"
@@ -1381,9 +1445,18 @@ class RedLightGame(ChannelGame):
         body = light
         if lines:
             body += "\n\n" + "\n".join(lines)
-        return make_embed("Red Light Green Light", body)
+        return game_embed(
+            "Red Light Green Light",
+            body,
+            emoji="🟢",
+            phase="play",
+            host=self.host_name,
+            host_avatar=self.host_avatar,
+            footer=game_footer("Red Light Green Light", self.host_name, extra=f"{self.rounds_left} rounds left"),
+        )
 
     async def begin(self, dest) -> None:
+        self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.message = await send_dest(dest, embed=self._embed())
         self.task = asyncio.create_task(self._run())
 
@@ -1433,24 +1506,47 @@ class RedLightGame(ChannelGame):
         self.finished = True
         alive = {uid: sc for uid, sc in self.scores.items() if uid not in self.eliminated}
         pool = alive if alive else self.scores
-        result = "⏰ Red Light Green Light ended — nobody scored."
         if not pool:
-            e = make_embed("Red Light Green Light", "Nobody scored this time.", color=WARNING)
+            e = result_embed(
+                "Red Light Green Light",
+                "Nobody scored this time.",
+                emoji="🟢",
+                phase="timeout",
+                play_again=f"Play again with `{command_for_title('Red Light Green Light')}`.",
+                host=self.host_name,
+                host_avatar=self.host_avatar,
+            )
+            result = "⏰ Red Light Green Light ended — nobody scored."
         else:
             best = max(pool.values())
             winners = [uid for uid, sc in pool.items() if sc == best]
             mentions = ", ".join(f"<@{uid}>" for uid in winners)
+            winner_avatar = None
             for uid in winners:
                 user = getattr(self.channel, "guild", None)
                 member = user.get_member(uid) if user else None
                 if member:
+                    if len(winners) == 1:
+                        winner_avatar = avatar_url(member)
                     await award_xp(self.bot, member, self.channel, DEFAULT_WIN_XP)
             label = "Winner" if len(winners) == 1 else "Winners"
-            e = make_embed(
+            e = result_embed(
                 "Red Light Green Light",
-                f"{label}: {mentions} with **{best}** point{'s' if best != 1 else ''}!\n+{DEFAULT_WIN_XP} XP",
-                color=SUCCESS,
+                f"{label}: {mentions} with **{best}** point{'s' if best != 1 else ''}!",
+                emoji="🟢",
+                phase="win",
+                xp=DEFAULT_WIN_XP,
+                play_again=f"Play again with `{command_for_title('Red Light Green Light')}`.",
+                winner_avatar=winner_avatar,
+                host=self.host_name,
+                host_avatar=self.host_avatar,
             )
+            if len(self.scores) > 1:
+                board = "\n".join(
+                    f"{self.names.get(uid, uid)} — **{sc}**"
+                    for uid, sc in sorted(self.scores.items(), key=lambda kv: kv[1], reverse=True)[:10]
+                )
+                e.add_field(name="Scoreboard", value=board[:1024], inline=False)
             result = f"🏆 {mentions} won Red Light Green Light with **{best}** point{'s' if best != 1 else ''}! (+{DEFAULT_WIN_XP} XP)"
         if self.message:
             await end_game_message(self.message, e)
