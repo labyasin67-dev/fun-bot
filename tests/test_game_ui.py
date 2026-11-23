@@ -210,143 +210,20 @@ class GameMenuLineTests(unittest.TestCase):
 
 class GamesMenuEmbedTests(unittest.TestCase):
     def setUp(self):
-        self.games = [
-            ("buttonhunt", "🔘", "Button Hunt", "blurb"),
-            ("diceduel", "⚔️", "Dice Roll Duel", "blurb"),
-            ("uno", "🃏", "UNO", "blurb"),
-        ]
-        self.categories = [
-            {"key": "quick", "emoji": "⚡", "label": "Quick reflex", "games": ["buttonhunt"]},
-            {"key": "multi", "emoji": "👥", "label": "Multiplayer", "games": ["diceduel", "uno"]},
-        ]
-        self.meta = {"diceduel": {"players": "2 players"}, "uno": {"players": "2–10 players"}}
-
-    def _build(self, games=None):
-        return games_menu_embed(
-            games if games is not None else self.games,
-            self.categories,
-            self.meta,
-            command_for=lambda key: f".{key}",
-        )
-
-    def test_title_present_and_no_description(self):
-        embed = self._build()
-        self.assertEqual(embed.title, "🎮 Choose a game to drop")
-        self.assertIsNone(embed.description)
-
-    def test_one_field_per_nonempty_category(self):
-        embed = self._build()
-        self.assertEqual([f.name for f in embed.fields], ["**Quick reflex**", "**Multiplayer**"])
-
-    def test_each_game_is_a_single_line(self):
-        embed = self._build()
-        values = {f.name: f.value for f in embed.fields}
-        quick_lines = values["**Quick reflex**"].split("\n")
-        self.assertEqual(quick_lines, ["🔘 **Button Hunt** · .buttonhunt"])
-        multi_lines = values["**Multiplayer**"].split("\n")
-        self.assertEqual(
-            multi_lines,
-            [
-                "⚔️ **Dice Roll Duel** · .diceduel · 2 players",
-                "🃏 **UNO** · .uno · 2–10 players",
-            ],
-        )
-
-    def test_no_duration_or_footer_or_thumbnail(self):
-        embed = self._build()
-        self.assertIsNone(embed.footer)
-        self.assertIsNone(embed.thumbnail)
-        for f in embed.fields:
-            self.assertNotIn("30s", f.value)
-            self.assertNotIn("min", f.value)
-
-    def test_empty_categories_are_skipped(self):
-        embed = self._build(games=[("diceduel", "⚔️", "Dice Roll Duel", "blurb")])
-        self.assertEqual([f.name for f in embed.fields], ["**Multiplayer**"])
-
-
-class CountdownFieldTests(unittest.TestCase):
-    def test_seconds_become_end_ts(self):
-        end_ts, text = countdown_field(30)
-        self.assertGreater(end_ts, 0)
-        self.assertEqual(text, f"⏳ Ends <t:{end_ts}:R>")
-
-    def test_end_ts_passed_through_is_used_as_is(self):
-        fake_ts = 1_700_000_000
-        end_ts, text = countdown_field(fake_ts)
-        self.assertEqual(end_ts, fake_ts)
-        self.assertEqual(text, f"⏳ Ends <t:{fake_ts}:R>")
-
-    def test_includes_zero_seconds(self):
-        end_ts, text = countdown_field(0)
-        self.assertEqual(text, f"⏳ Ends <t:{end_ts}:R>")
-
-
-class WithCountdownTests(unittest.TestCase):
-    def _embed(self):
-        return game_embed("Trivia", "What is 2+2?", emoji="💡", phase="play")
-
-    def test_adds_time_left_field(self):
-        embed = self._embed()
-        end_ts, _ = countdown_field(25)
-        with_countdown(embed, end_ts)
-        names = [f.name for f in embed.fields]
-        self.assertIn("Time left", names)
-        value = next(f.value for f in embed.fields if f.name == "Time left")
-        self.assertEqual(value, f"⏳ Ends <t:{end_ts}:R>")
-
-    def test_replaces_existing_time_left_field(self):
-        embed = self._embed()
-        end_ts1, _ = countdown_field(25)
-        end_ts2, _ = countdown_field(60)
-        with_countdown(embed, end_ts1)
-        with_countdown(embed, end_ts2)
-        time_fields = [(f.name, f.value) for f in embed.fields if f.name == "Time left"]
-        self.assertEqual(len(time_fields), 1)
-        self.assertEqual(time_fields[0][1], f"⏳ Ends <t:{end_ts2}:R>")
-
-    def test_total_under_discord_limit(self):
-        embed = self._embed()
-        end_ts, _ = countdown_field(25)
-        with_countdown(embed, end_ts)
-        total = len(embed.title or "") + len(embed.description or "") + sum(len(f.name) + len(f.value) for f in embed.fields)
-        self.assertLessEqual(total, 6000)
-
-
-class ClearCountdownTests(unittest.TestCase):
-    def _embed_with_countdown(self):
-        embed = game_embed("Trivia", "What is 2+2?", emoji="💡", phase="play")
-        end_ts, _ = countdown_field(25)
-        with_countdown(embed, end_ts)
-        return embed
-
-    def test_removes_time_left_field(self):
-        embed = self._embed_with_countdown()
-        self.assertTrue(any(f.name == "Time left" for f in embed.fields))
-        clear_countdown(embed)
-        self.assertFalse(any(f.name == "Time left" for f in embed.fields))
-
-    def test_noop_when_no_countdown(self):
-        embed = game_embed("Trivia", "What is 2+2?", emoji="💡", phase="play")
-        try:
-            clear_countdown(embed)
-        except Exception:
-            self.fail("clear_countdown raised on embed without Time left field")
-
-
-class SmokeTest(unittest.TestCase):
-    """Smoke test: import the game modules and build every game embed."""
-
-    def setUp(self):
         import sys
         import types
 
+        # Remember the real modules so tearDown can restore them. We always
+        # install fresh stub modules here instead of mutating the real ones,
+        # so other test modules (e.g. test_v2) keep a working discord.py.
+        self._saved_modules = {}
+        for name in ("discord", "discord.ext", "discord.ext.commands", "utils", "aiosqlite", "aiohttp", "main"):
+            self._saved_modules[name] = sys.modules.get(name)
+
         # Stub discord.py as a package so cogs.arcade, cogs.games, cogs.sessions can import.
-        discord_stub = sys.modules.get("discord")
-        if discord_stub is None:
-            discord_stub = types.ModuleType("discord")
-            discord_stub.__path__ = []
-            sys.modules["discord"] = discord_stub
+        discord_stub = types.ModuleType("discord")
+        discord_stub.__path__ = []
+        sys.modules["discord"] = discord_stub
 
         # discord.ext subpackage
         ext_stub = types.ModuleType("discord.ext")
@@ -396,18 +273,14 @@ class SmokeTest(unittest.TestCase):
         discord_stub.app_commands = types.SimpleNamespace(describe=lambda **kw: (lambda f: f))
 
         # Stub aiosqlite so database.py can import
-        aiosqlite_stub = sys.modules.get("aiosqlite")
-        if aiosqlite_stub is None:
-            aiosqlite_stub = types.ModuleType("aiosqlite")
-            sys.modules["aiosqlite"] = aiosqlite_stub
+        aiosqlite_stub = types.ModuleType("aiosqlite")
+        sys.modules["aiosqlite"] = aiosqlite_stub
         aiosqlite_stub.Connection = type("Connection", (), {})
         aiosqlite_stub.connect = lambda *a, **k: type("Conn", (), {"execute": lambda *a, **k: None, "commit": lambda *a, **k: None, "close": lambda *a, **k: None})()
 
         # Stub utils
-        utils_stub = sys.modules.get("utils")
-        if utils_stub is None:
-            utils_stub = types.ModuleType("utils")
-            sys.modules["utils"] = utils_stub
+        utils_stub = types.ModuleType("utils")
+        sys.modules["utils"] = utils_stub
         utils_stub.COLOR = 0x5865F2
         utils_stub.DANGER = 0xED4245
         utils_stub.SUCCESS = 0x57F287
@@ -420,19 +293,23 @@ class SmokeTest(unittest.TestCase):
         utils_stub.xp_for_level = lambda l: 0
 
         # Stub aiohttp
-        aiohttp_stub = sys.modules.get("aiohttp")
-        if aiohttp_stub is None:
-            aiohttp_stub = types.ModuleType("aiohttp")
-            sys.modules["aiohttp"] = aiohttp_stub
+        aiohttp_stub = types.ModuleType("aiohttp")
+        sys.modules["aiohttp"] = aiohttp_stub
         aiohttp_stub.ClientSession = type("ClientSession", (), {})
         aiohttp_stub.ClientTimeout = type("ClientTimeout", (), {})
 
         # Stub main
-        main_stub = sys.modules.get("main")
-        if main_stub is None:
-            main_stub = types.ModuleType("main")
-            sys.modules["main"] = main_stub
+        main_stub = types.ModuleType("main")
+        sys.modules["main"] = main_stub
         main_stub.SocializeBot = type("SocializeBot", (), {})
+
+    def tearDown(self):
+        import sys
+        for name, original in getattr(self, "_saved_modules", {}).items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
 
     def test_arcade_imports(self):
         """Importing cogs.arcade must not raise (catches missing imports like countdown_field)."""

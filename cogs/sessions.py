@@ -190,14 +190,20 @@ async def end_game_message(message, result_embed, view=None) -> None:
         pass
 
 
-async def send_dest(dest: discord.Interaction | Any, **kwargs) -> discord.Message | None:
+async def send_dest(
+    dest: discord.Interaction | Any,
+    *,
+    view: discord.ui.View | None = None,
+    embed: discord.Embed | None = None,
+    **kwargs,
+) -> discord.Message | None:
     if isinstance(dest, discord.Interaction):
         if dest.response.is_done():
-            msg = await dest.followup.send(**kwargs)
+            msg = await dest.followup.send(view=view, embed=embed, **kwargs)
             return msg  # type: ignore[return-value]
-        await dest.response.send_message(**kwargs)
+        await dest.response.send_message(view=view, embed=embed, **kwargs)
         return await dest.original_response()
-    return await dest.send(**kwargs)
+    return await dest.send(view=view, embed=embed, **kwargs)
 
 
 async def launch_channel_game(dest: discord.Interaction | Any, bot: Any, factory) -> ChannelGame | None:
