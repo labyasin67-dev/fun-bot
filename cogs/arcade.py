@@ -121,7 +121,6 @@ GAME_META = {
 }
 
 MENU_EMOJI = {key: emoji for key, emoji, _title, _blurb in MENU_GAMES}
-MENU_TITLE = {key: title for key, _emoji, title, _blurb in MENU_GAMES}
 
 COLOR_WORD_EMOJI = {"RED": "🟥", "GREEN": "🟩", "BLUE": "🟦", "GREY": "⬜"}
 
@@ -1460,7 +1459,7 @@ class RedLightGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Red Light Green Light", self.host_name, extra=f"{self.rounds_left} rounds left"),
+            footer=game_footer("Red Light Green Light", self.host_name),
         )
 
     async def begin(self, dest) -> None:
