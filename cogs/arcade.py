@@ -14,6 +14,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs import banks
+from cogs.game_ui import game_embed, game_footer, result_embed
 from cogs.sessions import (
     DEFAULT_WIN_XP,
     ChannelGame,
@@ -54,6 +55,61 @@ MENU_GAMES = [
     ("hilo", "📈", "HILO", "Will the next number be higher or lower?"),
     ("uno", "🃏", "UNO", "Multiplayer UNO for 2–10 players."),
 ]
+
+# Presentation-only metadata used by the menu. Rules live in the classes below.
+MENU_CATEGORIES = [
+    {
+        "key": "quick",
+        "emoji": "⚡",
+        "label": "Quick reflex",
+        "games": ["buttonhunt", "reaction", "colorhunt", "sequencehunt", "hilo"],
+    },
+    {
+        "key": "word",
+        "emoji": "🔤",
+        "label": "Word games",
+        "games": ["backwards", "scramble", "word", "capital", "nickname"],
+    },
+    {
+        "key": "trivia",
+        "emoji": "🧠",
+        "label": "Trivia & knowledge",
+        "games": ["celebrity", "landmark", "pattern", "missingemoji", "emojieq", "flag", "language", "trivia"],
+    },
+    {
+        "key": "multi",
+        "emoji": "👥",
+        "label": "Multiplayer",
+        "games": ["diceduel", "redlight", "uno"],
+    },
+]
+
+GAME_META = {
+    "buttonhunt": {"players": "1+ players", "duration": "30s"},
+    "diceduel": {"players": "2 players", "duration": "30s"},
+    "backwards": {"players": "1+ players", "duration": "30s"},
+    "scramble": {"players": "1+ players", "duration": "30s"},
+    "celebrity": {"players": "1+ players", "duration": "30s"},
+    "landmark": {"players": "1+ players", "duration": "30s"},
+    "pattern": {"players": "1+ players", "duration": "30s"},
+    "capital": {"players": "1+ players", "duration": "30s"},
+    "redlight": {"players": "1+ players", "duration": "2 min"},
+    "missingemoji": {"players": "1+ players", "duration": "30s"},
+    "sequencehunt": {"players": "1+ players", "duration": "25s"},
+    "colorhunt": {"players": "1+ players", "duration": "20s"},
+    "emojieq": {"players": "1+ players", "duration": "30s"},
+    "flag": {"players": "1+ players", "duration": "30s"},
+    "reaction": {"players": "1+ players", "duration": "20s"},
+    "language": {"players": "1+ players", "duration": "30s"},
+    "word": {"players": "1+ players", "duration": "30s"},
+    "nickname": {"players": "1+ players", "duration": "30s"},
+    "trivia": {"players": "1+ players", "duration": "25s"},
+    "hilo": {"players": "1+ players", "duration": "20s"},
+    "uno": {"players": "2–10 players", "duration": "5+ min"},
+}
+
+MENU_EMOJI = {key: emoji for key, emoji, _title, _blurb in MENU_GAMES}
+MENU_TITLE = {key: title for key, _emoji, title, _blurb in MENU_GAMES}
 
 
 def scramble_word(word: str) -> str:
@@ -100,17 +156,73 @@ async def get_trivia() -> tuple[str, str, list[str]]:
     return item["q"], item["correct"], options
 
 
+def command_for_title(title: str) -> str:
+    for key, _emoji, game_title, _blurb in MENU_GAMES:
+        if game_title == title:
+            return command_name(key)
+    return ".games"
+
+
+def build_menu_embed(games: list, *, category: str | None = None) -> discord.Embed:
+    """Grouped menu: one field per category with players and duration inline."""
+    embed = game_embed(
+        "Choose a game to drop",
+        "Pick a category to filter the list, or choose a game from the menu below.",
+        emoji="🎮",
+        phase="play",
+    )
+    for cat in MENU_CATEGORIES:
+        if category is not None and cat["key"] != category:
+            continue
+        items = [game for game in games if game[0] in cat["games"]]
+        if not items:
+            continue
+        lines = []
+        for key, emoji, title, _blurb in items:
+            meta = GAME_META.get(key, {})
+            lines.append(
+                f"{emoji} **{title}** — `{command_name(key)}`\n"
+                f"{meta.get('players', '1+ players')} • {meta.get('duration', '30s')}"
+            )
+        embed.add_field(name=f"{cat['emoji']} {cat['label']}", value="\n".join(lines), inline=False)
+    return embed
+
+
 class GamesDropMenu(discord.ui.View):
     def __init__(self, cog: "Arcade", games: list | None = None):
         super().__init__(timeout=180)
         self.cog = cog
         self.message: discord.Message | None = None
-        games = games if games is not None else MENU_GAMES
+        self.games = list(games if games is not None else MENU_GAMES)
+        self._set_game_options(self.games)
+        self.category.options = self._category_options(self.games)
+
+    def _category_options(self, games: list) -> list[discord.SelectOption]:
         options = [
+            discord.SelectOption(
+                label="All games",
+                value="all",
+                emoji="🎮",
+                description="Show every category",
+            )
+        ]
+        for category in MENU_CATEGORIES:
+            if any(game[0] in category["games"] for game in games):
+                options.append(
+                    discord.SelectOption(
+                        label=category["label"],
+                        value=category["key"],
+                        emoji=category["emoji"],
+                        description="Filter the menu to this category",
+                    )
+                )
+        return options
+
+    def _set_game_options(self, games: list) -> None:
+        self.select.options = [
             discord.SelectOption(label=title, value=key, emoji=emoji, description=blurb[:100])
             for key, emoji, title, blurb in games
         ]
-        self.select.options = options
 
     async def on_timeout(self) -> None:
         for child in self.children:
@@ -125,6 +237,21 @@ class GamesDropMenu(discord.ui.View):
     @discord.ui.select(placeholder="Choose a game to drop into this channel...")
     async def select(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
         await self.cog.drop_game(interaction, select.values[0])
+
+    @discord.ui.select(placeholder="Filter by category...")
+    async def category(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
+        value = select.values[0]
+        if value == "all":
+            games = self.games
+            category = None
+            self.select.placeholder = "Choose a game to drop into this channel..."
+        else:
+            allowed = {game for cat in MENU_CATEGORIES if cat["key"] == value for game in cat["games"]}
+            games = [game for game in self.games if game[0] in allowed]
+            category = value
+            self.select.placeholder = "Choose a game from this category..."
+        self._set_game_options(games)
+        await interaction.response.edit_message(embed=build_menu_embed(self.games, category=category), view=self)
 
 
 class ChatGuessGame(ChannelGame):
@@ -1066,8 +1193,7 @@ class Arcade(commands.Cog):
         if not games:
             await send_dest(dest, embed=make_embed("Games disabled", "All drop-in games are disabled in this server.", color=WARNING))
             return
-        lines = [f"{emoji} **{title}** — `{command_name(key)}`" for key, emoji, title, _blurb in games]
-        e = make_embed("🎮 Choose a game to drop", "\n".join(lines))
+        e = build_menu_embed(games)
         view = GamesDropMenu(self, games)
         msg = await send_dest(dest, embed=e, view=view)
         view.message = msg
