@@ -226,6 +226,8 @@ class ChatGuessGame(ChannelGame):
         self.match = match
         self.message: discord.Message | None = None
         self.hinted = False
+        self.seconds_left: int | None = None
+        self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
@@ -257,17 +259,17 @@ class ChatGuessGame(ChannelGame):
             )
         else:
             fields = []
-            if phase == "hint" and self.hint:
+            if self.hinted and self.hint:
                 fields.append(("💡 Hint", self.hint, False))
-            remaining = self.timeout if phase == "play" else max(1, self.timeout - (self.hint_at or 0))
+            if self.end_ts is not None:
+                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
             e = game_embed(
                 self.title,
                 self.prompt,
                 emoji=emoji,
-                phase="play",
+                phase="hint" if self.hinted else "play",
                 host=self.host_name,
                 host_avatar=self.host_avatar,
-                footer=game_footer(self.title, self.host_name, extra=f"{remaining}s left"),
                 fields=fields,
             )
         if self.image_url:
@@ -282,26 +284,36 @@ class ChatGuessGame(ChannelGame):
             return any(g == a or g.lower() == a.lower() for a in self.answers)
         return answers_match(text, self.answers)
 
+    async def refresh(self) -> None:
+        if self.message is None or self.finished:
+            return
+        try:
+            await self.message.edit(embed=self._embed(phase="play"))
+        except discord.HTTPException:
+            pass
+
     async def begin(self, dest: commands.Context | discord.Interaction) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
+        self.end_ts, _ = countdown_field(self.timeout)
         self.message = await send_dest(dest, embed=self._embed(phase="play"))
         self.task = asyncio.create_task(self._timer())
 
     async def _timer(self) -> None:
         try:
-            if self.hint and self.hint_at:
-                await asyncio.sleep(self.hint_at)
+            for remaining in range(self.timeout, -1, -1):
                 if self.finished:
                     return
-                self.hinted = True
-                if self.message:
-                    try:
-                        await self.message.edit(embed=self._embed(phase="hint"))
-                    except discord.HTTPException:
-                        pass
-                await asyncio.sleep(max(0, self.timeout - self.hint_at))
-            else:
-                await asyncio.sleep(self.timeout)
+                self.seconds_left = remaining
+                if (
+                    self.hint
+                    and not self.hinted
+                    and self.hint_at is not None
+                    and remaining <= self.hint_at
+                ):
+                    self.hinted = True
+                await self.refresh()
+                if remaining > 0:
+                    await asyncio.sleep(1)
             if self.finished:
                 return
             if self.message:
@@ -344,6 +356,8 @@ class WordRuleGame(ChannelGame):
         self.payload = payload
         self.words = words
         self.message: discord.Message | None = None
+        self.seconds_left: int | None = None
+        self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
@@ -369,21 +383,35 @@ class WordRuleGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        e = game_embed(
+        self.end_ts, _ = countdown_field(30)
+        self.message = await send_dest(dest, embed=self._play_embed())
+        self.seconds_left = 30
+        self.task = asyncio.create_task(self._timer())
+
+    def _play_embed(self) -> discord.Embed:
+        return game_embed(
             "Word",
-            f"{self.prompt}\n\nFirst valid English word wins. You have 30 seconds.",
+            f"{self.prompt}\n\nFirst valid English word wins.",
             emoji="📝",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Word", self.host_name, extra="30s left"),
+            fields=[("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False)] if self.end_ts else [],
         )
-        self.message = await send_dest(dest, embed=e)
-        self.task = asyncio.create_task(self._timer())
 
     async def _timer(self) -> None:
         try:
-            await asyncio.sleep(30)
+            for remaining in range(30, -1, -1):
+                if self.finished:
+                    return
+                self.seconds_left = remaining
+                if self.message:
+                    try:
+                        await self.message.edit(embed=self._play_embed())
+                    except discord.HTTPException:
+                        pass
+                if remaining > 0:
+                    await asyncio.sleep(1)
             if self.finished:
                 return
             if self.message:
@@ -433,8 +461,8 @@ class WordRuleGame(ChannelGame):
 
 
 class ButtonHuntView(discord.ui.View):
-    def __init__(self, game: "ButtonHuntGame"):
-        super().__init__(timeout=30)
+    def __init__(self, game: "ButtonHuntGame", *, timeout: float = 30):
+        super().__init__(timeout=timeout)
         self.game = game
         winner_index = random.randrange(20)
         for i in range(20):
@@ -472,6 +500,8 @@ class ButtonHuntGame(ChannelGame):
         self.eliminated: set[int] = set()
         self.message: discord.Message | None = None
         self.view: ButtonHuntView | None = None
+        self.seconds_left: int | None = None
+        self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
@@ -480,6 +510,8 @@ class ButtonHuntGame(ChannelGame):
         if self.eliminated:
             count = len(self.eliminated)
             fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
+        if self.end_ts is not None:
+            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
         return game_embed(
             "Button Hunt",
             "One of these buttons is the winner. First to press it wins. A wrong press puts you out.",
@@ -487,7 +519,6 @@ class ButtonHuntGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Button Hunt", self.host_name, extra="30s left"),
             fields=fields,
         )
 
@@ -501,9 +532,25 @@ class ButtonHuntGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.view = ButtonHuntView(self)
+        self.end_ts, _ = countdown_field(30)
+        self.view = ButtonHuntView(self, timeout=33)  # backstop; the countdown drives the actual timeout
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
-        self.task = asyncio.create_task(asyncio.sleep(0))  # view handles timeout
+        self.task = asyncio.create_task(self._countdown())
+
+    async def _countdown(self) -> None:
+        try:
+            for remaining in range(30, -1, -1):
+                if self.finished:
+                    return
+                self.seconds_left = remaining
+                await self.refresh()
+                if remaining > 0:
+                    await asyncio.sleep(1)
+            if self.finished:
+                return
+            await self.timed_out()
+        except asyncio.CancelledError:
+            return
 
     async def win(self, interaction: discord.Interaction) -> None:
         if self.finished:
@@ -572,6 +619,7 @@ class DiceDuelGame(ChannelGame):
         self.players: list[discord.abc.User] = []
         self.message: discord.Message | None = None
         self.view: DiceJoinView | None = None
+        self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
@@ -579,6 +627,9 @@ class DiceDuelGame(ChannelGame):
         remaining = max(0, 2 - len(self.players))
         extra = f"Waiting for {remaining} more player{'s' if remaining != 1 else ''}" if remaining else "Rolling…"
         roster = "\n".join(f"• {player.mention}" for player in self.players) or "Waiting for players…"
+        fields = [("Players", roster, False)]
+        if self.end_ts is not None:
+            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
         return game_embed(
             "Dice Roll Duel",
             "First two players to join will each roll a d6. Highest roll wins.",
@@ -587,11 +638,12 @@ class DiceDuelGame(ChannelGame):
             host=self.host_name,
             host_avatar=self.host_avatar,
             footer=game_footer("Dice Roll Duel", self.host_name, extra=extra),
-            fields=[("Players", roster, False)],
+            fields=fields,
         )
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
+        self.end_ts, _ = countdown_field(30)
         self.view = DiceJoinView(self)
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
 
@@ -662,8 +714,8 @@ class DiceDuelGame(ChannelGame):
 
 
 class ColorHuntView(discord.ui.View):
-    def __init__(self, game: "ColorHuntGame"):
-        super().__init__(timeout=20)
+    def __init__(self, game: "ColorHuntGame", *, timeout: float = 20):
+        super().__init__(timeout=timeout)
         self.game = game
         styles = [
             ("RED", discord.ButtonStyle.danger),
@@ -711,6 +763,8 @@ class ColorHuntGame(ChannelGame):
         self.eliminated: set[int] = set()
         self.message: discord.Message | None = None
         self.view: ColorHuntView | None = None
+        self.seconds_left: int | None = None
+        self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
@@ -720,6 +774,8 @@ class ColorHuntGame(ChannelGame):
         if self.eliminated:
             count = len(self.eliminated)
             fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
+        if self.end_ts is not None:
+            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
         return game_embed(
             "Color Hunt",
             f"Click the **{target}** button.\nThat's the actual button colour, not the word written on it.",
@@ -727,7 +783,6 @@ class ColorHuntGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Color Hunt", self.host_name, extra="20s left"),
             fields=fields,
         )
 
@@ -741,8 +796,25 @@ class ColorHuntGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.view = ColorHuntView(self)
+        self.end_ts, _ = countdown_field(20)
+        self.view = ColorHuntView(self, timeout=23)  # backstop; the countdown drives the actual timeout
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
+        self.task = asyncio.create_task(self._countdown())
+
+    async def _countdown(self) -> None:
+        try:
+            for remaining in range(20, -1, -1):
+                if self.finished:
+                    return
+                self.seconds_left = remaining
+                await self.refresh()
+                if remaining > 0:
+                    await asyncio.sleep(1)
+            if self.finished:
+                return
+            await self.timed_out()
+        except asyncio.CancelledError:
+            return
 
     async def win(self, interaction: discord.Interaction) -> None:
         if self.finished:
@@ -814,19 +886,20 @@ class ReactionGame(ChannelGame):
         self.host_name: str | None = None
         self.host_avatar: str | None = None
         self.seconds_left: int | None = None
+        self.end_ts: int | None = None
 
     def _embed(self, *, live: bool = False) -> discord.Embed:
         fields = []
         if self.eliminated:
             count = len(self.eliminated)
             fields.append(("Eliminated", f"{count} player{'s' if count != 1 else ''} out", True))
+        if self.end_ts is not None:
+            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
         if live:
             left = f"{self.seconds_left}s left" if self.seconds_left is not None else "GO!"
             description = f"**GO!** First to click the button or type `go` wins.\n{left}"
-            extra = left
         else:
             description = "Wait for it…\nDon't click or type **go** until the message says **GO!**"
-            extra = f"{REACTION_LIVE_SECONDS}s max"
         return game_embed(
             "Reaction",
             description,
@@ -834,7 +907,6 @@ class ReactionGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Reaction", self.host_name, extra=extra),
             fields=fields,
         )
 
@@ -848,6 +920,8 @@ class ReactionGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
+        wait_seconds = random.uniform(2.5, 6.5)
+        self.end_ts, _ = countdown_field(int(wait_seconds) + REACTION_LIVE_SECONDS)
         self.view = ReactionView(self)
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
         self.task = asyncio.create_task(self._run())
@@ -858,6 +932,7 @@ class ReactionGame(ChannelGame):
             if self.finished:
                 return
             self.live = True
+            self.end_ts, _ = countdown_field(REACTION_LIVE_SECONDS)
             if self.view:
                 for child in self.view.children:
                     if isinstance(child, discord.ui.Button):
@@ -868,12 +943,13 @@ class ReactionGame(ChannelGame):
                     await self.message.edit(embed=self._embed(live=True), view=self.view)
                 except discord.HTTPException:
                     pass
-            for remaining in range(REACTION_LIVE_SECONDS, 0, -1):
+            for remaining in range(REACTION_LIVE_SECONDS, -1, -1):
                 if self.finished:
                     return
                 self.seconds_left = remaining
                 await self.refresh()
-                await asyncio.sleep(1)
+                if remaining > 0:
+                    await asyncio.sleep(1)
             self.seconds_left = None
             if not self.finished:
                 if self.view:
@@ -961,8 +1037,8 @@ class ReactionGame(ChannelGame):
 class SequenceHuntView(discord.ui.View):
     EMOJIS = ["🔴", "🟢", "🔵", "🟡"]
 
-    def __init__(self, game: "SequenceHuntGame", enabled: bool):
-        super().__init__(timeout=25)
+    def __init__(self, game: "SequenceHuntGame", enabled: bool, *, timeout: float = 25):
+        super().__init__(timeout=timeout)
         self.game = game
         for i, emoji in enumerate(self.EMOJIS):
             self.add_item(SequenceButton(i, emoji, enabled))
@@ -992,6 +1068,8 @@ class SequenceHuntGame(ChannelGame):
         self.accepting = False
         self.message: discord.Message | None = None
         self.view: SequenceHuntView | None = None
+        self.seconds_left: int | None = None
+        self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
@@ -1005,10 +1083,10 @@ class SequenceHuntGame(ChannelGame):
             fields.append(("Out", f"{count} player{'s' if count != 1 else ''} out", True))
         if show_sequence:
             description = f"Remember this order:\n\n# {self._seq_text()}"
-            extra = "Memorising…"
         else:
             description = "Repeat the sequence by pressing the buttons in order. First to finish wins."
-            extra = "25s left"
+            if self.end_ts is not None:
+                fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
         return game_embed(
             "Sequence Hunt",
             description,
@@ -1016,7 +1094,6 @@ class SequenceHuntGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Sequence Hunt", self.host_name, extra=extra),
             fields=fields,
         )
 
@@ -1030,7 +1107,7 @@ class SequenceHuntGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        preview = SequenceHuntView(self, enabled=False)
+        preview = SequenceHuntView(self, enabled=False, timeout=None)  # replaced after the preview
         self.message = await send_dest(dest, embed=self._embed(show_sequence=True), view=preview)
         self.task = asyncio.create_task(self._run())
 
@@ -1040,12 +1117,29 @@ class SequenceHuntGame(ChannelGame):
             if self.finished:
                 return
             self.accepting = True
-            self.view = SequenceHuntView(self, enabled=True)
+            self.end_ts, _ = countdown_field(25)
+            self.view = SequenceHuntView(self, enabled=True, timeout=28)  # backstop; the countdown drives the actual timeout
             if self.message:
                 try:
                     await self.message.edit(embed=self._embed(show_sequence=False), view=self.view)
                 except discord.HTTPException:
                     pass
+            await self._countdown()
+        except asyncio.CancelledError:
+            return
+
+    async def _countdown(self) -> None:
+        try:
+            for remaining in range(25, -1, -1):
+                if self.finished:
+                    return
+                self.seconds_left = remaining
+                await self.refresh()
+                if remaining > 0:
+                    await asyncio.sleep(1)
+            if self.finished:
+                return
+            await self.timed_out()
         except asyncio.CancelledError:
             return
 
@@ -1144,6 +1238,7 @@ class HiLoGame(ChannelGame):
         self.message: discord.Message | None = None
         self.view: HiLoView | None = None
         self.round_open = True
+        self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
@@ -1175,6 +1270,9 @@ class HiLoGame(ChannelGame):
                 host_avatar=self.host_avatar,
                 footer=game_footer("HILO", self.host_name, extra=extra),
             )
+        fields = []
+        if self.end_ts is not None:
+            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
         return game_embed(
             "HILO",
             f"The number is **{self.current}**.\nWill the next number (1–100) be higher or lower?\n\nStreak: **{self.streak}**",
@@ -1182,11 +1280,12 @@ class HiLoGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("HILO", self.host_name, extra=extra or "20s left"),
+            fields=fields,
         )
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
+        self.end_ts, _ = countdown_field(20)
         self.view = HiLoView(self)
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
 
@@ -1243,6 +1342,7 @@ class HiLoGame(ChannelGame):
         self.next_number = self._next()
         self.view = HiLoView(self)
         self.round_open = True
+        self.end_ts, _ = countdown_field(20)
         e = self._embed(extra=f"{interaction.user.display_name} was right • +10 XP")
         await interaction.response.edit_message(embed=e, view=self.view)
 
@@ -1260,8 +1360,8 @@ class HiLoGame(ChannelGame):
 
 
 class TriviaChannelView(discord.ui.View):
-    def __init__(self, game: "TriviaGame", options: list[str], correct: str):
-        super().__init__(timeout=25)
+    def __init__(self, game: "TriviaGame", options: list[str], correct: str, *, timeout: float = 25):
+        super().__init__(timeout=timeout)
         self.game = game
         for option in options:
             self.add_item(TriviaChannelButton(option, option == correct))
@@ -1300,22 +1400,47 @@ class TriviaGame(ChannelGame):
         self.wrong: set[int] = set()
         self.message: discord.Message | None = None
         self.view: TriviaChannelView | None = None
+        self.seconds_left: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.view = TriviaChannelView(self, self.options, self.correct)
-        e = game_embed(
+        self.end_ts, _ = countdown_field(25)
+        self.view = TriviaChannelView(self, self.options, self.correct, timeout=28)  # backstop; the countdown drives the actual timeout
+        self.seconds_left = 25
+        self.message = await send_dest(dest, embed=self._play_embed(), view=self.view)
+        self.task = asyncio.create_task(self._countdown())
+
+    def _play_embed(self) -> discord.Embed:
+        return game_embed(
             "Trivia",
             self.question,
             emoji="💡",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Trivia", self.host_name, extra="25s left"),
+            fields=[("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False)] if self.end_ts else [],
         )
-        self.message = await send_dest(dest, embed=e, view=self.view)
+
+    async def _countdown(self) -> None:
+        try:
+            for remaining in range(25, -1, -1):
+                if self.finished:
+                    return
+                self.seconds_left = remaining
+                if self.message:
+                    try:
+                        await self.message.edit(embed=self._play_embed())
+                    except discord.HTTPException:
+                        pass
+                if remaining > 0:
+                    await asyncio.sleep(1)
+            if self.finished:
+                return
+            await self.timed_out()
+        except asyncio.CancelledError:
+            return
 
     async def win(self, interaction: discord.Interaction, picked: str) -> None:
         if self.finished:
@@ -1379,6 +1504,7 @@ class RedLightGame(ChannelGame):
         self.eliminated: set[int] = set()
         self.message: discord.Message | None = None
         self.rounds_left = 8
+        self.end_ts: int | None = None
         self.host_name: str | None = None
         self.host_avatar: str | None = None
 
@@ -1391,6 +1517,9 @@ class RedLightGame(ChannelGame):
         body = light
         if lines:
             body += "\n\n" + "\n".join(lines)
+        fields = []
+        if self.end_ts is not None:
+            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
         return game_embed(
             "Red Light Green Light",
             body,
@@ -1398,11 +1527,12 @@ class RedLightGame(ChannelGame):
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
-            footer=game_footer("Red Light Green Light", self.host_name),
+            fields=fields,
         )
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
+        self.end_ts, _ = countdown_field(30)
         self.message = await send_dest(dest, embed=self._embed())
         self.task = asyncio.create_task(self._run())
 

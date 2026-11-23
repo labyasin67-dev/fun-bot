@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 
 import discord
 
+from cogs.game_ui import clear_countdown
+
 if TYPE_CHECKING:
     from main import SocializeBot
 
@@ -176,7 +178,10 @@ async def end_game_message(message, result_embed, view=None) -> None:
             except Exception:
                 pass
         try:
-            await message.edit(view=view)
+            if message.embeds:
+                original = message.embeds[0]
+                clear_countdown(original)
+                await message.edit(embed=original, view=view)
         except Exception:
             pass
     try:
