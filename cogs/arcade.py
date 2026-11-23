@@ -26,7 +26,7 @@ from cogs.sessions import (
     normalize_answer,
     send_dest,
 )
-from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
+from utils import DANGER, WARNING, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -395,6 +395,10 @@ class ChatGuessGame(ChannelGame):
         self.finished = True
         if self.task and not self.task.done():
             self.task.cancel()
+        try:
+            await message.add_reaction("✅")
+        except discord.HTTPException:
+            pass
         await award_xp(self.bot, message.author, message.channel, self.xp)
         if self.message:
             await end_game_message(self.message, self._embed(phase="win", winner=message.author))
@@ -481,6 +485,10 @@ class WordRuleGame(ChannelGame):
         if self.task and not self.task.done():
             self.task.cancel()
         word = normalize_answer(message.content)
+        try:
+            await message.add_reaction("✅")
+        except discord.HTTPException:
+            pass
         await award_xp(self.bot, message.author, message.channel, DEFAULT_WIN_XP)
         e = result_embed(
             "Word",
