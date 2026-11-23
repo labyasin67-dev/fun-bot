@@ -58,12 +58,15 @@ if not hasattr(discord_stub, "abc"):
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from cogs.game_ui import (  # noqa: E402
+    DEFAULT_PLAYERS,
     MAX_DESCRIPTION,
     MAX_FIELD_VALUE,
     MAX_TITLE,
     PHASE_COLORS,
     game_embed,
     game_footer,
+    game_menu_line,
+    games_menu_embed,
     phase_color,
     phase_emoji,
     result_embed,
@@ -163,6 +166,87 @@ class ResultEmbedTests(unittest.TestCase):
         embed = result_embed("Trivia", "Nobody got it.", phase="timeout", answer="Mars")
         self.assertEqual(embed.color, WARNING)
         self.assertEqual(embed.title, "⏰ Trivia")
+
+
+class GameMenuLineTests(unittest.TestCase):
+    def test_single_line_with_command(self):
+        self.assertEqual(
+            game_menu_line("🔘", "Button Hunt", ".buttonhunt"),
+            "🔘 **Button Hunt** · .buttonhunt",
+        )
+
+    def test_default_players_are_omitted(self):
+        line = game_menu_line("💡", "Trivia", ".trivia", players=DEFAULT_PLAYERS)
+        self.assertNotIn("players", line)
+        self.assertNotIn("30s", line)
+
+    def test_exception_players_are_shown_inline(self):
+        self.assertEqual(
+            game_menu_line("⚔️", "Dice Roll Duel", ".diceduel", players="2 players"),
+            "⚔️ **Dice Roll Duel** · .diceduel · 2 players",
+        )
+
+    def test_duration_is_never_shown(self):
+        line = game_menu_line("🃏", "UNO", ".uno", players="2–10 players")
+        self.assertIn("2–10 players", line)
+        self.assertNotIn("min", line)
+
+
+class GamesMenuEmbedTests(unittest.TestCase):
+    def setUp(self):
+        self.games = [
+            ("buttonhunt", "🔘", "Button Hunt", "blurb"),
+            ("diceduel", "⚔️", "Dice Roll Duel", "blurb"),
+            ("uno", "🃏", "UNO", "blurb"),
+        ]
+        self.categories = [
+            {"key": "quick", "emoji": "⚡", "label": "Quick reflex", "games": ["buttonhunt"]},
+            {"key": "multi", "emoji": "👥", "label": "Multiplayer", "games": ["diceduel", "uno"]},
+        ]
+        self.meta = {"diceduel": {"players": "2 players"}, "uno": {"players": "2–10 players"}}
+
+    def _build(self, games=None):
+        return games_menu_embed(
+            games if games is not None else self.games,
+            self.categories,
+            self.meta,
+            command_for=lambda key: f".{key}",
+        )
+
+    def test_title_present_and_no_description(self):
+        embed = self._build()
+        self.assertEqual(embed.title, "🎮 Choose a game to drop")
+        self.assertIsNone(embed.description)
+
+    def test_one_field_per_nonempty_category(self):
+        embed = self._build()
+        self.assertEqual([name for name, _v, _i in embed.fields], ["**Quick reflex**", "**Multiplayer**"])
+
+    def test_each_game_is_a_single_line(self):
+        embed = self._build()
+        values = {name: value for name, value, _i in embed.fields}
+        quick_lines = values["**Quick reflex**"].split("\n")
+        self.assertEqual(quick_lines, ["🔘 **Button Hunt** · .buttonhunt"])
+        multi_lines = values["**Multiplayer**"].split("\n")
+        self.assertEqual(
+            multi_lines,
+            [
+                "⚔️ **Dice Roll Duel** · .diceduel · 2 players",
+                "🃏 **UNO** · .uno · 2–10 players",
+            ],
+        )
+
+    def test_no_duration_or_footer_or_thumbnail(self):
+        embed = self._build()
+        self.assertIsNone(embed.footer)
+        self.assertIsNone(embed.thumbnail)
+        for _name, value, _inline in embed.fields:
+            self.assertNotIn("30s", value)
+            self.assertNotIn("min", value)
+
+    def test_empty_categories_are_skipped(self):
+        embed = self._build(games=[("diceduel", "⚔️", "Dice Roll Duel", "blurb")])
+        self.assertEqual([name for name, _v, _i in embed.fields], ["**Multiplayer**"])
 
 
 if __name__ == "__main__":

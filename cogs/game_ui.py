@@ -7,7 +7,7 @@ the game classes themselves.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 import discord
 
@@ -159,4 +159,59 @@ def result_embed(
         embed.add_field(name="XP earned", value=f"+{xp} XP", inline=True)
     if play_again:
         embed.add_field(name="Play again", value=_clip(play_again, MAX_FIELD_VALUE), inline=False)
+    return embed
+
+
+# Almost every game is "1+ players" and short, so the menu only calls out the
+# exceptions (e.g. 2 players) inline instead of repeating it on every line.
+DEFAULT_PLAYERS = "1+ players"
+
+
+def game_menu_line(
+    emoji: str,
+    title: str,
+    command: str,
+    *,
+    players: str = DEFAULT_PLAYERS,
+) -> str:
+    """One compact menu line: ``🔘 **Button Hunt** · .buttonhunt``.
+
+    A players note is appended only when a game differs from the default, e.g.
+    ``⚔️ **Dice Roll Duel** · .diceduel · 2 players``. Duration is never shown.
+    """
+    line = f"{emoji} **{title}** · {command}"
+    if players and players != DEFAULT_PLAYERS:
+        line += f" · {players}"
+    return line
+
+
+def games_menu_embed(
+    games: list,
+    categories: list,
+    meta: dict,
+    *,
+    command_for: Callable[[str], str],
+    title: str = "Choose a game to drop",
+) -> discord.Embed:
+    """Compact ``.games`` menu: one line per game, grouped into category fields.
+
+    ``categories`` is a list of ``{"key", "label", "games"}`` mappings and
+    ``meta`` maps a game key to ``{"players": ...}``. No description, footer,
+    thumbnail or duration is included; the title and dropdown carry the rest.
+    """
+    embed = game_embed(title, emoji="🎮", phase="play")
+    for cat in categories:
+        items = [game for game in games if game[0] in cat["games"]]
+        if not items:
+            continue
+        lines = [
+            game_menu_line(
+                emoji,
+                game_title,
+                command_for(key),
+                players=meta.get(key, {}).get("players", DEFAULT_PLAYERS),
+            )
+            for key, emoji, game_title, _blurb in items
+        ]
+        embed.add_field(name=f"**{cat['label']}**", value="\n".join(lines), inline=False)
     return embed

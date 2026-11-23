@@ -14,7 +14,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs import banks
-from cogs.game_ui import game_embed, game_footer, result_embed
+from cogs.game_ui import game_embed, game_footer, games_menu_embed, result_embed
 from cogs.sessions import (
     DEFAULT_WIN_XP,
     ChannelGame,
@@ -96,28 +96,11 @@ MENU_CATEGORIES = [
     },
 ]
 
+# Only games that differ from the default "1+ players" need an entry; the menu
+# calls those out inline and never mentions duration.
 GAME_META = {
-    "buttonhunt": {"players": "1+ players", "duration": "30s"},
-    "diceduel": {"players": "2 players", "duration": "30s"},
-    "backwards": {"players": "1+ players", "duration": "30s"},
-    "scramble": {"players": "1+ players", "duration": "30s"},
-    "celebrity": {"players": "1+ players", "duration": "30s"},
-    "landmark": {"players": "1+ players", "duration": "30s"},
-    "pattern": {"players": "1+ players", "duration": "30s"},
-    "capital": {"players": "1+ players", "duration": "30s"},
-    "redlight": {"players": "1+ players", "duration": "2 min"},
-    "missingemoji": {"players": "1+ players", "duration": "30s"},
-    "sequencehunt": {"players": "1+ players", "duration": "25s"},
-    "colorhunt": {"players": "1+ players", "duration": "20s"},
-    "emojieq": {"players": "1+ players", "duration": "30s"},
-    "flag": {"players": "1+ players", "duration": "30s"},
-    "reaction": {"players": "1+ players", "duration": "20s"},
-    "language": {"players": "1+ players", "duration": "30s"},
-    "word": {"players": "1+ players", "duration": "30s"},
-    "nickname": {"players": "1+ players", "duration": "30s"},
-    "trivia": {"players": "1+ players", "duration": "25s"},
-    "hilo": {"players": "1+ players", "duration": "20s"},
-    "uno": {"players": "2–10 players", "duration": "5+ min"},
+    "diceduel": {"players": "2 players"},
+    "uno": {"players": "2–10 players"},
 }
 
 MENU_EMOJI = {key: emoji for key, emoji, _title, _blurb in MENU_GAMES}
@@ -176,29 +159,9 @@ def command_for_title(title: str) -> str:
     return ".games"
 
 
-def build_menu_embed(games: list, *, category: str | None = None) -> discord.Embed:
-    """Grouped menu: one field per category with players and duration inline."""
-    embed = game_embed(
-        "Choose a game to drop",
-        "Pick a category to filter the list, or choose a game from the menu below.",
-        emoji="🎮",
-        phase="play",
-    )
-    for cat in MENU_CATEGORIES:
-        if category is not None and cat["key"] != category:
-            continue
-        items = [game for game in games if game[0] in cat["games"]]
-        if not items:
-            continue
-        lines = []
-        for key, emoji, title, _blurb in items:
-            meta = GAME_META.get(key, {})
-            lines.append(
-                f"{emoji} **{title}** — `{command_name(key)}`\n"
-                f"{meta.get('players', '1+ players')} • {meta.get('duration', '30s')}"
-            )
-        embed.add_field(name=f"{cat['emoji']} {cat['label']}", value="\n".join(lines), inline=False)
-    return embed
+def build_menu_embed(games: list) -> discord.Embed:
+    """Compact menu: one line per game, grouped by category."""
+    return games_menu_embed(games, MENU_CATEGORIES, GAME_META, command_for=command_name)
 
 
 class GamesDropMenu(discord.ui.View):
@@ -208,28 +171,6 @@ class GamesDropMenu(discord.ui.View):
         self.message: discord.Message | None = None
         self.games = list(games if games is not None else MENU_GAMES)
         self._set_game_options(self.games)
-        self.category.options = self._category_options(self.games)
-
-    def _category_options(self, games: list) -> list[discord.SelectOption]:
-        options = [
-            discord.SelectOption(
-                label="All games",
-                value="all",
-                emoji="🎮",
-                description="Show every category",
-            )
-        ]
-        for category in MENU_CATEGORIES:
-            if any(game[0] in category["games"] for game in games):
-                options.append(
-                    discord.SelectOption(
-                        label=category["label"],
-                        value=category["key"],
-                        emoji=category["emoji"],
-                        description="Filter the menu to this category",
-                    )
-                )
-        return options
 
     def _set_game_options(self, games: list) -> None:
         self.select.options = [
@@ -250,21 +191,6 @@ class GamesDropMenu(discord.ui.View):
     @discord.ui.select(placeholder="Choose a game to drop into this channel...")
     async def select(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
         await self.cog.drop_game(interaction, select.values[0])
-
-    @discord.ui.select(placeholder="Filter by category...")
-    async def category(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
-        value = select.values[0]
-        if value == "all":
-            games = self.games
-            category = None
-            self.select.placeholder = "Choose a game to drop into this channel..."
-        else:
-            allowed = {game for cat in MENU_CATEGORIES if cat["key"] == value for game in cat["games"]}
-            games = [game for game in self.games if game[0] in allowed]
-            category = value
-            self.select.placeholder = "Choose a game from this category..."
-        self._set_game_options(games)
-        await interaction.response.edit_message(embed=build_menu_embed(self.games, category=category), view=self)
 
 
 class ChatGuessGame(ChannelGame):
