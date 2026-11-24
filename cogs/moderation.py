@@ -90,11 +90,11 @@ class Moderation(commands.Cog):
             return
         why = reason or "No reason provided."
         assert ctx.guild
+        await member.ban(reason=f"{ctx.author} : {why}", delete_message_seconds=0)
         dm_ok = await try_dm(
             member,
             make_embed("You were banned", f"You were banned from **{ctx.guild.name}**.\nReason: {why}", color=DANGER),
         )
-        await member.ban(reason=f"{ctx.author} : {why}", delete_message_seconds=0)
         extra = "" if dm_ok else " I couldn't DM them."
         await ctx.send(embed=make_embed("Member banned", f"**{member}** was banned. Reason: {why}.{extra}", color=SUCCESS))
         await post_modlog(self.bot, ctx.guild, "Member banned", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}", color=DANGER)
@@ -127,13 +127,13 @@ class Moderation(commands.Cog):
             return
         why = reason or "No reason provided."
         assert ctx.guild
+        await member.kick(reason=f"{ctx.author} : {why}")
+        created = member.created_at.timestamp() if member.created_at else None
+        await self.bot.db.add_alt_mod_action(ctx.guild.id, member.id, "kick", created)
         dm_ok = await try_dm(
             member,
             make_embed("You were kicked", f"You were kicked from **{ctx.guild.name}**.\nReason: {why}", color=DANGER),
         )
-        await member.kick(reason=f"{ctx.author} : {why}")
-        created = member.created_at.timestamp() if member.created_at else None
-        await self.bot.db.add_alt_mod_action(ctx.guild.id, member.id, "kick", created)
         extra = "" if dm_ok else " I couldn't DM them."
         await ctx.send(embed=make_embed("Member kicked", f"**{member}** was kicked. Reason: {why}.{extra}", color=SUCCESS))
         await post_modlog(self.bot, ctx.guild, "Member kicked", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}", color=DANGER)
@@ -152,6 +152,7 @@ class Moderation(commands.Cog):
             return
         why = reason or "No reason provided."
         assert ctx.guild
+        await member.timeout(delta, reason=f"{ctx.author} : {why}")
         dm_ok = await try_dm(
             member,
             make_embed(
@@ -160,7 +161,6 @@ class Moderation(commands.Cog):
                 color=WARNING,
             ),
         )
-        await member.timeout(delta, reason=f"{ctx.author} : {why}")
         extra = "" if dm_ok else " I couldn't DM them."
         await ctx.send(embed=make_embed("Member timed out", f"**{member}** is timed out for **{format_delta(delta)}**. Reason: {why}.{extra}", color=SUCCESS))
         await post_modlog(self.bot, ctx.guild, "Member timed out", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Duration:** {format_delta(delta)}\n**Reason:** {why}", color=WARNING)

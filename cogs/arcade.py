@@ -131,7 +131,7 @@ def emoji_equal(guess: str, target: str) -> bool:
 
 async def get_trivia() -> tuple[str, str, list[str]]:
     try:
-        timeout = aiohttp.ClientTimeout(total=120)
+        timeout = aiohttp.ClientTimeout(total=10)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get("https://opentdb.com/api.php", params={"amount": 1, "type": "multiple"}) as resp:
                 if resp.status == 200:
@@ -925,14 +925,16 @@ class ReactionGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.end_ts, _ = countdown_field(REACTION_LIVE_SECONDS)
+        wait_seconds = random.uniform(2.5, 6.5)
+        self.wait_seconds = wait_seconds
+        self.end_ts, _ = countdown_field(int(wait_seconds))
         self.view = ReactionView(self)
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
         self.task = asyncio.create_task(self._run())
 
     async def _run(self) -> None:
         try:
-            await asyncio.sleep(0)
+            await asyncio.sleep(self.wait_seconds)
             if self.finished:
                 return
             self.live = True
@@ -1117,7 +1119,7 @@ class SequenceHuntGame(ChannelGame):
 
     async def _run(self) -> None:
         try:
-            await asyncio.sleep(0)
+            await asyncio.sleep(3)
             if self.finished:
                 return
             self.accepting = True
@@ -1543,7 +1545,7 @@ class RedLightGame(ChannelGame):
     async def _run(self) -> None:
         try:
             for _ in range(8):
-                await asyncio.sleep(0)
+                await asyncio.sleep(random.uniform(2.0, 4.5))
                 if self.finished:
                     return
                 self.green = not self.green

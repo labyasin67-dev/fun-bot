@@ -507,7 +507,7 @@ class Games(commands.Cog):
 
     async def _get_trivia(self) -> tuple[str, str, list[str]]:
         try:
-            timeout = aiohttp.ClientTimeout(total=120)
+            timeout = aiohttp.ClientTimeout(total=10)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get("https://opentdb.com/api.php", params={"amount": 1, "type": "multiple"}) as resp:
                     if resp.status == 200:

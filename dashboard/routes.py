@@ -226,7 +226,7 @@ def _flag_display(guild: discord.Guild, row, whitelist_ids: set[int], quarantine
         "action_key": row["action_taken"] or "logged",
         "status": STATUS_LABELS.get(status, status.replace("_", " ").title()),
         "status_key": status,
-        "can_act": status not in {"banned"} or True,
+        "can_act": status != "banned",
     }
 
 

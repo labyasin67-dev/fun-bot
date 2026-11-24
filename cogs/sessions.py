@@ -85,12 +85,6 @@ class ChannelGame:
         if getattr(self, "_cleaned", False):
             return
         self._cleaned = True
-        text = result
-        if text:
-            try:
-                await self.channel.send(text)
-            except discord.HTTPException:
-                pass
 
 
 class GameManager:

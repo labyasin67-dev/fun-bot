@@ -142,8 +142,7 @@ class Leveling(commands.Cog):
                         continue
                     self._awarding.add(key)
                     try:
-                        old_xp, new_xp = await self.bot.db.add_xp(guild.id, member.id, VOICE_XP_PER_MINUTE)
-                        await self.bot.db.add_voice_seconds(guild.id, member.id, VOICE_TICK_SECONDS)
+                        old_xp, new_xp = await self.bot.db.add_voice_xp_and_seconds(guild.id, member.id, VOICE_XP_PER_MINUTE, VOICE_TICK_SECONDS)
                         await self._handle_level_up(guild, member, None, old_xp, new_xp)
                     except Exception:
                         pass

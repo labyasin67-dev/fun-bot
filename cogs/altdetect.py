@@ -479,7 +479,7 @@ class AltDetect(commands.Cog):
                 message = await log_channel.send(embed=e, view=build_alert_view(member.id))
             except discord.HTTPException:
                 message = None
-        if assessment.verdict != "High risk":
+        if assessment.verdict == "Low risk":
             return
         auto_note = await self._apply_auto_action(member, action, int(cfg["quarantine_role_id"]) if cfg["quarantine_role_id"] else None, flag_id=flag_id)
         if auto_note and message is not None:

@@ -262,6 +262,18 @@ class Database:
         await self.db.commit()
         return old, old + amount
 
+    async def add_voice_xp_and_seconds(self, guild_id: int, user_id: int, xp_amount: int, seconds: int) -> tuple[int, int]:
+        """Atomically add XP and voice seconds in a single transaction."""
+        await self.ensure_member(guild_id, user_id)
+        row = await self.get_member(guild_id, user_id)
+        old = int(row["xp"])
+        await self.db.execute(
+            "UPDATE members SET xp = xp + ?, voice_seconds = voice_seconds + ? WHERE guild_id = ? AND user_id = ?",
+            (xp_amount, seconds, guild_id, user_id),
+        )
+        await self.db.commit()
+        return old, old + xp_amount
+
     async def set_xp(self, guild_id: int, user_id: int, xp: int) -> tuple[int, int]:
         """Set XP to an exact value (clamped at 0) and return (old_xp, new_xp)."""
         await self.ensure_member(guild_id, user_id)
