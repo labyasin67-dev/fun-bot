@@ -7,6 +7,7 @@ the game classes themselves.
 
 from __future__ import annotations
 
+import math
 import time
 from typing import Any, Callable
 
@@ -136,7 +137,7 @@ def countdown_field(seconds_or_end_ts: int) -> tuple[int, str]:
     if seconds_or_end_ts > 100_000_000:
         end_ts = seconds_or_end_ts
     else:
-        end_ts = int(time.time()) + seconds_or_end_ts
+        end_ts = math.ceil(time.time()) + max(1, int(seconds_or_end_ts))
     return end_ts, f"⏳ Ends <t:{end_ts}:R>"
 
 
