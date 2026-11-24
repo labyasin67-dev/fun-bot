@@ -391,7 +391,7 @@ class WYRView(discord.ui.View):
 
 class TODView(discord.ui.View):
     def __init__(self, target: discord.Member):
-        super().__init__(timeout=90)
+        super().__init__(timeout=120)
         self.target = target
         self.message: discord.Message | None = None
         self.end_ts: int | None = None
@@ -489,7 +489,7 @@ class Games(commands.Cog):
         view = TriviaView(correct, options, destination.user.id if isinstance(destination, discord.Interaction) else destination.author.id)
         author = destination.user if isinstance(destination, discord.Interaction) else destination.author
         host, host_avatar = _host_details(author)
-        view.end_ts, _ = countdown_field(25)
+        view.end_ts, _ = countdown_field(120)
         e = game_embed(
             "Trivia",
             question,
@@ -550,7 +550,7 @@ class Games(commands.Cog):
             return
         view = RPSView(author, opponent)
         host, host_avatar = _host_details(author)
-        view.end_ts, _ = countdown_field(60)
+        view.end_ts, _ = countdown_field(120)
         if opponent is None:
             e = game_embed(
                 "Rock Paper Scissors",
@@ -587,7 +587,7 @@ class Games(commands.Cog):
     async def start_wyr(self, destination: commands.Context | discord.Interaction) -> None:
         a, b = random.choice(WYR_QUESTIONS)
         view = WYRView(a, b)
-        view.end_ts, _ = countdown_field(60)
+        view.end_ts, _ = countdown_field(120)
         if isinstance(destination, discord.Interaction):
             await destination.response.send_message(embed=view._embed(), view=view)
             view.message = await destination.original_response()
@@ -602,7 +602,7 @@ class Games(commands.Cog):
 
     async def start_tod(self, destination: commands.Context | discord.Interaction, target: discord.Member) -> None:
         view = TODView(target)
-        view.end_ts, _ = countdown_field(90)
+        view.end_ts, _ = countdown_field(120)
         e = game_embed(
             "Truth or Dare",
             f"{target.mention}, pick **Truth**, **Dare**, or **Random**.",
