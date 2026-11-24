@@ -318,7 +318,7 @@ class ChatGuessGame(ChannelGame):
                     self.hinted = True
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(1)
             if self.finished:
                 return
             if self.message:
@@ -416,7 +416,7 @@ class WordRuleGame(ChannelGame):
                     except discord.HTTPException:
                         pass
                 if remaining > 0:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(1)
             if self.finished:
                 return
             if self.message:
@@ -550,7 +550,7 @@ class ButtonHuntGame(ChannelGame):
                 self.seconds_left = remaining
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(1)
             if self.finished:
                 return
             await self.timed_out()
@@ -814,7 +814,7 @@ class ColorHuntGame(ChannelGame):
                 self.seconds_left = remaining
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(1)
             if self.finished:
                 return
             await self.timed_out()
@@ -955,7 +955,7 @@ class ReactionGame(ChannelGame):
                 self.seconds_left = remaining
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(1)
             self.seconds_left = None
             if not self.finished:
                 if self.view:
@@ -1142,7 +1142,7 @@ class SequenceHuntGame(ChannelGame):
                 self.seconds_left = remaining
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(1)
             if self.finished:
                 return
             await self.timed_out()
@@ -1441,7 +1441,7 @@ class TriviaGame(ChannelGame):
                     except discord.HTTPException:
                         pass
                 if remaining > 0:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(1)
             if self.finished:
                 return
             await self.timed_out()
