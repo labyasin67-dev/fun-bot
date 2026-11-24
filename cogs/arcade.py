@@ -1741,7 +1741,8 @@ class Arcade(commands.Cog):
                 prompt=f"Type this word **backwards**:\n# {word.upper()}",
                 answers=[word[::-1]],
                 reveal=f"{word[::-1]}  ({word} backwards)",
-                hint=f"It has {len(word)} letters.",
+                hint=None,
+                hint_at=None,
             )
         await self._launch(dest, factory)
 
