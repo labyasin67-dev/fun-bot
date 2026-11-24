@@ -499,7 +499,7 @@ class UnoGame(ChannelGame):
 
 class LobbyView(discord.ui.View):
     def __init__(self, game: UnoGame):
-        super().__init__(timeout=300)
+        super().__init__(timeout=120)
         self.game = game
 
     async def on_timeout(self) -> None:
@@ -549,7 +549,7 @@ class PlayView(discord.ui.View):
 
 class HandView(discord.ui.View):
     def __init__(self, game: UnoGame, user_id: int, playable: list[Card]):
-        super().__init__(timeout=60)
+        super().__init__(timeout=120)
         self.game = game
         self.user_id = user_id
         self.playable = playable
@@ -584,7 +584,7 @@ class PlaySelect(discord.ui.Select):
 
 class WildColorView(discord.ui.View):
     def __init__(self, game: UnoGame, user_id: int, card: Card):
-        super().__init__(timeout=30)
+        super().__init__(timeout=120)
         self.game = game
         self.user_id = user_id
         self.card = card
@@ -613,7 +613,7 @@ class ColorButton(discord.ui.Button):
 
 class DrawnCardView(discord.ui.View):
     def __init__(self, game: UnoGame, user_id: int, card: Card):
-        super().__init__(timeout=30)
+        super().__init__(timeout=120)
         self.game = game
         self.user_id = user_id
         self.card = card

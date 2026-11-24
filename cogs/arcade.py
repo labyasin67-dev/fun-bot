@@ -131,7 +131,7 @@ def emoji_equal(guess: str, target: str) -> bool:
 
 async def get_trivia() -> tuple[str, str, list[str]]:
     try:
-        timeout = aiohttp.ClientTimeout(total=6)
+        timeout = aiohttp.ClientTimeout(total=120)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get("https://opentdb.com/api.php", params={"amount": 1, "type": "multiple"}) as resp:
                 if resp.status == 200:
@@ -171,7 +171,7 @@ def build_menu_embed(games: list) -> discord.Embed:
 
 class GamesDropMenu(discord.ui.View):
     def __init__(self, cog: "Arcade", games: list | None = None):
-        super().__init__(timeout=180)
+        super().__init__(timeout=120)
         self.cog = cog
         self.message: discord.Message | None = None
         self.games = list(games if games is not None else MENU_GAMES)
@@ -213,7 +213,7 @@ class ChatGuessGame(ChannelGame):
         reveal: str,
         hint: str | None = None,
         image_url: str | None = None,
-        timeout: int = 30,
+        timeout: int = 120,
         hint_at: int | None = 15,
         xp: int = DEFAULT_WIN_XP,
         match: str = "fuzzy",
@@ -318,7 +318,7 @@ class ChatGuessGame(ChannelGame):
                     self.hinted = True
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0)
             if self.finished:
                 return
             if self.message:
@@ -388,9 +388,9 @@ class WordRuleGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.end_ts, _ = countdown_field(30)
+        self.end_ts, _ = countdown_field(120)
         self.message = await send_dest(dest, embed=self._play_embed())
-        self.seconds_left = 30
+        self.seconds_left = 120
         self.task = asyncio.create_task(self._timer())
 
     def _play_embed(self) -> discord.Embed:
@@ -406,7 +406,7 @@ class WordRuleGame(ChannelGame):
 
     async def _timer(self) -> None:
         try:
-            for remaining in range(30, -1, -1):
+            for remaining in range(120, -1, -1):
                 if self.finished:
                     return
                 self.seconds_left = remaining
@@ -416,7 +416,7 @@ class WordRuleGame(ChannelGame):
                     except discord.HTTPException:
                         pass
                 if remaining > 0:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0)
             if self.finished:
                 return
             if self.message:
@@ -466,7 +466,7 @@ class WordRuleGame(ChannelGame):
 
 
 class ButtonHuntView(discord.ui.View):
-    def __init__(self, game: "ButtonHuntGame", *, timeout: float = 30):
+    def __init__(self, game: "ButtonHuntGame", *, timeout: float = 120):
         super().__init__(timeout=timeout)
         self.game = game
         winner_index = random.randrange(20)
@@ -537,20 +537,20 @@ class ButtonHuntGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.end_ts, _ = countdown_field(30)
-        self.view = ButtonHuntView(self, timeout=33)  # backstop; the countdown drives the actual timeout
+        self.end_ts, _ = countdown_field(120)
+        self.view = ButtonHuntView(self, timeout=120)  # backstop; the countdown drives the actual timeout
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
         self.task = asyncio.create_task(self._countdown())
 
     async def _countdown(self) -> None:
         try:
-            for remaining in range(30, -1, -1):
+            for remaining in range(120, -1, -1):
                 if self.finished:
                     return
                 self.seconds_left = remaining
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0)
             if self.finished:
                 return
             await self.timed_out()
@@ -607,7 +607,7 @@ class ButtonHuntGame(ChannelGame):
 
 class DiceJoinView(discord.ui.View):
     def __init__(self, game: "DiceDuelGame"):
-        super().__init__(timeout=30)
+        super().__init__(timeout=120)
         self.game = game
 
     async def on_timeout(self) -> None:
@@ -648,7 +648,7 @@ class DiceDuelGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.end_ts, _ = countdown_field(30)
+        self.end_ts, _ = countdown_field(120)
         self.view = DiceJoinView(self)
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
 
@@ -719,7 +719,7 @@ class DiceDuelGame(ChannelGame):
 
 
 class ColorHuntView(discord.ui.View):
-    def __init__(self, game: "ColorHuntGame", *, timeout: float = 20):
+    def __init__(self, game: "ColorHuntGame", *, timeout: float = 120):
         super().__init__(timeout=timeout)
         self.game = game
         styles = [
@@ -801,20 +801,20 @@ class ColorHuntGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.end_ts, _ = countdown_field(20)
-        self.view = ColorHuntView(self, timeout=23)  # backstop; the countdown drives the actual timeout
+        self.end_ts, _ = countdown_field(120)
+        self.view = ColorHuntView(self, timeout=120)  # backstop; the countdown drives the actual timeout
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
         self.task = asyncio.create_task(self._countdown())
 
     async def _countdown(self) -> None:
         try:
-            for remaining in range(20, -1, -1):
+            for remaining in range(120, -1, -1):
                 if self.finished:
                     return
                 self.seconds_left = remaining
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0)
             if self.finished:
                 return
             await self.timed_out()
@@ -869,7 +869,7 @@ class ColorHuntGame(ChannelGame):
 
 class ReactionView(discord.ui.View):
     def __init__(self, game: "ReactionGame"):
-        super().__init__(timeout=20)
+        super().__init__(timeout=120)
         self.game = game
 
     @discord.ui.button(label="⏳ Wait…", style=discord.ButtonStyle.secondary, disabled=False)
@@ -878,7 +878,7 @@ class ReactionView(discord.ui.View):
 
 
 # How many seconds the Reaction button stays live after it flips to GO!.
-REACTION_LIVE_SECONDS = 10
+REACTION_LIVE_SECONDS = 120
 
 
 class ReactionGame(ChannelGame):
@@ -925,15 +925,14 @@ class ReactionGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        wait_seconds = random.uniform(2.5, 6.5)
-        self.end_ts, _ = countdown_field(int(wait_seconds) + REACTION_LIVE_SECONDS)
+        self.end_ts, _ = countdown_field(REACTION_LIVE_SECONDS)
         self.view = ReactionView(self)
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
         self.task = asyncio.create_task(self._run())
 
     async def _run(self) -> None:
         try:
-            await asyncio.sleep(random.uniform(2.5, 6.5))
+            await asyncio.sleep(0)
             if self.finished:
                 return
             self.live = True
@@ -954,7 +953,7 @@ class ReactionGame(ChannelGame):
                 self.seconds_left = remaining
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0)
             self.seconds_left = None
             if not self.finished:
                 if self.view:
@@ -1042,7 +1041,7 @@ class ReactionGame(ChannelGame):
 class SequenceHuntView(discord.ui.View):
     EMOJIS = ["🔴", "🟢", "🔵", "🟡"]
 
-    def __init__(self, game: "SequenceHuntGame", enabled: bool, *, timeout: float = 25):
+    def __init__(self, game: "SequenceHuntGame", enabled: bool, *, timeout: float = 120):
         super().__init__(timeout=timeout)
         self.game = game
         for i, emoji in enumerate(self.EMOJIS):
@@ -1118,12 +1117,12 @@ class SequenceHuntGame(ChannelGame):
 
     async def _run(self) -> None:
         try:
-            await asyncio.sleep(4)
+            await asyncio.sleep(0)
             if self.finished:
                 return
             self.accepting = True
-            self.end_ts, _ = countdown_field(25)
-            self.view = SequenceHuntView(self, enabled=True, timeout=28)  # backstop; the countdown drives the actual timeout
+            self.end_ts, _ = countdown_field(120)
+            self.view = SequenceHuntView(self, enabled=True, timeout=120)  # backstop; the countdown drives the actual timeout
             if self.message:
                 try:
                     await self.message.edit(embed=self._embed(show_sequence=False), view=self.view)
@@ -1135,13 +1134,13 @@ class SequenceHuntGame(ChannelGame):
 
     async def _countdown(self) -> None:
         try:
-            for remaining in range(25, -1, -1):
+            for remaining in range(120, -1, -1):
                 if self.finished:
                     return
                 self.seconds_left = remaining
                 await self.refresh()
                 if remaining > 0:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0)
             if self.finished:
                 return
             await self.timed_out()
@@ -1218,7 +1217,7 @@ class SequenceHuntGame(ChannelGame):
 
 class HiLoView(discord.ui.View):
     def __init__(self, game: "HiLoGame"):
-        super().__init__(timeout=20)
+        super().__init__(timeout=120)
         self.game = game
 
     async def on_timeout(self) -> None:
@@ -1290,7 +1289,7 @@ class HiLoGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.end_ts, _ = countdown_field(20)
+        self.end_ts, _ = countdown_field(120)
         self.view = HiLoView(self)
         self.message = await send_dest(dest, embed=self._embed(), view=self.view)
 
@@ -1347,7 +1346,7 @@ class HiLoGame(ChannelGame):
         self.next_number = self._next()
         self.view = HiLoView(self)
         self.round_open = True
-        self.end_ts, _ = countdown_field(20)
+        self.end_ts, _ = countdown_field(120)
         e = self._embed(extra=f"{interaction.user.display_name} was right • +10 XP")
         await interaction.response.edit_message(embed=e, view=self.view)
 
@@ -1365,7 +1364,7 @@ class HiLoGame(ChannelGame):
 
 
 class TriviaChannelView(discord.ui.View):
-    def __init__(self, game: "TriviaGame", options: list[str], correct: str, *, timeout: float = 25):
+    def __init__(self, game: "TriviaGame", options: list[str], correct: str, *, timeout: float = 120):
         super().__init__(timeout=timeout)
         self.game = game
         for option in options:
@@ -1411,9 +1410,9 @@ class TriviaGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.end_ts, _ = countdown_field(25)
-        self.view = TriviaChannelView(self, self.options, self.correct, timeout=28)  # backstop; the countdown drives the actual timeout
-        self.seconds_left = 25
+        self.end_ts, _ = countdown_field(120)
+        self.view = TriviaChannelView(self, self.options, self.correct, timeout=120)  # backstop; the countdown drives the actual timeout
+        self.seconds_left = 120
         self.message = await send_dest(dest, embed=self._play_embed(), view=self.view)
         self.task = asyncio.create_task(self._countdown())
 
@@ -1430,7 +1429,7 @@ class TriviaGame(ChannelGame):
 
     async def _countdown(self) -> None:
         try:
-            for remaining in range(25, -1, -1):
+            for remaining in range(120, -1, -1):
                 if self.finished:
                     return
                 self.seconds_left = remaining
@@ -1440,7 +1439,7 @@ class TriviaGame(ChannelGame):
                     except discord.HTTPException:
                         pass
                 if remaining > 0:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0)
             if self.finished:
                 return
             await self.timed_out()
@@ -1537,14 +1536,14 @@ class RedLightGame(ChannelGame):
 
     async def begin(self, dest) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
-        self.end_ts, _ = countdown_field(30)
+        self.end_ts, _ = countdown_field(120)
         self.message = await send_dest(dest, embed=self._embed())
         self.task = asyncio.create_task(self._run())
 
     async def _run(self) -> None:
         try:
             for _ in range(8):
-                await asyncio.sleep(random.uniform(2.0, 4.5))
+                await asyncio.sleep(0)
                 if self.finished:
                     return
                 self.green = not self.green

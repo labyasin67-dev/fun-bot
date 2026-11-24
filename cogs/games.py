@@ -174,7 +174,7 @@ def _member_name(user: discord.abc.User) -> str:
 
 class RPSView(discord.ui.View):
     def __init__(self, challenger: discord.Member, opponent: discord.Member | None):
-        super().__init__(timeout=60)
+        super().__init__(timeout=120)
         self.challenger = challenger
         self.opponent = opponent  # None means vs bot
         self.choices: dict[int, str] = {}
@@ -272,7 +272,7 @@ def _rps_result(a: str, b: str) -> int:
 
 class TriviaView(discord.ui.View):
     def __init__(self, correct: str, options: list[str], author_id: int):
-        super().__init__(timeout=25)
+        super().__init__(timeout=120)
         self.correct = correct
         self.author_id = author_id
         self.finished = False
@@ -340,7 +340,7 @@ class TriviaButton(discord.ui.Button):
 
 class WYRView(discord.ui.View):
     def __init__(self, option_a: str, option_b: str):
-        super().__init__(timeout=60)
+        super().__init__(timeout=120)
         self.option_a = option_a
         self.option_b = option_b
         self.votes: dict[int, str] = {}
@@ -507,7 +507,7 @@ class Games(commands.Cog):
 
     async def _get_trivia(self) -> tuple[str, str, list[str]]:
         try:
-            timeout = aiohttp.ClientTimeout(total=6)
+            timeout = aiohttp.ClientTimeout(total=120)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get("https://opentdb.com/api.php", params={"amount": 1, "type": "multiple"}) as resp:
                     if resp.status == 200:

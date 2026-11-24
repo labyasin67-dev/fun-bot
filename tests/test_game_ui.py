@@ -459,7 +459,7 @@ class SmokeTest(unittest.TestCase):
         game.reveal = "4"
         game.hint = None
         game.image_url = None
-        game.timeout = 30
+        game.timeout = 120
         game.hint_at = None
         game.xp = 25
         game.match = "fuzzy"
