@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import random
-import time
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -79,7 +78,9 @@ class FunCommands(commands.Cog):
     @property
     def session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
+            self._session = aiohttp.ClientSession(
+                headers={"User-Agent": "Mozilla/5.0 (compatible; FunBot/1.0)"}
+            )
         return self._session
 
     def _random_gif(self, action: str) -> str:
@@ -131,6 +132,7 @@ class FunCommands(commands.Cog):
         else:
             count_text = ""
 
+        # Download GIF and stream it into the embed as an attachment field
         gif_url = self._random_gif(action)
         gif_bytes = await self._download_gif(gif_url)
 
@@ -143,6 +145,8 @@ class FunCommands(commands.Cog):
             e.set_image(url="attachment://fun.gif")
             await ctx.send(embed=e, file=file)
         else:
+            # Fallback: render the GIF URL directly in the embed image field
+            e.set_image(url=gif_url)
             await ctx.send(embed=e)
 
     # --- prefix commands ---
