@@ -273,11 +273,12 @@ CREATE TABLE IF NOT EXISTS fun_slaps (
     guild_id INTEGER NOT NULL,
     slapper_id INTEGER NOT NULL,
     slapped_id INTEGER NOT NULL,
+    action TEXT NOT NULL DEFAULT 'slap',
     created_at REAL NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_youtube_schedule_guild ON youtube_schedule(guild_id, scheduled_at);
-CREATE INDEX IF NOT EXISTS idx_fun_slaps_guild ON fun_slaps(guild_id, slapped_id);
+CREATE INDEX IF NOT EXISTS idx_fun_slaps_guild ON fun_slaps(guild_id, slapped_id, action);
 """
 
 FEATURE_SETTINGS_COLUMN = {
@@ -1851,22 +1852,22 @@ class Database:
 
     # --- fun slaps ---
 
-    async def add_fun_slap(self, guild_id: int, slapper_id: int, slapped_id: int) -> int:
+    async def add_fun_slap(self, guild_id: int, slapper_id: int, slapped_id: int, action: str = "slap") -> int:
         import time
         cur = await self.db.execute(
             """
-            INSERT INTO fun_slaps (guild_id, slapper_id, slapped_id, created_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO fun_slaps (guild_id, slapper_id, slapped_id, action, created_at)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (guild_id, slapper_id, slapped_id, time.time()),
+            (guild_id, slapper_id, slapped_id, action, time.time()),
         )
         await self.db.commit()
         return int(cur.lastrowid)
 
-    async def count_fun_slaps(self, guild_id: int, slapped_id: int) -> int:
+    async def count_fun_slaps(self, guild_id: int, slapped_id: int, action: str = "slap") -> int:
         cur = await self.db.execute(
-            "SELECT COUNT(*) as n FROM fun_slaps WHERE guild_id = ? AND slapped_id = ?",
-            (guild_id, slapped_id),
+            "SELECT COUNT(*) as n FROM fun_slaps WHERE guild_id = ? AND slapped_id = ? AND action = ?",
+            (guild_id, slapped_id, action),
         )
         row = await cur.fetchone()
         return int(row["n"]) if row else 0

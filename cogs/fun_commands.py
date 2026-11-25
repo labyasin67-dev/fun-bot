@@ -172,6 +172,74 @@ ACTION_VERBS: dict[str, str] = {
     "yes": "says yes to",
 }
 
+# Past-tense verb forms for subtexts and footers
+ACTION_VERBS_PAST: dict[str, str] = {
+    # Original
+    "slap":   "slapped",
+    "kiss":   "kissed",
+    "laugh":  "laughed at",
+    "boot":   "kicked",
+    "yeet":   "yeeted",
+    "tickle": "tickled",
+    "hug":    "hugged",
+    "dap":    "dapped",
+    "bonk":   "bonked",
+    "cuddle": "cuddled",
+    "flirt":  "flirted with",
+    "poke":   "poked",
+    # New
+    "airkiss": "air kissed",
+    "angrystare": "angrily stared at",
+    "bite": "bitten",
+    "bleh": "made a bleh face at",
+    "celebrate": "celebrated with",
+    "cheers": "cheered with",
+    "clap": "clapped for",
+    "confused": "looked confused at",
+    "cool": "looked cool with",
+    "cry": "cried at",
+    "dance": "danced with",
+    "drool": "drooled at",
+    "evillaugh": "evilly laughed at",
+    "facepalm": "facepalmed",
+    "handhold": "held hands with",
+    "headbang": "headbanged with",
+    "lick": "licked",
+    "mad": "made mad at",
+    "nervous": "made nervous around",
+    "eat": "ate with",
+    "boop": "booped",
+    "nyah": "nyah'd at",
+    "pat": "patted",
+    "peek": "peeked at",
+    "pinch": "pinched",
+    "pout": "pouted at",
+    "sad": "made sad at",
+    "scared": "scared",
+    "shout": "shouted at",
+    "shrug": "shrugged at",
+    "shy": "made shy around",
+    "sigh": "sighed at",
+    "sip": "sipped with",
+    "sleep": "slept with",
+    "slowclap": "slow clapped for",
+    "smack": "smacked",
+    "smile": "smiled at",
+    "sneeze": "sneezed at",
+    "sorry": "said sorry to",
+    "stare": "stared at",
+    "surprised": "surprised",
+    "sweat": "sweated at",
+    "thumbsup": "gave a thumbs up to",
+    "tired": "made tired with",
+    "wave": "waved at",
+    "wink": "winked at",
+    "woah": "said woah at",
+    "yawn": "yawned with",
+    "yay": "yayed with",
+    "yes": "said yes to",
+}
+
 
 def ordinal(n: int) -> str:
     if 10 <= n % 100 <= 20:
@@ -241,79 +309,18 @@ class FunCommands(commands.Cog):
             )
             return
 
-        # Track slap counts in the database
-        count = 0
-        if action == "slap":
-            await self.bot.db.add_fun_slap(ctx.guild.id, author.id, target.id)
-            count = await self.bot.db.count_fun_slaps(ctx.guild.id, target.id)
+        # Track action counts in the database for ALL actions
+        await self.bot.db.add_fun_slap(ctx.guild.id, author.id, target.id, action)
+        count = await self.bot.db.count_fun_slaps(ctx.guild.id, target.id, action)
 
         verb = ACTION_VERBS[action]
-        subtext_map = {
-            "slap":   f"-# {target.mention} has been slapped {ordinal(count)} time.",
-            "kiss":   f"-# {target.mention} was kissed by {author.mention}.",
-            "laugh":  f"-# {target.mention} is being laughed at by {author.mention}.",
-            "boot":   f"-# {target.mention} got booted by {author.mention}.",
-            "yeet":   f"-# {target.mention} was yeeted by {author.mention}.",
-            "tickle": f"-# {target.mention} was tickled by {author.mention}.",
-            "hug":    f"-# {target.mention} got a hug from {author.mention}.",
-            "dap":    f"-# {target.mention} got dapped by {author.mention}.",
-            "bonk":   f"-# {target.mention} got bonked by {author.mention}.",
-            "cuddle": f"-# {target.mention} got cuddled by {author.mention}.",
-            "flirt":  f"-# {target.mention} got flirted with by {author.mention}.",
-            "poke":   f"-# {target.mention} got poked by {author.mention}.",
-            # New subtexts
-            "airkiss": f"-# {target.mention} got an air kiss from {author.mention}.",
-            "angrystare": f"-# {target.mention} got an angry stare from {author.mention}.",
-            "bite": f"-# {target.mention} got bitten by {author.mention}.",
-            "bleh": f"-# {target.mention} got a bleh face from {author.mention}.",
-            "celebrate": f"-# {target.mention} is celebrating with {author.mention}.",
-            "cheers": f"-# {target.mention} is cheering with {author.mention}.",
-            "clap": f"-# {target.mention} is getting clapped for by {author.mention}.",
-            "confused": f"-# {target.mention} is looking confused at {author.mention}.",
-            "cool": f"-# {target.mention} is looking cool with {author.mention}.",
-            "cry": f"-# {target.mention} is crying at {author.mention}.",
-            "dance": f"-# {target.mention} is dancing with {author.mention}.",
-            "drool": f"-# {target.mention} is being drooled at by {author.mention}.",
-            "evillaugh": f"-# {target.mention} is being evil laughed at by {author.mention}.",
-            "facepalm": f"-# {target.mention} is being facepalmed by {author.mention}.",
-            "handhold": f"-# {target.mention} is holding hands with {author.mention}.",
-            "headbang": f"-# {target.mention} is headbanging with {author.mention}.",
-            "lick": f"-# {target.mention} got licked by {author.mention}.",
-            "mad": f"-# {target.mention} made {author.mention} mad.",
-            "nervous": f"-# {target.mention} made {author.mention} nervous.",
-            "eat": f"-# {target.mention} is eating with {author.mention}.",
-            "boop": f"-# {target.mention} got booped by {author.mention}.",
-            "nyah": f"-# {target.mention} got nyah'd by {author.mention}.",
-            "pat": f"-# {target.mention} got patted by {author.mention}.",
-            "peek": f"-# {target.mention} is being peeked at by {author.mention}.",
-            "pinch": f"-# {target.mention} got pinched by {author.mention}.",
-            "pout": f"-# {target.mention} is being pouted at by {author.mention}.",
-            "sad": f"-# {target.mention} is making {author.mention} sad.",
-            "scared": f"-# {target.mention} is scaring {author.mention}.",
-            "shout": f"-# {target.mention} got shouted at by {author.mention}.",
-            "shrug": f"-# {target.mention} is being shrugged at by {author.mention}.",
-            "shy": f"-# {target.mention} is making {author.mention} shy.",
-            "sigh": f"-# {target.mention} is being sighed at by {author.mention}.",
-            "sip": f"-# {target.mention} is sipping with {author.mention}.",
-            "sleep": f"-# {target.mention} is sleeping with {author.mention}.",
-            "slowclap": f"-# {target.mention} is getting slow clapped by {author.mention}.",
-            "smack": f"-# {target.mention} got smacked by {author.mention}.",
-            "smile": f"-# {target.mention} is being smiled at by {author.mention}.",
-            "sneeze": f"-# {target.mention} is being sneezed at by {author.mention}.",
-            "sorry": f"-# {target.mention} is getting an apology from {author.mention}.",
-            "stare": f"-# {target.mention} is being stared at by {author.mention}.",
-            "surprised": f"-# {target.mention} surprised {author.mention}.",
-            "sweat": f"-# {target.mention} is making {author.mention} sweat.",
-            "thumbsup": f"-# {target.mention} got a thumbs up from {author.mention}.",
-            "tired": f"-# {target.mention} is getting {author.mention} tired.",
-            "wave": f"-# {target.mention} got waved at by {author.mention}.",
-            "wink": f"-# {target.mention} got winked at by {author.mention}.",
-            "woah": f"-# {target.mention} made {author.mention} say woah.",
-            "yawn": f"-# {target.mention} is yawning with {author.mention}.",
-            "yay": f"-# {target.mention} is yaying with {author.mention}.",
-            "yes": f"-# {target.mention} got a yes from {author.mention}.",
-        }
-        subtext = subtext_map[action]
+        verb_past = ACTION_VERBS_PAST[action]
+
+        # Subtext: describes what just happened
+        subtext = f"-# {target.mention} {verb_past} by {author.mention}."
+
+        # Footer: tracks how many times this has happened
+        footer_text = f"-# {target.mention} has been {verb_past} {ordinal(count)} time."
 
         # Download GIF and attach as a file so Discord renders it large in the embed
         gif_url = self._random_gif(action)
@@ -331,7 +338,7 @@ class FunCommands(commands.Cog):
 
         description = f"# <@{author.id}> {verb} <@{target.id}>\n\n{subtext}"
         e = make_embed(description=description, color=SUCCESS)
-        e.set_footer(text=f"Powered by Meowchi Cafe")
+        e.set_footer(text=footer_text)
         e.set_image(url="attachment://fun.gif")
         file = discord.File(io.BytesIO(gif_bytes), filename="fun.gif")
 
