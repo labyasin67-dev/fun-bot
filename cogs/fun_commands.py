@@ -83,15 +83,27 @@ class FunCommands(commands.Cog):
             return
 
         # Track slap counts in the database
+        count = 0
         if action == "slap":
             await self.bot.db.add_fun_slap(ctx.guild.id, author.id, target.id)
             count = await self.bot.db.count_fun_slaps(ctx.guild.id, target.id)
-            subtext = f"-# {target.mention} has been slapped {ordinal(count)} time."
-        else:
-            subtext = None
 
         verb = ACTION_VERBS[action]
-        title = f"{author.mention} {verb} {target.mention}!"
+        # Build subtext for every action type
+        subtext_map = {
+            "slap": f"-# {target.mention} has been slapped {ordinal(count)} time.",
+            "kiss": f"-# {target.mention} was kissed by {author.mention}.",
+            "laugh": f"-# {target.mention} is being laughed at by {author.mention}.",
+            "boot": f"-# {target.mention} got booted by {author.mention}.",
+            "yeet": f"-# {target.mention} was yeeted by {author.mention}.",
+            "tickle": f"-# {target.mention} was tickled by {author.mention}.",
+            "hug": f"-# {target.mention} got a hug from {author.mention}.",
+            "dap": f"-# {target.mention} got dapped by {author.mention}.",
+        }
+        subtext = subtext_map[action]
+
+        # Use raw <@id> mention format for reliable ping rendering in embeds
+        title = f"<@{author.id}> {verb} <@{target.id}>!"
         e = make_embed(title=title, description=subtext, color=SUCCESS)
         e.set_image(url=self._random_gif(action))
 
