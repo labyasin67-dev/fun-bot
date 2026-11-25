@@ -15,6 +15,9 @@ smile→.smile, sneeze→.sneeze, sorry→.sorry, stare→.stare,
 surprised→.surprised, sweat→.sweat, thumbsup→.thumbsup,
 tired→.tired, wave→.wave, wink→.wink, woah→.woah,
 yawn→.yawn, yay→.yay, yes→.yes
+
+Most commands are prefix-only (.command) to stay under Discord's 100 global
+slash-command limit. A small set of popular ones are hybrid (slash + prefix).
 """
 
 from __future__ import annotations
@@ -334,6 +337,8 @@ class FunCommands(commands.Cog):
         await ctx.send(embed=e, file=file)
 
     # --- prefix commands ---
+    # Only a few popular ones are hybrid (slash + prefix) to stay under
+    # Discord's 100 global slash-command limit. Everything else is prefix-only.
 
     @commands.hybrid_command(name="slap", description="Slap someone!")
     @commands.guild_only()
@@ -345,277 +350,25 @@ class FunCommands(commands.Cog):
     async def kiss(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "kiss", target)
 
-    @commands.hybrid_command(name="laugh", description="Laugh at someone!")
+    @commands.hybrid_command(name="hug", description="Hug someone!")
     @commands.guild_only()
-    async def laugh(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "laugh", target)
-
-    @commands.hybrid_command(name="boot", description="Boot someone (fun, not a mod kick)!")
-    @commands.guild_only()
-    async def boot(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "boot", target)
-
-    @commands.hybrid_command(name="yeet", description="Yeet someone!")
-    @commands.guild_only()
-    async def yeet(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "yeet", target)
+    async def hug(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "hug", target)
 
     @commands.hybrid_command(name="tickle", description="Tickle someone!")
     @commands.guild_only()
     async def tickle(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "tickle", target)
 
-    @commands.hybrid_command(name="hug", description="Hug someone!")
-    @commands.guild_only()
-    async def hug(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "hug", target)
-
-    @commands.hybrid_command(name="dap", description="Dap someone up!")
-    @commands.guild_only()
-    async def dap(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "dap", target)
-
     @commands.hybrid_command(name="bonk", description="Bonk someone on the head!")
     @commands.guild_only()
     async def bonk(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "bonk", target)
 
-    @commands.hybrid_command(name="cuddle", description="Cuddle someone!")
-    @commands.guild_only()
-    async def cuddle(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "cuddle", target)
-
-    @commands.hybrid_command(name="flirt", description="Flirt with someone!")
-    @commands.guild_only()
-    async def flirt(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "flirt", target)
-
-    @commands.hybrid_command(name="poke", description="Poke someone!")
-    @commands.guild_only()
-    async def poke(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "poke", target)
-
-    # --- new commands ---
-
-    @commands.hybrid_command(name="airkiss", description="Air kiss someone!")
-    @commands.guild_only()
-    async def airkiss(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "airkiss", target)
-
-    @commands.hybrid_command(name="angrystare", description="Angrily stare at someone!")
-    @commands.guild_only()
-    async def angrystare(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "angrystare", target)
-
-    @commands.hybrid_command(name="bite", description="Bite someone!")
-    @commands.guild_only()
-    async def bite(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "bite", target)
-
-    @commands.hybrid_command(name="bleh", description="Make a bleh face at someone!")
-    @commands.guild_only()
-    async def bleh(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "bleh", target)
-
-    @commands.hybrid_command(name="celebrate", description="Celebrate with someone!")
-    @commands.guild_only()
-    async def celebrate(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "celebrate", target)
-
-    @commands.hybrid_command(name="cheers", description="Cheers with someone!")
-    @commands.guild_only()
-    async def cheers(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "cheers", target)
-
-    @commands.hybrid_command(name="clap", description="Clap for someone!")
-    @commands.guild_only()
-    async def clap(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "clap", target)
-
-    @commands.hybrid_command(name="confused", description="Look confused at someone!")
-    @commands.guild_only()
-    async def confused(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "confused", target)
-
-    @commands.hybrid_command(name="cool", description="Look cool with someone!")
-    @commands.guild_only()
-    async def cool(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "cool", target)
-
-    @commands.hybrid_command(name="cry", description="Cry at someone!")
-    @commands.guild_only()
-    async def cry(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "cry", target)
-
-    @commands.hybrid_command(name="dance", description="Dance with someone!")
-    @commands.guild_only()
-    async def dance(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "dance", target)
-
-    @commands.hybrid_command(name="drool", description="Drool at someone!")
-    @commands.guild_only()
-    async def drool(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "drool", target)
-
-    @commands.hybrid_command(name="evillaugh", description="Evil laugh at someone!")
-    @commands.guild_only()
-    async def evillaugh(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "evillaugh", target)
-
-    @commands.hybrid_command(name="facepalm", description="Facepalm at someone!")
-    @commands.guild_only()
-    async def facepalm(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "facepalm", target)
-
-    @commands.hybrid_command(name="handhold", description="Hold hands with someone!")
-    @commands.guild_only()
-    async def handhold(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "handhold", target)
-
-    @commands.hybrid_command(name="headbang", description="Headbang with someone!")
-    @commands.guild_only()
-    async def headbang(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "headbang", target)
-
-    @commands.hybrid_command(name="lick", description="Lick someone!")
-    @commands.guild_only()
-    async def lick(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "lick", target)
-
-    @commands.hybrid_command(name="mad", description="Get mad at someone!")
-    @commands.guild_only()
-    async def mad(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "mad", target)
-
-    @commands.hybrid_command(name="nervous", description="Get nervous around someone!")
-    @commands.guild_only()
-    async def nervous(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "nervous", target)
-
-    @commands.hybrid_command(name="eat", description="Eat with someone!")
-    @commands.guild_only()
-    async def eat(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "eat", target)
-
-    @commands.hybrid_command(name="boop", description="Boop someone!")
-    @commands.guild_only()
-    async def boop(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "boop", target)
-
-    @commands.hybrid_command(name="nyah", description="Nyah at someone!")
-    @commands.guild_only()
-    async def nyah(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "nyah", target)
-
     @commands.hybrid_command(name="pat", description="Pat someone!")
     @commands.guild_only()
     async def pat(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "pat", target)
-
-    @commands.hybrid_command(name="peek", description="Peek at someone!")
-    @commands.guild_only()
-    async def peek(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "peek", target)
-
-    @commands.hybrid_command(name="pinch", description="Pinch someone!")
-    @commands.guild_only()
-    async def pinch(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "pinch", target)
-
-    @commands.hybrid_command(name="pout", description="Pout at someone!")
-    @commands.guild_only()
-    async def pout(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "pout", target)
-
-    @commands.hybrid_command(name="sad", description="Get sad at someone!")
-    @commands.guild_only()
-    async def sad(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "sad", target)
-
-    @commands.hybrid_command(name="scared", description="Get scared at someone!")
-    @commands.guild_only()
-    async def scared(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "scared", target)
-
-    @commands.hybrid_command(name="shout", description="Shout at someone!")
-    @commands.guild_only()
-    async def shout(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "shout", target)
-
-    @commands.hybrid_command(name="shrug", description="Shrug at someone!")
-    @commands.guild_only()
-    async def shrug(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "shrug", target)
-
-    @commands.hybrid_command(name="shy", description="Get shy around someone!")
-    @commands.guild_only()
-    async def shy(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "shy", target)
-
-    @commands.hybrid_command(name="sigh", description="Sigh at someone!")
-    @commands.guild_only()
-    async def sigh(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "sigh", target)
-
-    @commands.hybrid_command(name="sip", description="Sip with someone!")
-    @commands.guild_only()
-    async def sip(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "sip", target)
-
-    @commands.hybrid_command(name="sleep", description="Sleep with someone!")
-    @commands.guild_only()
-    async def sleep(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "sleep", target)
-
-    @commands.hybrid_command(name="slowclap", description="Slow clap for someone!")
-    @commands.guild_only()
-    async def slowclap(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "slowclap", target)
-
-    @commands.hybrid_command(name="smack", description="Smack someone!")
-    @commands.guild_only()
-    async def smack(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "smack", target)
-
-    @commands.hybrid_command(name="smile", description="Smile at someone!")
-    @commands.guild_only()
-    async def smile(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "smile", target)
-
-    @commands.hybrid_command(name="sneeze", description="Sneeze at someone!")
-    @commands.guild_only()
-    async def sneeze(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "sneeze", target)
-
-    @commands.hybrid_command(name="sorry", description="Say sorry to someone!")
-    @commands.guild_only()
-    async def sorry(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "sorry", target)
-
-    @commands.hybrid_command(name="stare", description="Stare at someone!")
-    @commands.guild_only()
-    async def stare(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "stare", target)
-
-    @commands.hybrid_command(name="surprised", description="Get surprised at someone!")
-    @commands.guild_only()
-    async def surprised(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "surprised", target)
-
-    @commands.hybrid_command(name="sweat", description="Sweat at someone!")
-    @commands.guild_only()
-    async def sweat(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "sweat", target)
-
-    @commands.hybrid_command(name="thumbsup", description="Give someone a thumbs up!")
-    @commands.guild_only()
-    async def thumbsup(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "thumbsup", target)
-
-    @commands.hybrid_command(name="tired", description="Get tired with someone!")
-    @commands.guild_only()
-    async def tired(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "tired", target)
 
     @commands.hybrid_command(name="wave", description="Wave at someone!")
     @commands.guild_only()
@@ -627,24 +380,271 @@ class FunCommands(commands.Cog):
     async def wink(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "wink", target)
 
-    @commands.hybrid_command(name="woah", description="Say woah at someone!")
+    @commands.hybrid_command(name="poke", description="Poke someone!")
     @commands.guild_only()
-    async def woah(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "woah", target)
+    async def poke(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "poke", target)
 
-    @commands.hybrid_command(name="yawn", description="Yawn with someone!")
+    @commands.hybrid_command(name="dance", description="Dance with someone!")
     @commands.guild_only()
-    async def yawn(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+    async def dance(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "dance", target)
+
+    # --- prefix-only commands (everything else) ---
+
+    @commands.command(name="laugh", description="Laugh at someone!")
+    @commands.guild_only()
+    async def laugh_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "laugh", target)
+
+    @commands.command(name="boot", description="Boot someone (fun, not a mod kick)!")
+    @commands.guild_only()
+    async def boot_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "boot", target)
+
+    @commands.command(name="yeet", description="Yeet someone!")
+    @commands.guild_only()
+    async def yeet_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "yeet", target)
+
+    @commands.command(name="dap", description="Dap someone up!")
+    @commands.guild_only()
+    async def dap_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "dap", target)
+
+    @commands.command(name="cuddle", description="Cuddle someone!")
+    @commands.guild_only()
+    async def cuddle_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "cuddle", target)
+
+    @commands.command(name="flirt", description="Flirt with someone!")
+    @commands.guild_only()
+    async def flirt_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "flirt", target)
+
+    @commands.command(name="airkiss", description="Air kiss someone!")
+    @commands.guild_only()
+    async def airkiss_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "airkiss", target)
+
+    @commands.command(name="angrystare", description="Angrily stare at someone!")
+    @commands.guild_only()
+    async def angrystare_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "angrystare", target)
+
+    @commands.command(name="bite", description="Bite someone!")
+    @commands.guild_only()
+    async def bite_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "bite", target)
+
+    @commands.command(name="bleh", description="Make a bleh face at someone!")
+    @commands.guild_only()
+    async def bleh_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "bleh", target)
+
+    @commands.command(name="celebrate", description="Celebrate with someone!")
+    @commands.guild_only()
+    async def celebrate_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "celebrate", target)
+
+    @commands.command(name="cheers", description="Cheers with someone!")
+    @commands.guild_only()
+    async def cheers_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "cheers", target)
+
+    @commands.command(name="clap", description="Clap for someone!")
+    @commands.guild_only()
+    async def clap_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "clap", target)
+
+    @commands.command(name="confused", description="Look confused at someone!")
+    @commands.guild_only()
+    async def confused_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "confused", target)
+
+    @commands.command(name="cool", description="Look cool with someone!")
+    @commands.guild_only()
+    async def cool_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "cool", target)
+
+    @commands.command(name="cry", description="Cry at someone!")
+    @commands.guild_only()
+    async def cry_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "cry", target)
+
+    @commands.command(name="drool", description="Drool at someone!")
+    @commands.guild_only()
+    async def drool_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "drool", target)
+
+    @commands.command(name="evillaugh", description="Evil laugh at someone!")
+    @commands.guild_only()
+    async def evillaugh_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "evillaugh", target)
+
+    @commands.command(name="facepalm", description="Facepalm at someone!")
+    @commands.guild_only()
+    async def facepalm_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "facepalm", target)
+
+    @commands.command(name="handhold", description="Hold hands with someone!")
+    @commands.guild_only()
+    async def handhold_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "handhold", target)
+
+    @commands.command(name="headbang", description="Headbang with someone!")
+    @commands.guild_only()
+    async def headbang_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "headbang", target)
+
+    @commands.command(name="lick", description="Lick someone!")
+    @commands.guild_only()
+    async def lick_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "lick", target)
+
+    @commands.command(name="mad", description="Get mad at someone!")
+    @commands.guild_only()
+    async def mad_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "mad", target)
+
+    @commands.command(name="nervous", description="Get nervous around someone!")
+    @commands.guild_only()
+    async def nervous_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "nervous", target)
+
+    @commands.command(name="eat", description="Eat with someone!")
+    @commands.guild_only()
+    async def eat_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "eat", target)
+
+    @commands.command(name="boop", description="Boop someone!")
+    @commands.guild_only()
+    async def boop_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "boop", target)
+
+    @commands.command(name="nyah", description="Nyah at someone!")
+    @commands.guild_only()
+    async def nyah_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "nyah", target)
+
+    @commands.command(name="peek", description="Peek at someone!")
+    @commands.guild_only()
+    async def peek_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "peek", target)
+
+    @commands.command(name="pinch", description="Pinch someone!")
+    @commands.guild_only()
+    async def pinch_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "pinch", target)
+
+    @commands.command(name="pout", description="Pout at someone!")
+    @commands.guild_only()
+    async def pout_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "pout", target)
+
+    @commands.command(name="sad", description="Get sad at someone!")
+    @commands.guild_only()
+    async def sad_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sad", target)
+
+    @commands.command(name="scared", description="Get scared at someone!")
+    @commands.guild_only()
+    async def scared_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "scared", target)
+
+    @commands.command(name="shout", description="Shout at someone!")
+    @commands.guild_only()
+    async def shout_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "shout", target)
+
+    @commands.command(name="shrug", description="Shrug at someone!")
+    @commands.guild_only()
+    async def shrug_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "shrug", target)
+
+    @commands.command(name="shy", description="Get shy around someone!")
+    @commands.guild_only()
+    async def shy_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "shy", target)
+
+    @commands.command(name="sigh", description="Sigh at someone!")
+    @commands.guild_only()
+    async def sigh_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sigh", target)
+
+    @commands.command(name="sip", description="Sip with someone!")
+    @commands.guild_only()
+    async def sip_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sip", target)
+
+    @commands.command(name="sleep", description="Sleep with someone!")
+    @commands.guild_only()
+    async def sleep_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sleep", target)
+
+    @commands.command(name="slowclap", description="Slow clap for someone!")
+    @commands.guild_only()
+    async def slowclap_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "slowclap", target)
+
+    @commands.command(name="smack", description="Smack someone!")
+    @commands.guild_only()
+    async def smack_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "smack", target)
+
+    @commands.command(name="smile", description="Smile at someone!")
+    @commands.guild_only()
+    async def smile_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "smile", target)
+
+    @commands.command(name="sneeze", description="Sneeze at someone!")
+    @commands.guild_only()
+    async def sneeze_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sneeze", target)
+
+    @commands.command(name="sorry", description="Say sorry to someone!")
+    @commands.guild_only()
+    async def sorry_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sorry", target)
+
+    @commands.command(name="stare", description="Stare at someone!")
+    @commands.guild_only()
+    async def stare_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "stare", target)
+
+    @commands.command(name="surprised", description="Get surprised at someone!")
+    @commands.guild_only()
+    async def surprised_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "surprised", target)
+
+    @commands.command(name="sweat", description="Sweat at someone!")
+    @commands.guild_only()
+    async def sweat_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sweat", target)
+
+    @commands.command(name="thumbsup", description="Give someone a thumbs up!")
+    @commands.guild_only()
+    async def thumbsup_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "thumbsup", target)
+
+    @commands.command(name="tired", description="Get tired with someone!")
+    @commands.guild_only()
+    async def tired_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "tired", target)
+
+    @commands.command(name="yawn", description="Yawn with someone!")
+    @commands.guild_only()
+    async def yawn_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "yawn", target)
 
-    @commands.hybrid_command(name="yay", description="Yay with someone!")
+    @commands.command(name="yay", description="Yay with someone!")
     @commands.guild_only()
-    async def yay(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+    async def yay_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "yay", target)
 
-    @commands.hybrid_command(name="yes", description="Say yes to someone!")
+    @commands.command(name="yes", description="Say yes to someone!")
     @commands.guild_only()
-    async def yes(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+    async def yes_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "yes", target)
 
 
