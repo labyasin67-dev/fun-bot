@@ -8,12 +8,14 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils import COLOR, DANGER, SUCCESS, embed as make_embed
+from utils import COLOR, DANGER, NO_MENTIONS, SAFE_MENTIONS, SUCCESS, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
 
 DEFAULT_WELCOME = "Welcome to {server}, {mention}! You are member #{membercount}."
+DEFAULT_LEAVE = "{username} has left {server}."
+LEAVE_PLACEHOLDERS = "{user} {username} {server} {membercount}"
 
 
 def render_welcome(template: str, member: discord.Member) -> str:
@@ -24,6 +26,19 @@ def render_welcome(template: str, member: discord.Member) -> str:
         .replace("{mention}", member.mention)
         .replace("{server}", guild.name)
         .replace("{membercount}", str(guild.member_count or len(guild.members)))
+    )
+
+
+def render_leave(template: str, user: discord.abc.User, guild: discord.Guild) -> str:
+    username = getattr(user, "name", None) or str(user)
+    mention = getattr(user, "mention", f"<@{getattr(user, 'id', 0)}>")
+    count = guild.member_count or len(guild.members)
+    return (
+        (template or DEFAULT_LEAVE)
+        .replace("{user}", mention)
+        .replace("{username}", username)
+        .replace("{server}", guild.name)
+        .replace("{membercount}", str(count))
     )
 
 
@@ -53,7 +68,36 @@ class Welcome(commands.Cog):
         settings = await self.bot.db.get_settings(member.guild.id)
         text = render_welcome((settings["welcome_message"] if settings else None) or DEFAULT_WELCOME, member)
         try:
-            await channel.send(embed=self._welcome_embed(member, text))
+            await channel.send(embed=self._welcome_embed(member, text), allowed_mentions=SAFE_MENTIONS)
+        except discord.HTTPException:
+            pass
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member) -> None:
+        if member.bot:
+            return
+        # Bans also fire this event; the ban announcement handles those separately.
+        try:
+            await member.guild.fetch_ban(member)
+            return
+        except discord.NotFound:
+            pass
+        except discord.HTTPException:
+            pass
+        settings = await self.bot.db.get_settings(member.guild.id)
+        if not settings or not int(settings["leave_enabled"] or 0):
+            return
+        channel_id = settings["leave_channel_id"]
+        if not channel_id:
+            return
+        channel = member.guild.get_channel(int(channel_id))
+        if not isinstance(channel, discord.TextChannel):
+            return
+        text = render_leave(settings["leave_message"] or DEFAULT_LEAVE, member, member.guild)
+        e = make_embed("Member left", text)
+        e.set_thumbnail(url=member.display_avatar.url)
+        try:
+            await channel.send(embed=e, allowed_mentions=NO_MENTIONS)
         except discord.HTTPException:
             pass
 
@@ -97,7 +141,7 @@ class Welcome(commands.Cog):
             return
         settings = await self.bot.db.get_settings(ctx.guild.id)
         text = render_welcome((settings["welcome_message"] if settings else None) or DEFAULT_WELCOME, ctx.author)
-        await channel.send(embed=self._welcome_embed(ctx.author, text))
+        await channel.send(embed=self._welcome_embed(ctx.author, text), allowed_mentions=SAFE_MENTIONS)
         if channel.id != ctx.channel.id:
             await ctx.send(embed=make_embed("Test sent", f"Posted a preview in {channel.mention}."), ephemeral=True)
         elif ctx.interaction:
@@ -113,7 +157,7 @@ class Welcome(commands.Cog):
             raise ValueError("The welcome channel is missing. Set it again.")
         settings = await self.bot.db.get_settings(guild.id)
         text = render_welcome((settings["welcome_message"] if settings else None) or DEFAULT_WELCOME, member)
-        await channel.send(embed=self._welcome_embed(member, text))
+        await channel.send(embed=self._welcome_embed(member, text), allowed_mentions=SAFE_MENTIONS)
         return channel
 
 

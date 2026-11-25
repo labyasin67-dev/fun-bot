@@ -10,24 +10,18 @@ from typing import TYPE_CHECKING, Any
 import discord
 from discord.ext import commands
 
-from cogs.game_ui import game_embed, game_footer, result_embed
 from cogs.sessions import ChannelGame, award_xp, dest_user, launch_channel_game, send_dest
-from utils import WARNING, embed as make_embed
+from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
 
 COLORS = ("red", "yellow", "green", "blue")
-COLOR_EMOJI = {"red": "🔴", "yellow": "🟡", "green": ":dollblink:", "blue": "🔵"}
+COLOR_EMOJI = {"red": "🔴", "yellow": "🟡", "green": "🟢", "blue": "🔵"}
 KIND_LABEL = {"skip": "Skip", "reverse": "Reverse", "draw2": "+2", "wild": "Wild", "wild4": "Wild +4"}
 UNO_XP = 50
 TURN_SECONDS = 60
 MAX_PLAYERS = 10
-
-
-def _avatar_url(user: Any) -> str | None:
-    avatar = getattr(user, "display_avatar", None)
-    return getattr(avatar, "url", None) if avatar is not None else None
 
 
 @dataclass
@@ -90,7 +84,6 @@ class UnoGame(ChannelGame):
         self.play_view: discord.ui.View | None = None
         self.turn_task: asyncio.Task[Any] | None = None
         self.host_name = "Host"
-        self.host_avatar: str | None = None
 
     @property
     def current_id(self) -> int:
@@ -125,15 +118,10 @@ class UnoGame(ChannelGame):
 
     def lobby_embed(self) -> discord.Embed:
         names = "\n".join(f"• {self.mention(uid)}" + (" (host)" if uid == self.host_id else "") for uid in self.players)
-        return game_embed(
+        return make_embed(
             "UNO lobby",
-            f"2–10 players. The host presses **Start** when you're ready.",
-            emoji="🃏",
-            phase="play",
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-            footer=game_footer("UNO lobby", self.host_name, extra=f"{len(self.players)}/{MAX_PLAYERS} players"),
-            fields=[("Players", names or "None yet", False)],
+            f"Players ({len(self.players)}/{MAX_PLAYERS}):\n{names or 'None yet'}\n\n"
+            "2–10 players. The host presses **Start** when you're ready.",
         )
 
     def board_embed(self) -> discord.Embed:
@@ -149,22 +137,15 @@ class UnoGame(ChannelGame):
         pending = ""
         if self.uno_pending and not self.uno_called:
             pending = f"\n\n⚠️ {self.mention(self.uno_pending)} has one card and hasn't called UNO!"
-        return game_embed(
+        return make_embed(
             "UNO",
             f"Top card: **{self.top().label()}**\nColour in play: {COLOR_EMOJI[self.current_color]}\n"
-            f"Current turn: {self.mention(self.current_id)}\nDirection: {arrow}",
-            emoji="🃏",
-            phase="play",
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-            footer=game_footer("UNO", self.host_name, extra=f"{len(self.players)} players"),
-            fields=[("Turn order", counts + pending, False)],
+            f"Current turn: {self.mention(self.current_id)}\nDirection: {arrow}\n\n{counts}{pending}",
         )
 
     async def begin(self, dest: commands.Context | discord.Interaction) -> None:
         user = dest_user(dest)
         self.host_name = getattr(user, "display_name", user.name)
-        self.host_avatar = _avatar_url(user)
         self.lobby_view = LobbyView(self)
         self.message = await send_dest(dest, embed=self.lobby_embed(), view=self.lobby_view)
 
@@ -355,15 +336,7 @@ class UnoGame(ChannelGame):
         hand = self.hands.get(uid, [])
         playable = [c for c in hand if c.playable_on(self.top(), self.current_color, hand)]
         lines = [c.label() for c in hand] or ["(no cards)"]
-        e = game_embed(
-            "Your hand",
-            "\n".join(f"• {line}" for line in lines),
-            emoji="🃏",
-            phase="play",
-            host=self.host_name,
-            host_avatar=self.host_avatar,
-            footer=game_footer("UNO", self.host_name, extra="your hand"),
-        )
+        e = make_embed("Your hand", "\n".join(f"• {line}" for line in lines))
         if uid != self.current_id:
             e.set_footer(text="It's not your turn — you can look, but you can't play yet.")
             await interaction.response.send_message(embed=e, ephemeral=True)
@@ -418,17 +391,7 @@ class UnoGame(ChannelGame):
                         child.disabled = True
                 self.play_view.stop()
             await award_xp(self.bot, interaction.user, self.channel, UNO_XP)
-            e = result_embed(
-                "UNO!",
-                f"{interaction.user.mention} played {card.label()} and went out!",
-                emoji="🃏",
-                phase="win",
-                xp=UNO_XP,
-                play_again="Start a fresh lobby with `.uno`.",
-                winner_avatar=_avatar_url(interaction.user),
-                host=self.host_name,
-                host_avatar=self.host_avatar,
-            )
+            e = make_embed("UNO!", f"{interaction.user.mention} played {card.label()} and went out!\n+{UNO_XP} XP", color=SUCCESS)
             if not interaction.response.is_done():
                 await interaction.response.edit_message(content="You win!", embed=None, view=None)
             if self.message:
@@ -499,7 +462,7 @@ class UnoGame(ChannelGame):
 
 class LobbyView(discord.ui.View):
     def __init__(self, game: UnoGame):
-        super().__init__(timeout=120)
+        super().__init__(timeout=300)
         self.game = game
 
     async def on_timeout(self) -> None:
@@ -512,15 +475,15 @@ class LobbyView(discord.ui.View):
                 pass
         await self.game.finish(result="⏰ UNO lobby timed out.")
 
-    @discord.ui.button(label="➕ Join", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Join", style=discord.ButtonStyle.primary)
     async def join(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self.game.add_player(interaction)
 
-    @discord.ui.button(label="▶️ Start", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="Start", style=discord.ButtonStyle.success)
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self.game.start_game(interaction)
 
-    @discord.ui.button(label="🚪 Leave", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Leave", style=discord.ButtonStyle.secondary)
     async def leave(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self.game.remove_player(interaction)
 
@@ -530,26 +493,26 @@ class PlayView(discord.ui.View):
         super().__init__(timeout=None)
         self.game = game
 
-    @discord.ui.button(label="🃏 View Hand", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="View Hand", style=discord.ButtonStyle.primary)
     async def hand(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self.game.show_hand(interaction)
 
-    @discord.ui.button(label="📣 UNO!", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="UNO!", style=discord.ButtonStyle.success)
     async def uno(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self.game.call_uno(interaction)
 
-    @discord.ui.button(label="🙋 Catch", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Catch", style=discord.ButtonStyle.danger)
     async def catch(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self.game.catch_uno(interaction)
 
-    @discord.ui.button(label="🚪 Leave", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Leave", style=discord.ButtonStyle.secondary)
     async def leave(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self.game.remove_player(interaction)
 
 
 class HandView(discord.ui.View):
     def __init__(self, game: UnoGame, user_id: int, playable: list[Card]):
-        super().__init__(timeout=120)
+        super().__init__(timeout=60)
         self.game = game
         self.user_id = user_id
         self.playable = playable
@@ -559,7 +522,7 @@ class HandView(discord.ui.View):
                 options.append(discord.SelectOption(label=card.label()[:100], value=str(i)))
             self.add_item(PlaySelect(options))
 
-    @discord.ui.button(label="🃏 Draw", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Draw", style=discord.ButtonStyle.secondary)
     async def draw(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("This isn't your hand.", ephemeral=True)
@@ -584,7 +547,7 @@ class PlaySelect(discord.ui.Select):
 
 class WildColorView(discord.ui.View):
     def __init__(self, game: UnoGame, user_id: int, card: Card):
-        super().__init__(timeout=120)
+        super().__init__(timeout=30)
         self.game = game
         self.user_id = user_id
         self.card = card
@@ -613,19 +576,19 @@ class ColorButton(discord.ui.Button):
 
 class DrawnCardView(discord.ui.View):
     def __init__(self, game: UnoGame, user_id: int, card: Card):
-        super().__init__(timeout=120)
+        super().__init__(timeout=30)
         self.game = game
         self.user_id = user_id
         self.card = card
 
-    @discord.ui.button(label="▶️ Play it", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="Play it", style=discord.ButtonStyle.success)
     async def play(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("This isn't your card.", ephemeral=True)
             return
         await self.game.play_card(interaction, self.card)
 
-    @discord.ui.button(label="✋ Keep it", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Keep it", style=discord.ButtonStyle.secondary)
     async def keep(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("This isn't your card.", ephemeral=True)

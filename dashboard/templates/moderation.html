@@ -1,30 +1,118 @@
 {% extends "base.html" %}
+{% from "_macros.html" import chansel %}
 {% block title %}Moderation · {{ guild.name }}{% endblock %}
 {% block body %}
 <h1>Moderation</h1>
-<p class="lede">Recent staff actions recorded by the bot, plus warning history.</p>
+<p class="lede">Review cases, take action, and manage warnings. Actions use the same rules as the bot commands, including the role hierarchy and custom ban DMs.</p>
 
 <div class="card">
-  <h2>Mod log</h2>
-  {% if logs %}
-  <table class="table">
-    <tr><th>When</th><th>Action</th><th>Detail</th></tr>
-    {% for row in logs %}
-      <tr>
-        <td class="faint">{{ fmt_time(row['created_at']) }}</td>
-        <td>{{ row['action'] }}</td>
-        <td>{{ row['detail'] or '' }}</td>
-      </tr>
-    {% endfor %}
-  </table>
-  {% else %}
-    <p class="muted">No logged actions yet. Ban, kick, timeout, warn and purge will show up here once used. You can also set a modlog channel under Channels.</p>
+  <h2>Settings</h2>
+  <form method="post" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="settings">
+    <div class="field">
+      <label>Mod-log channel</label>
+      {{ chansel('modlog_channel', grouped, selected=modlog_id) }}
+    </div>
+    <button class="btn" type="submit">Save</button>
+  </form>
+  <p class="faint">Ban, kick, mute, warn and purge are written here and to this channel when one is set. Alt detection has its own log under Alt detection.</p>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>Take action</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="act">
+    <div class="row">
+      <div class="field" style="flex:0 0 160px">
+        <label>Action</label>
+        <select name="mod_action" required>
+          <option value="ban">Ban</option>
+          <option value="unban">Unban</option>
+          <option value="kick">Kick</option>
+          <option value="timeout">Mute</option>
+          <option value="warn">Warn</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Member</label>
+        <input type="text" name="member" placeholder="User ID, @mention, or username" required value="{{ looked_up_id or '' }}">
+      </div>
+      <div class="field" style="flex:0 0 140px">
+        <label>Duration</label>
+        <input type="text" name="duration" placeholder="10m, 1h, 1d" value="">
+      </div>
+    </div>
+    <div class="field">
+      <label>Reason</label>
+      <input type="text" name="reason" maxlength="500" placeholder="Optional reason">
+    </div>
+    <button class="btn" type="submit">Apply</button>
+  </form>
+  <p class="faint">Mutes need a duration such as 10m, 1h or 1d (max 28 days). Unban works with a user ID even if they already left. Bans send the custom ban DM if you enabled it.</p>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>Warnings for a member</h2>
+  <form method="get" class="row">
+    <div class="field">
+      <label>Member</label>
+      <input type="text" name="warns" placeholder="User ID, @mention, or username" value="{{ warns_query or '' }}">
+    </div>
+    <button class="btn" type="submit">View warnings</button>
+  </form>
+  {% if warns_target %}
+    <p style="margin-top:12px">Showing warnings for <strong>{{ warns_target }}</strong> ({{ warns_user_id }}).</p>
+    {% if member_warns %}
+    <table class="table">
+      <tr><th>When</th><th>By</th><th>Reason</th></tr>
+      {% for row in member_warns %}
+        <tr>
+          <td class="faint">{{ fmt_time(row['created_at']) }}</td>
+          <td>{{ member_name(row['moderator_id']) }}</td>
+          <td>{{ row['reason'] or '—' }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+    <form method="post" style="margin-top:10px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="clearwarns">
+      <input type="hidden" name="user_id" value="{{ warns_user_id }}">
+      <button class="btn danger" type="submit">Clear all warnings</button>
+    </form>
+    {% else %}
+      <p class="muted">This member has no warnings.</p>
+    {% endif %}
   {% endif %}
 </div>
 
 <div class="card" style="margin-top:14px">
-  <h2>Warnings</h2>
+  <h2>Moderation log</h2>
+  {% if logs %}
+  <div class="table-wrap">
+  <table class="table">
+    <tr><th>When</th><th>Action</th><th>Member</th><th>Staff</th><th>Detail</th></tr>
+    {% for row in logs %}
+      <tr>
+        <td class="faint">{{ fmt_time(row['created_at']) }}</td>
+        <td>{{ row['action'] }}</td>
+        <td>{{ member_name(row['user_id']) }}</td>
+        <td>{{ member_name(row['moderator_id']) }}</td>
+        <td>{{ row['detail'] or '' }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% else %}
+    <p class="muted">No logged actions yet. Ban, kick, mute, warn and purge will show up here once used.</p>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>Recent warnings</h2>
   {% if warns %}
+  <div class="table-wrap">
   <table class="table">
     <tr><th>When</th><th>User</th><th>By</th><th>Reason</th></tr>
     {% for row in warns %}
@@ -36,6 +124,7 @@
       </tr>
     {% endfor %}
   </table>
+  </div>
   {% else %}
     <p class="muted">No warnings have been issued yet.</p>
   {% endif %}

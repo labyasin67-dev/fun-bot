@@ -109,14 +109,14 @@ def build_alert_view(user_id: int) -> discord.ui.View:
     view = discord.ui.View(timeout=None)
     view.add_item(AltActionButton("kick", user_id, "Kick", discord.ButtonStyle.secondary))
     view.add_item(AltActionButton("ban", user_id, "Ban", discord.ButtonStyle.danger))
-    view.add_item(AltActionButton("timeout", user_id, "Timeout 1h", discord.ButtonStyle.secondary))
+    view.add_item(AltActionButton("timeout", user_id, "Mute 1h", discord.ButtonStyle.secondary))
     view.add_item(AltActionButton("safe", user_id, "Mark Safe", discord.ButtonStyle.success))
     return view
 
 
 class AltActionButton(discord.ui.DynamicItem[discord.ui.Button], template=r"alt:(?P<action>kick|ban|timeout|safe):(?P<user_id>[0-9]+)"):
     def __init__(self, action: str, user_id: int, label: str | None = None, style: discord.ButtonStyle | None = None) -> None:
-        labels = {"kick": "Kick", "ban": "Ban", "timeout": "Timeout 1h", "safe": "Mark Safe"}
+        labels = {"kick": "Kick", "ban": "Ban", "timeout": "Mute 1h", "safe": "Mark Safe"}
         styles = {
             "kick": discord.ButtonStyle.secondary,
             "ban": discord.ButtonStyle.danger,
@@ -282,7 +282,7 @@ async def apply_alt_review(
     )
     if action in {"kick", "ban", "timeout"} and not automatic:
         from cogs.channels import post_modlog
-        label = {"kick": "Kicked", "ban": "Banned", "timeout": "Timed out for 1 hour"}[action]
+        label = {"kick": "Kicked", "ban": "Banned", "timeout": "Muted for 1 hour"}[action]
         color = DANGER if action in {"kick", "ban"} else WARNING
         staff = actor.mention if actor is not None else "Dashboard"
         await post_modlog(
@@ -487,7 +487,7 @@ class AltDetect(commands.Cog):
                 message = await log_channel.send(embed=e, view=build_alert_view(member.id))
             except discord.HTTPException:
                 message = None
-        if assessment.verdict == "Low risk":
+        if assessment.verdict != "High risk":
             return
         auto_note = await self._apply_auto_action(member, action, int(cfg["quarantine_role_id"]) if cfg["quarantine_role_id"] else None, flag_id=flag_id)
         if auto_note and message is not None:
@@ -590,7 +590,7 @@ class AltDetect(commands.Cog):
         notes = {
             "none": "Joins will still be scored, but I won't post alerts or take action.",
             "log": "I'll post an alert in the alt log channel for medium and high risk joins.",
-            "timeout": "High-risk joins will be timed out for 1 hour, and I'll still post an alert.",
+            "timeout": "High-risk joins will be muted for 1 hour, and I'll still post an alert.",
             "kick": "High-risk joins will be kicked, and I'll still post an alert.",
             "quarantine": "High-risk joins will be given the quarantine role. Set it with `.altconfig role @role`.",
         }

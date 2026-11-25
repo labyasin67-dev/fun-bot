@@ -11,19 +11,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils import DANGER, SUCCESS, WARNING, embed as make_embed
-
-from cogs.game_ui import countdown_field, clear_countdown, game_embed, result_embed
-from cogs.sessions import end_game_message
+from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
-
-
-def _host_details(user: discord.abc.User) -> tuple[str | None, str | None]:
-    name = getattr(user, "display_name", None) or getattr(user, "name", None)
-    avatar = getattr(user, "display_avatar", None)
-    return name, getattr(avatar, "url", None) if avatar is not None else None
 
 WYR_QUESTIONS: list[tuple[str, str]] = [
     ("Be able to fly", "Be able to turn invisible"),
@@ -174,20 +165,11 @@ def _member_name(user: discord.abc.User) -> str:
 
 class RPSView(discord.ui.View):
     def __init__(self, challenger: discord.Member, opponent: discord.Member | None):
-        super().__init__(timeout=120)
+        super().__init__(timeout=60)
         self.challenger = challenger
         self.opponent = opponent  # None means vs bot
         self.choices: dict[int, str] = {}
         self.message: discord.Message | None = None
-        self.end_ts: int | None = None
-
-    def _embed(self, title: str, text: str, color: int) -> discord.Embed:
-        phase = "win" if color == SUCCESS else ("lose" if color == DANGER else "play")
-        name, avatar = _host_details(self.challenger)
-        fields = []
-        if self.end_ts is not None and color != SUCCESS and color != DANGER:
-            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-        return game_embed(title, text, emoji="✊", phase=phase, color=color, host=name, host_avatar=avatar, fields=fields)
 
     async def on_timeout(self) -> None:
         for child in self.children:
@@ -195,10 +177,7 @@ class RPSView(discord.ui.View):
                 child.disabled = True
         if self.message:
             try:
-                if self.message.embeds:
-                    original = self.message.embeds[0]
-                    clear_countdown(original)
-                    await self.message.edit(embed=original, view=self)
+                await self.message.edit(view=self)
             except discord.HTTPException:
                 pass
 
@@ -219,9 +198,8 @@ class RPSView(discord.ui.View):
             for child in self.children:
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
+            await interaction.response.edit_message(embed=make_embed(title, text, color=color), view=self)
             self.stop()
-            await interaction.response.defer()
-            await end_game_message(self.message, self._embed(title, text, color), self)
             return
 
         if user.id not in (self.challenger.id, self.opponent.id):
@@ -247,7 +225,10 @@ class RPSView(discord.ui.View):
             if isinstance(child, discord.ui.Button):
                 child.disabled = True
         if self.message:
-            await end_game_message(self.message, self._embed(title, text, color), self)
+            try:
+                await self.message.edit(embed=make_embed(title, text, color=color), view=self)
+            except discord.HTTPException:
+                pass
         self.stop()
 
     @discord.ui.button(label="Rock", emoji="🪨", style=discord.ButtonStyle.secondary)
@@ -272,12 +253,11 @@ def _rps_result(a: str, b: str) -> int:
 
 class TriviaView(discord.ui.View):
     def __init__(self, correct: str, options: list[str], author_id: int):
-        super().__init__(timeout=120)
+        super().__init__(timeout=25)
         self.correct = correct
         self.author_id = author_id
         self.finished = False
         self.message: discord.Message | None = None
-        self.end_ts: int | None = None
         for option in options:
             self.add_item(TriviaButton(option, option == correct))
 
@@ -291,15 +271,13 @@ class TriviaView(discord.ui.View):
                 if child.label == self.correct:
                     child.style = discord.ButtonStyle.success
         if self.message:
-            e = result_embed(
-                "Trivia",
-                "Time's up!",
-                emoji=":brain:",
-                phase="timeout",
-                answer=self.correct,
-                play_again="Start another round with `.trivia`.",
-            )
-            await end_game_message(self.message, e, self)
+            try:
+                await self.message.edit(
+                    embed=make_embed("Time's up!", f"The answer was **{self.correct}**.", color=WARNING),
+                    view=self,
+                )
+            except discord.HTTPException:
+                pass
 
 
 class TriviaButton(discord.ui.Button):
@@ -325,27 +303,20 @@ class TriviaButton(discord.ui.Button):
                 elif child is self and not child.is_correct:
                     child.style = discord.ButtonStyle.danger
         if self.is_correct:
-            e = game_embed("Correct!", f"**{self.label}** is the right answer.", emoji=":brain:", phase="win")
+            e = make_embed("Correct!", f"**{self.label}** is the right answer.", color=SUCCESS)
         else:
-            e = game_embed(
-                "Not quite.",
-                f"You picked **{self.label}**. The answer was **{view.correct}**.",
-                emoji=":brain:",
-                phase="lose",
-            )
-        await interaction.response.defer()
-        await end_game_message(view.message, e, view)
+            e = make_embed("Not quite.", f"You picked **{self.label}**. The answer was **{view.correct}**.", color=DANGER)
+        await interaction.response.edit_message(embed=e, view=view)
         view.stop()
 
 
 class WYRView(discord.ui.View):
     def __init__(self, option_a: str, option_b: str):
-        super().__init__(timeout=120)
+        super().__init__(timeout=60)
         self.option_a = option_a
         self.option_b = option_b
         self.votes: dict[int, str] = {}
         self.message: discord.Message | None = None
-        self.end_ts: int | None = None
         self.a_button.label = option_a[:80]
         self.b_button.label = option_b[:80]
 
@@ -356,10 +327,7 @@ class WYRView(discord.ui.View):
         def line(n: int, label: str) -> str:
             pct = 0 if total == 0 else round(100 * n / total)
             return f"**{label}**\n{n} vote{'s' if n != 1 else ''} ({pct}%)"
-        fields = []
-        if self.end_ts is not None:
-            fields.append(("Time left", f"⏳ Ends <t:{self.end_ts}:R>", False))
-        e = game_embed("Would you rather...", f"{line(a, self.option_a)}\n\n{line(b, self.option_b)}", emoji="🤔", phase="play", fields=fields)
+        e = make_embed("Would you rather...", f"{line(a, self.option_a)}\n\n{line(b, self.option_b)}")
         e.set_footer(text=f"{total} vote{'s' if total != 1 else ''}")
         return e
 
@@ -381,20 +349,16 @@ class WYRView(discord.ui.View):
                 child.disabled = True
         if self.message:
             try:
-                if self.message.embeds:
-                    original = self.message.embeds[0]
-                    clear_countdown(original)
-                    await self.message.edit(embed=original, view=self)
+                await self.message.edit(view=self)
             except discord.HTTPException:
                 pass
 
 
 class TODView(discord.ui.View):
     def __init__(self, target: discord.Member):
-        super().__init__(timeout=120)
+        super().__init__(timeout=90)
         self.target = target
         self.message: discord.Message | None = None
-        self.end_ts: int | None = None
 
     async def on_timeout(self) -> None:
         for child in self.children:
@@ -402,19 +366,16 @@ class TODView(discord.ui.View):
                 child.disabled = True
         if self.message:
             try:
-                if self.message.embeds:
-                    original = self.message.embeds[0]
-                    clear_countdown(original)
-                    await self.message.edit(embed=original, view=self)
+                await self.message.edit(view=self)
             except discord.HTTPException:
                 pass
 
     def _prompt(self, kind: str) -> discord.Embed:
         if kind == "truth":
             text = random.choice(TRUTHS)
-            return game_embed(f"Truth for {_member_name(self.target)}", text, emoji="🎲", phase="play")
+            return make_embed(f"Truth for {_member_name(self.target)}", text)
         text = random.choice(DARES)
-        return game_embed(f"Dare for {_member_name(self.target)}", text, emoji="🎲", phase="play")
+        return make_embed(f"Dare for {_member_name(self.target)}", text)
 
     @discord.ui.button(label="Truth", emoji="🔵", style=discord.ButtonStyle.primary)
     async def truth(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -447,7 +408,7 @@ class GamesMenu(discord.ui.View):
     @discord.ui.select(
         placeholder="Pick a game to start...",
         options=[
-            discord.SelectOption(label="Trivia", value="trivia", emoji=":brain:", description="Answer a multiple-choice question"),
+            discord.SelectOption(label="Trivia", value="trivia", emoji="🧠", description="Answer a multiple-choice question"),
             discord.SelectOption(label="Rock Paper Scissors", value="rps", emoji="✊", description="Play against the bot"),
             discord.SelectOption(label="Would You Rather", value="wyr", emoji="🤔", description="Vote on a tough choice"),
             discord.SelectOption(label="Truth or Dare", value="tod", emoji="🎲", description="Get a truth or a dare"),
@@ -487,18 +448,8 @@ class Games(commands.Cog):
     async def start_trivia(self, destination: commands.Context | discord.Interaction) -> None:
         question, correct, options = await self._get_trivia()
         view = TriviaView(correct, options, destination.user.id if isinstance(destination, discord.Interaction) else destination.author.id)
-        author = destination.user if isinstance(destination, discord.Interaction) else destination.author
-        host, host_avatar = _host_details(author)
-        view.end_ts, _ = countdown_field(120)
-        e = game_embed(
-            "Trivia",
-            question,
-            emoji=":brain:",
-            phase="play",
-            host=host,
-            host_avatar=host_avatar,
-            fields=[("Time left", f"⏳ Ends <t:{view.end_ts}:R>", False)],
-        )
+        e = make_embed("Trivia", question)
+        e.set_footer(text="25 seconds to answer")
         if isinstance(destination, discord.Interaction):
             await destination.response.send_message(embed=e, view=view)
             view.message = await destination.original_response()
@@ -507,7 +458,7 @@ class Games(commands.Cog):
 
     async def _get_trivia(self) -> tuple[str, str, list[str]]:
         try:
-            timeout = aiohttp.ClientTimeout(total=10)
+            timeout = aiohttp.ClientTimeout(total=6)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get("https://opentdb.com/api.php", params={"amount": 1, "type": "multiple"}) as resp:
                     if resp.status == 200:
@@ -549,28 +500,10 @@ class Games(commands.Cog):
                 await destination.send(embed=make_embed("Can't do that", content, color=DANGER))
             return
         view = RPSView(author, opponent)
-        host, host_avatar = _host_details(author)
-        view.end_ts, _ = countdown_field(120)
         if opponent is None:
-            e = game_embed(
-                "Rock Paper Scissors",
-                f"{author.mention}, pick your move. You're playing against me.",
-                emoji="✊",
-                phase="play",
-                host=host,
-                host_avatar=host_avatar,
-                fields=[("Time left", f"⏳ Ends <t:{view.end_ts}:R>", False)],
-            )
+            e = make_embed("Rock Paper Scissors", f"{author.mention}, pick your move. You're playing against me.")
         else:
-            e = game_embed(
-                "Rock Paper Scissors",
-                f"{author.mention} challenged {opponent.mention}!\nBoth of you, pick a move.",
-                emoji="✊",
-                phase="play",
-                host=host,
-                host_avatar=host_avatar,
-                fields=[("Time left", f"⏳ Ends <t:{view.end_ts}:R>", False)],
-            )
+            e = make_embed("Rock Paper Scissors", f"{author.mention} challenged {opponent.mention}!\nBoth of you, pick a move.")
         if isinstance(destination, discord.Interaction):
             await destination.response.send_message(embed=e, view=view)
             view.message = await destination.original_response()
@@ -587,7 +520,6 @@ class Games(commands.Cog):
     async def start_wyr(self, destination: commands.Context | discord.Interaction) -> None:
         a, b = random.choice(WYR_QUESTIONS)
         view = WYRView(a, b)
-        view.end_ts, _ = countdown_field(120)
         if isinstance(destination, discord.Interaction):
             await destination.response.send_message(embed=view._embed(), view=view)
             view.message = await destination.original_response()
@@ -602,13 +534,9 @@ class Games(commands.Cog):
 
     async def start_tod(self, destination: commands.Context | discord.Interaction, target: discord.Member) -> None:
         view = TODView(target)
-        view.end_ts, _ = countdown_field(120)
-        e = game_embed(
+        e = make_embed(
             "Truth or Dare",
             f"{target.mention}, pick **Truth**, **Dare**, or **Random**.",
-            emoji="🎲",
-            phase="play",
-            fields=[("Time left", f"⏳ Ends <t:{view.end_ts}:R>", False)],
         )
         if isinstance(destination, discord.Interaction):
             await destination.response.send_message(embed=e, view=view)
@@ -747,6 +675,15 @@ class Games(commands.Cog):
             await game.finish()
         except Exception:
             self.bot.game_sessions.end(ctx.channel.id)
+        for msg in (getattr(game, "message", None), getattr(game, "menu_message", None)):
+            if msg is None:
+                continue
+            try:
+                await msg.delete()
+            except discord.NotFound:
+                pass
+            except discord.HTTPException:
+                pass
         await ctx.send(embed=make_embed("Game ended", "The channel is free — you can start a new game.", color=SUCCESS))
 
 

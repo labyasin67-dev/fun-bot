@@ -2,7 +2,7 @@
 {% block title %}Owner admin{% endblock %}
 {% block body %}
 <h1>Owner admin</h1>
-<p class="lede">Servers the bot is in, Stripe subscriptions, and manual Premium grants.</p>
+<p class="lede">Servers the bot is in, Stripe subscriptions, manual Premium grants, and the public website pages.</p>
 
 <div class="card">
   <h2>Servers</h2>
@@ -117,3 +117,41 @@
   </div>
 </div>
 {% endblock %}
+
+<div class="card" style="margin-top:14px">
+  <h2>Website pages</h2>
+  <p class="faint">These appear on the public Contact, Terms and Privacy pages. Use a line starting with # for a heading. Leave a blank line between paragraphs. Saving replaces the current published text. These pages have not been reviewed by a lawyer unless you arrange that yourself.</p>
+
+  <form method="post" style="margin-top:16px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="save_page">
+    <input type="hidden" name="page_key" value="contact">
+    <div class="field">
+      <label>Contact Us (/contact)</label>
+      <textarea class="page-textarea" name="body" maxlength="20000">{{ contact_body }}</textarea>
+    </div>
+    <button class="btn" type="submit">Save contact page</button>
+  </form>
+
+  <form method="post" style="margin-top:22px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="save_page">
+    <input type="hidden" name="page_key" value="terms">
+    <div class="field">
+      <label>Terms &amp; Conditions (/terms)</label>
+      <textarea class="page-textarea tall" name="body" maxlength="80000">{{ terms_body }}</textarea>
+    </div>
+    <button class="btn" type="submit">Save terms</button>
+  </form>
+
+  <form method="post" style="margin-top:22px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="save_page">
+    <input type="hidden" name="page_key" value="privacy">
+    <div class="field">
+      <label>Privacy Policy (/privacy)</label>
+      <textarea class="page-textarea tall" name="body" maxlength="80000">{{ privacy_body }}</textarea>
+    </div>
+    <button class="btn" type="submit">Save privacy policy</button>
+  </form>
+</div>

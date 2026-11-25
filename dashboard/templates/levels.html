@@ -3,20 +3,47 @@
 {% block title %}Levels · {{ guild.name }}{% endblock %}
 {% block body %}
 <h1>Levels</h1>
-<p class="lede">Automatic roles, where level-ups are announced, and the current leaderboard.</p>
+<p class="lede">Automatic roles, where level-ups are announced, and tools to add or remove XP.</p>
 
 <div class="card">
-  <h2>Level-up channel</h2>
+  <h2>Level-up announcements</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="channel">
+    <div class="field" style="flex:0 0 220px">
+      <label>Announce level-ups</label>
+      <select name="levelup_mode">
+        <option value="off" {% if levelup_mode == 'off' %}selected{% endif %}>Off</option>
+        <option value="dm" {% if levelup_mode != 'off' and levelup_mode != 'channel' %}selected{% endif %}>DM the member (default)</option>
+        <option value="channel" {% if levelup_mode == 'channel' %}selected{% endif %}>Post in a channel</option>
+      </select>
+    </div>
     <div class="field">
-      <label>Announce level-ups in</label>
-      {{ chansel('levelup_channel', grouped, selected=levelup_id) }}
+      <label>Channel (if posting)</label>
+      {{ chansel('levelup_channel', grouped, selected=levelup_id, empty_label='Select a channel') }}
     </div>
     <button class="btn" type="submit">Save</button>
   </form>
-  <p class="faint">If not set, chat level-ups are posted in the channel where they happened.</p>
+  <p class="faint">Off sends no DM and no channel message; XP and level roles still work. DM (the default) messages the member, and stays silent if their DMs are closed. Channel posts in the chosen channel, without pings. You can also use <code>.levelup off</code>, <code>.levelup dm</code>, or <code>.levelup #channel</code>.</p>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>Add or remove XP</h2>
+  <form method="post" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="xp">
+    <div class="field">
+      <label>Member</label>
+      <input type="text" name="member" placeholder="User ID, @mention, or username" required>
+    </div>
+    <div class="field" style="flex:0 0 140px">
+      <label>Amount</label>
+      <input type="number" name="amount" min="1" max="1000000" required>
+    </div>
+    <button class="btn" type="submit" name="xp_op" value="add">Add XP</button>
+    <button class="btn danger" type="submit" name="xp_op" value="remove">Remove XP</button>
+  </form>
+  <p class="faint">XP never goes below 0. Their level and level roles are recalculated automatically.</p>
 </div>
 
 <div class="card" style="margin-top:14px">
@@ -66,9 +93,9 @@
   <h2>Leaderboard</h2>
   {% if board %}
   <table class="table">
-    <tr><th>#</th><th>Member</th><th>XP</th></tr>
+    <tr><th>#</th><th>Member</th><th>Level</th><th>XP</th></tr>
     {% for row in board %}
-      <tr><td>{{ row.rank }}</td><td>{{ row.name }}</td><td>{{ row.xp }}</td></tr>
+      <tr><td>{{ row.rank }}</td><td>{{ row.name }}</td><td>{{ row.level }}</td><td>{{ row.xp }}</td></tr>
     {% endfor %}
   </table>
   {% else %}

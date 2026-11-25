@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 FEATURES: dict[str, str] = {
     "alts": "Alt-account alerts",
-    "modlog": "Moderation log (ban, kick, timeout, warn, purge)",
-    "levelups": "Level-up announcements",
+    "modlog": "Moderation log (ban, kick, mute, warn, purge)",
+    "levelups": "Level-up announcements (not set = DM the member)",
     "welcome": "Welcome messages",
     "games": "Games (commands only work in these channels once set)",
     "counting": "Counting",
@@ -99,9 +99,11 @@ async def post_modlog(
     description: str,
     *,
     color: int = COLOR,
+    user_id: int | None = None,
+    moderator_id: int | None = None,
 ) -> None:
     try:
-        await bot.db.add_mod_log(guild.id, title, description)
+        await bot.db.add_mod_log(guild.id, title, description, user_id=user_id, moderator_id=moderator_id)
     except Exception:
         pass
     channel_id = await bot.db.get_feature_channel(guild.id, "modlog")
@@ -111,7 +113,8 @@ async def post_modlog(
     if not isinstance(channel, discord.TextChannel):
         return
     try:
-        await channel.send(embed=make_embed(title, description, color=color))
+        from utils import SAFE_MENTIONS
+        await channel.send(embed=make_embed(title, description, color=color), allowed_mentions=SAFE_MENTIONS)
     except discord.HTTPException:
         pass
 
