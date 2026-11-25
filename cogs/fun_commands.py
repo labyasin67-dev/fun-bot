@@ -1,4 +1,4 @@
-"""Fun interaction commands: .slap, .kiss, .laugh, .kick, .yeet, .tickle, .greet, .dap"""
+"""Fun interaction commands: .slap, .kiss, .laugh, .fun_kick, .yeet, .tickle, .greet, .dap"""
 
 from __future__ import annotations
 
@@ -137,9 +137,9 @@ class FunCommands(commands.Cog):
     async def laugh(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "laugh", target)
 
-    @commands.hybrid_command(name="kick", description="Kick someone (fun, not a mod kick)!")
+    @commands.hybrid_command(name="fun_kick", description="Kick someone (fun, not a mod kick)!")
     @commands.guild_only()
-    async def kick(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+    async def fun_kick(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "kick", target)
 
     @commands.hybrid_command(name="yeet", description="Yeet someone!")
