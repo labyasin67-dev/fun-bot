@@ -120,7 +120,7 @@ HELP_SECTIONS = [
         "• `.boot @user` — kick someone (fun)\n"
         "• `.yeet @user` — yeet someone\n"
         "• `.tickle @user` — tickle someone\n"
-        "• `.greet @user` — greet someone\n"
+        "• `.hug @user` — hug someone\n"
         "• `.dap @user` — dap someone up",
     ),
 ]

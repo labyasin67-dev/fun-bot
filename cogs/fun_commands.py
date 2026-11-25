@@ -1,4 +1,4 @@
-"""Fun interaction commands: .slap, .kiss, .laugh, .boot, .yeet, .tickle, .greet, .dap"""
+"""Fun interaction commands: .slap, .kiss, .laugh, .boot, .yeet, .tickle, .hug, .dap"""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ ACTION_VERBS: dict[str, str] = {
     "boot": "kicks",
     "yeet": "yeets",
     "tickle": "tickles",
-    "greet": "greets",
+    "hug": "hugs",
     "dap": "daps up",
 }
 
@@ -123,10 +123,10 @@ class FunCommands(commands.Cog):
     async def tickle(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "tickle", target)
 
-    @commands.hybrid_command(name="greet", description="Greet someone!")
+    @commands.hybrid_command(name="hug", description="Hug someone!")
     @commands.guild_only()
-    async def greet(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "greet", target)
+    async def hug(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "hug", target)
 
     @commands.hybrid_command(name="dap", description="Dap someone up!")
     @commands.guild_only()
