@@ -136,20 +136,15 @@ class FunCommands(commands.Cog):
         else:
             count_text = ""
 
-        # Download GIF and stream it into the embed as an attachment field
-        gif_url = self._random_gif(action)
-        gif_bytes = await self._download_gif(gif_url)
+        # Test GIF loaded directly into embed image field
+        gif_url = "https://media.tenor.com/ZD3Y4WRSxJwAAAAM/tiger-woods-big-dawg.gif"
 
         verb = ACTION_VERBS[action]
         desc = f"{author.mention} {verb} {target.mention}! {count_text}".strip()
         e = make_embed(f"{action.capitalize()}!", desc, color=SUCCESS)
+        e.set_image(url=gif_url)
 
-        if gif_bytes:
-            file = discord.File(io.BytesIO(gif_bytes), filename="fun.gif")
-            e.set_image(url="attachment://fun.gif")
-            await ctx.send(embed=e, file=file)
-        else:
-            await ctx.send(embed=e)
+        await ctx.send(embed=e)
 
     # --- prefix commands ---
 
