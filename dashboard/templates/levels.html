@@ -10,21 +10,13 @@
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="channel">
-    <div class="field" style="flex:0 0 220px">
-      <label>Announce level-ups</label>
-      <select name="levelup_mode">
-        <option value="off" {% if levelup_mode == 'off' %}selected{% endif %}>Off</option>
-        <option value="dm" {% if levelup_mode != 'off' and levelup_mode != 'channel' %}selected{% endif %}>DM the member (default)</option>
-        <option value="channel" {% if levelup_mode == 'channel' %}selected{% endif %}>Post in a channel</option>
-      </select>
-    </div>
     <div class="field">
-      <label>Channel (if posting)</label>
-      {{ chansel('levelup_channel', grouped, selected=levelup_id, empty_label='Select a channel') }}
+      <label>Announce level-ups</label>
+      {{ chansel('levelup_channel', grouped, selected=levelup_id if levelup_mode == 'channel' else none, empty_label='Off') }}
     </div>
     <button class="btn" type="submit">Save</button>
   </form>
-  <p class="faint">Off sends no DM and no channel message; XP and level roles still work. DM (the default) messages the member, and stays silent if their DMs are closed. Channel posts in the chosen channel, without pings. You can also use <code>.levelup off</code>, <code>.levelup dm</code>, or <code>.levelup #channel</code>.</p>
+  <p class="faint">Level-ups post in the chosen channel without pings. When this is Off, nothing is posted; XP and level roles still work. You can also use <code>.levelup off</code> or <code>.levelup #channel</code>. <code>.setlevelchannel</code> without a channel turns announcements off.</p>
 </div>
 
 <div class="card" style="margin-top:14px">

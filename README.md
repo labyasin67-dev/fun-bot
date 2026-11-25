@@ -57,7 +57,7 @@ Slash commands can take a minute to appear the first time the bot starts. If the
 | Counting channel | `.setcounting #counting` |
 | Self-role panel | `.selfrole add @Role` then `.selfrole panel` |
 | Welcome messages | `.setwelcome #welcome Welcome to {server}, {mention}!` |
-| Level-up channel | `.setlevelchannel #levels` |
+| Level-up channel | `.levelup #levels` or `.setlevelchannel #levels` (omit or `.levelup off` to post nothing) |
 | Level roles | `.levelrole add 5 @Regular` |
 | Join to Create | `.setupjtc` |
 | Voice stats | `.vcstats` |
@@ -138,7 +138,7 @@ These updates were made by WarRaven (Whiskey):
 - Custom Roles dashboard colour pickers with a live gradient preview, and staff colour edits for any member
 - The report system, including tickets and closed-tickets channels, approve/deny, and owner-only comments
 - `.mute` and `.unmute` (with `.timeout` and `.untimeout` kept as aliases)
-- Level-up announcements: Off, DM (default), or a channel, including `.levelup off|dm|#channel`
-- Dashboard website updates: DM level-ups by default, the XP panel, moderation and messages panels, starfield and red theme, and footer Contact / Terms / Privacy pages
+- Level-up announcements: Off (default; nothing is posted) or a channel, including `.levelup off|#channel`. No level-up DMs.
+- Dashboard website updates: the XP panel, moderation and messages panels, starfield and red theme, and footer Contact / Terms / Privacy pages
 
 Changes by WarRaven

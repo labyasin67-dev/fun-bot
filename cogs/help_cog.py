@@ -62,8 +62,8 @@ HELP_SECTIONS = [
         "• `.leaderboard` / `/leaderboard`\n"
         "• `.voicetime [@user]` / `/voicetime`\n"
         "• `.voiceleaderboard` / `/voiceleaderboard`\n"
-        "• `.levelup off` / `.levelup dm` / `.levelup #channel` — no announcement, DM (default), or a channel\n"
-        "• `.setlevelchannel #channel` — same as `.levelup #channel`; omit for DM\n"
+        "• `.levelup off` / `.levelup #channel` — nothing posted, or post in a channel without pings\n"
+        "• `.setlevelchannel #channel` — same as `.levelup #channel`; omit to turn announcements off\n"
         "• `.addxp @user amount` / `.removexp @user amount` — adjust XP (manage server)\n"
         "• `.levelrole add/remove/list` — auto roles at a level (manage roles)",
     ),

@@ -67,11 +67,18 @@ class AdjustXpTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_levelup_mode_default_and_off(self):
         mode = await self.db.get_levelup_mode(5)
-        self.assertEqual(mode, "dm")
+        self.assertEqual(mode, "off")
         await self.db.set_levelup_mode(5, "off")
         self.assertEqual(await self.db.get_levelup_mode(5), "off")
         await self.db.set_levelup_mode(5, "dm")
-        self.assertEqual(await self.db.get_levelup_mode(5), "dm")
+        self.assertEqual(await self.db.get_levelup_mode(5), "off")
+        await self.db.set_levelup_mode(5, "channel", 99)
+        self.assertEqual(await self.db.get_levelup_mode(5), "channel")
+        self.assertEqual(await self.db.get_feature_channel(5, "levelups"), 99)
+        await self.db.set_levelup_mode(5, "off")
+        self.assertEqual(await self.db.get_levelup_mode(5), "off")
+        # Turning off keeps the previous channel so it can be restored.
+        self.assertEqual(await self.db.get_feature_channel(5, "levelups"), 99)
 
 class MessageRenderTests(unittest.TestCase):
     def test_parse_user_id(self):

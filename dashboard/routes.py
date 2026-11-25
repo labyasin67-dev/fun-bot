@@ -519,23 +519,14 @@ def register_routes(app: FastAPI) -> None:
             else:
                 flash(request, "error", "That level role was not set.")
         elif action == "channel":
-            mode = str(form.get("levelup_mode") or "dm").strip().lower()
-            if mode not in {"off", "dm", "channel"}:
-                mode = "dm"
             valid = {c.id for c in _text_channels(guild)}
             channel_id = _form_channel(form, "levelup_channel", valid)
-            if mode == "channel" and not channel_id:
-                flash(request, "error", "Pick a channel to post level-ups in, or choose DM or Off.")
+            if channel_id:
+                await db.set_levelup_mode(guild.id, "channel", channel_id)
+                flash(request, "ok", "Level-ups will be posted in the selected channel, without pings.")
             else:
-                if mode == "channel":
-                    await db.set_levelup_mode(guild.id, "channel", channel_id)
-                    flash(request, "ok", "Level-ups will be posted in the selected channel, without pings.")
-                elif mode == "off":
-                    await db.set_levelup_mode(guild.id, "off")
-                    flash(request, "ok", "Level-up announcements are off. Members still earn XP and level roles.")
-                else:
-                    await db.set_levelup_mode(guild.id, "dm")
-                    flash(request, "ok", "Level-ups will be sent as a DM to the member.")
+                await db.set_levelup_mode(guild.id, "off")
+                flash(request, "ok", "Level-up announcements are off. Nothing is posted. Members still earn XP and level roles.")
         elif action == "xp":
             raw = str(form.get("member") or "")
             op = str(form.get("xp_op") or "add")

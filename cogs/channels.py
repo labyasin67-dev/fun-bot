@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 FEATURES: dict[str, str] = {
     "alts": "Alt-account alerts",
     "modlog": "Moderation log (ban, kick, mute, warn, purge)",
-    "levelups": "Level-up announcements (not set = DM the member)",
+    "levelups": "Level-up announcements (not set = off, nothing is posted)",
     "welcome": "Welcome messages",
     "games": "Games (commands only work in these channels once set)",
     "counting": "Counting",

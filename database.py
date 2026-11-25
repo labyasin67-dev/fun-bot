@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS guild_settings (
     leave_enabled INTEGER NOT NULL DEFAULT 0,
     leave_message TEXT,
     leave_channel_id INTEGER,
-    levelup_mode TEXT NOT NULL DEFAULT 'dm'
+    levelup_mode TEXT NOT NULL DEFAULT 'off'
 );
 
 CREATE TABLE IF NOT EXISTS members (
@@ -345,26 +345,26 @@ class Database:
         await self.db.commit()
 
     async def get_levelup_mode(self, guild_id: int) -> str:
+        """Return 'channel' or 'off'. Stored 'dm' values and missing settings are treated as off."""
         settings = await self.ensure_settings(guild_id)
         mode = ""
         try:
-            mode = str(settings["levelup_mode"] or "")
+            mode = str(settings["levelup_mode"] or "").strip().lower()
         except (KeyError, IndexError):
             mode = ""
-        if mode in {"off", "dm", "channel"}:
-            return mode
-        channel_id = await self.get_feature_channel(guild_id, "levelups")
-        return "channel" if channel_id else "dm"
+        if mode == "channel":
+            return "channel"
+        return "off"
 
     async def set_levelup_mode(self, guild_id: int, mode: str, channel_id: int | None = None) -> None:
-        if mode not in {"off", "dm", "channel"}:
-            raise ValueError("mode must be off, dm, or channel")
         if mode == "channel":
             if not channel_id:
                 raise ValueError("A channel is required for channel mode")
             await self.set_feature_channel(guild_id, "levelups", channel_id)
-        # Keep any previously chosen channel when switching to off or DM so it can be restored.
-        await self.update_settings(guild_id, levelup_mode=mode)
+            await self.update_settings(guild_id, levelup_mode="channel")
+            return
+        # off, legacy 'dm', or anything else — nothing is posted. Keep any previously chosen channel.
+        await self.update_settings(guild_id, levelup_mode="off")
 
     # --- members / XP ---
 
@@ -677,7 +677,7 @@ class Database:
             "leave_enabled": "INTEGER NOT NULL DEFAULT 0",
             "leave_message": "TEXT",
             "leave_channel_id": "INTEGER",
-            "levelup_mode": "TEXT NOT NULL DEFAULT 'dm'",
+            "levelup_mode": "TEXT NOT NULL DEFAULT 'off'",
         }
         for name, typ in additions.items():
             if name not in cols:
@@ -700,6 +700,13 @@ class Database:
                 AND levelup_channel_id IS NULL
                 """
             )
+        # Legacy 'dm' (and any other unknown value) means no announcement is posted.
+        await self.db.execute(
+            """
+            UPDATE guild_settings SET levelup_mode = 'off'
+            WHERE levelup_mode IS NULL OR levelup_mode NOT IN ('off', 'channel')
+            """
+        )
 
     async def get_feature_channels(self, guild_id: int, feature: str, *, fallback: bool = True) -> list[int]:
         cur = await self.db.execute(
@@ -770,6 +777,8 @@ class Database:
             await self.update_settings(guild_id, **{FEATURE_SETTINGS_COLUMN[feature]: channel_id})
         if feature == "alts":
             await self._upsert_alt_config(guild_id, log_channel_id=channel_id)
+        if feature == "levelups":
+            await self.update_settings(guild_id, levelup_mode="channel" if channel_id else "off")
 
     async def add_feature_channel(self, guild_id: int, feature: str, channel_id: int) -> bool:
         """Add a channel for a multi-channel feature. Returns False if it was already set."""
@@ -811,6 +820,11 @@ class Database:
             await self._upsert_alt_config(
                 guild_id,
                 log_channel_id=remaining[0] if remaining else None,
+            )
+        if feature == "levelups":
+            remaining = await self.get_feature_channels(guild_id, feature, fallback=False)
+            await self.update_settings(
+                guild_id, levelup_mode="channel" if remaining else "off"
             )
         return removed
 

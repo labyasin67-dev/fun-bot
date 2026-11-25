@@ -14,7 +14,6 @@ from utils import (
     COLOR,
     DANGER,
     NO_MENTIONS,
-    SAFE_MENTIONS,
     SUCCESS,
     embed as make_embed,
     format_duration,
@@ -82,36 +81,25 @@ class Leveling(commands.Cog):
         role_text = ""
         if added:
             role_text = " You earned " + ", ".join(role.mention for role in added) + "."
-        # Off: no DM and no channel post. Roles still applied above.
-        mode = await self.bot.db.get_levelup_mode(guild.id)
-        if mode == "off":
+        # Only post when mode is channel and a channel is set. Stored 'dm' or no setting is off.
+        if await self.bot.db.get_levelup_mode(guild.id) != "channel":
             return
         levelup_id = await self.bot.db.get_feature_channel(guild.id, "levelups")
-        if mode == "channel":
-            if levelup_id:
-                found = guild.get_channel(levelup_id)
-                if isinstance(found, discord.abc.Messageable):
-                    name = member.display_name if member else getattr(user, "display_name", user.name)
-                    e = make_embed(
-                        "Level up!",
-                        f"**{name}** reached **level {new_level}**.{role_text}",
-                        color=SUCCESS,
-                    )
-                    try:
-                        await found.send(embed=e, allowed_mentions=NO_MENTIONS)
-                    except discord.HTTPException:
-                        pass
+        if not levelup_id:
             return
-        target = member or user
+        found = guild.get_channel(levelup_id)
+        if not isinstance(found, discord.abc.Messageable):
+            return
+        mention = member.mention if member else f"**{getattr(user, 'display_name', user.name)}**"
         e = make_embed(
             "Level up!",
-            f"You reached **level {new_level}** in **{guild.name}**.{role_text}",
+            f"{mention} reached **level {new_level}**.{role_text}",
             color=SUCCESS,
         )
         try:
-            await target.send(embed=e, allowed_mentions=SAFE_MENTIONS)
+            # Mention is in the embed for context; allowed_mentions suppresses pings.
+            await found.send(embed=e, allowed_mentions=NO_MENTIONS)
         except discord.HTTPException:
-            # DMs closed or blocked — fail silently, do not post in the channel.
             pass
 
     async def _sync_level_roles(self, member: discord.Member, level: int) -> tuple[list[discord.Role], list[discord.Role]]:
@@ -285,34 +273,28 @@ class Leveling(commands.Cog):
         e.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else None)
         await ctx.send(embed=e)
 
-    @commands.hybrid_command(name="levelup", description="Set level-up announcements to off, DM, or a channel.")
+    @commands.hybrid_command(name="levelup", description="Set level-up announcements to off, or to a channel.")
     @commands.guild_only()
     @commands.has_guild_permissions(manage_guild=True)
-    @app_commands.describe(setting="off, dm, or a #channel")
+    @app_commands.describe(setting="off, or a #channel")
     async def levelup(self, ctx: commands.Context, setting: str | None = None) -> None:
         assert ctx.guild
         if setting is None:
             mode = await self.bot.db.get_levelup_mode(ctx.guild.id)
-            if mode == "off":
-                text = "Level-up announcements are **off**. Members still earn XP and level roles."
-            elif mode == "channel":
+            if mode == "channel":
                 channel_id = await self.bot.db.get_feature_channel(ctx.guild.id, "levelups")
                 channel = ctx.guild.get_channel(channel_id) if channel_id else None
                 where = channel.mention if channel else "a channel that I can't find"
                 text = f"Level-ups are posted in {where}, without pings."
             else:
-                text = "Level-ups are sent as a **DM** to the member (the default). If their DMs are closed, nothing is posted."
-            await ctx.send(embed=make_embed("Level-up announcements", text + "\nUse `.levelup off`, `.levelup dm`, or `.levelup #channel` to change this."))
+                text = "Level-up announcements are **off**. Nothing is posted. Members still earn XP and level roles."
+            await ctx.send(embed=make_embed("Level-up announcements", text + "\nUse `.levelup off` or `.levelup #channel` to change this."))
             return
         raw = setting.strip()
         key = raw.lower()
         if key in {"off", "disable", "disabled", "none", "silent"}:
             await self.bot.db.set_levelup_mode(ctx.guild.id, "off")
-            await ctx.send(embed=make_embed("Level-ups off", "I won't DM members or post in a channel when they level up. XP and level roles still work."))
-            return
-        if key in {"dm", "dms", "message", "default"}:
-            await self.bot.db.set_levelup_mode(ctx.guild.id, "dm")
-            await ctx.send(embed=make_embed("Level-ups sent as DMs", "Members will be DMed when they level up. If their DMs are closed, nothing is posted in the server."))
+            await ctx.send(embed=make_embed("Level-ups off", "Nothing is posted when members level up. XP and level roles still work."))
             return
         # Accept a channel mention, ID, or name.
         channel = None
@@ -329,23 +311,23 @@ class Leveling(commands.Cog):
                     ctx.guild.text_channels,
                 )
         if not isinstance(channel, discord.TextChannel):
-            await ctx.send(embed=make_embed("Use off, dm, or a channel", "Try `.levelup off`, `.levelup dm`, or `.levelup #channel`.", color=DANGER), ephemeral=True)
+            await ctx.send(embed=make_embed("Use off or a channel", "Try `.levelup off` or `.levelup #channel`.", color=DANGER), ephemeral=True)
             return
         await self.bot.db.set_levelup_mode(ctx.guild.id, "channel", channel.id)
         await ctx.send(embed=make_embed("Level-up channel set", f"Level-ups will be posted in {channel.mention} without pings."))
 
-    @commands.hybrid_command(name="setlevelchannel", description="Set a channel for level-up messages, or DM members instead.")
+    @commands.hybrid_command(name="setlevelchannel", description="Set a channel for level-up messages, or turn them off.")
     @commands.guild_only()
     @commands.has_guild_permissions(manage_guild=True)
-    @app_commands.describe(channel="Where to announce level-ups. Omit to DM the member instead (the default).")
+    @app_commands.describe(channel="Where to announce level-ups. Omit to turn announcements off.")
     async def setlevelchannel(self, ctx: commands.Context, channel: discord.TextChannel | None = None) -> None:
         assert ctx.guild
         if channel:
             await self.bot.db.set_levelup_mode(ctx.guild.id, "channel", channel.id)
             await ctx.send(embed=make_embed("Level-up channel set", f"Level-ups will be posted in {channel.mention} without pings."))
         else:
-            await self.bot.db.set_levelup_mode(ctx.guild.id, "dm")
-            await ctx.send(embed=make_embed("Level-ups sent as DMs", "Members will be DMed when they level up. If their DMs are closed, nothing is posted in the server."))
+            await self.bot.db.set_levelup_mode(ctx.guild.id, "off")
+            await ctx.send(embed=make_embed("Level-ups off", "Nothing is posted when members level up. XP and level roles still work."))
 
     @commands.hybrid_command(name="addxp", description="Add XP to a member.")
     @commands.guild_only()
