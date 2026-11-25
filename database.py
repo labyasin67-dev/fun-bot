@@ -303,6 +303,7 @@ class Database:
         await self._migrate_alt_flags()
         await self._migrate_custom_roles_columns()
         await self._migrate_report_columns()
+        await self._migrate_fun_slaps_columns()
         await self._db.commit()
 
     async def close(self) -> None:
@@ -1493,6 +1494,12 @@ class Database:
         await self.db.execute(
             "CREATE INDEX IF NOT EXISTS idx_report_notes_ticket ON report_notes(ticket_id, created_at)"
         )
+
+    async def _migrate_fun_slaps_columns(self) -> None:
+        cur = await self.db.execute("PRAGMA table_info(fun_slaps)")
+        cols = {str(row[1]) for row in await cur.fetchall()}
+        if cols and "action" not in cols:
+            await self.db.execute("ALTER TABLE fun_slaps ADD COLUMN action TEXT DEFAULT 'slap'")
 
     # --- reports ---
 
