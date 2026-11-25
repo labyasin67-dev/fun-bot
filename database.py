@@ -159,6 +159,98 @@ CREATE TABLE IF NOT EXISTS premium_grants (
 
 CREATE INDEX IF NOT EXISTS idx_grants_guild ON premium_grants(guild_id);
 CREATE INDEX IF NOT EXISTS idx_grants_user ON premium_grants(user_id);
+
+CREATE TABLE IF NOT EXISTS customrole_settings (
+    guild_id INTEGER PRIMARY KEY,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    min_level INTEGER NOT NULL DEFAULT 10,
+    anchor_role_id INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS custom_roles (
+    guild_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role_id INTEGER NOT NULL,
+    created_at REAL NOT NULL,
+    secondary_colour INTEGER,
+    PRIMARY KEY (guild_id, user_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_custom_roles_role ON custom_roles(guild_id, role_id);
+
+CREATE TABLE IF NOT EXISTS custom_role_restrictions (
+    guild_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    reason TEXT,
+    by INTEGER,
+    at REAL NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS report_settings (
+    guild_id INTEGER PRIMARY KEY,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    mode TEXT NOT NULL DEFAULT 'channel',
+    category_id INTEGER,
+    alert_channel_id INTEGER,
+    closed_channel_id INTEGER,
+    staff_role_id INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS report_tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id INTEGER NOT NULL,
+    channel_id INTEGER,
+    message_channel_id INTEGER,
+    message_id INTEGER,
+    announce_channel_id INTEGER,
+    announce_message_id INTEGER,
+    reporter_id INTEGER NOT NULL,
+    reporter_name TEXT,
+    reporter_avatar TEXT,
+    reported_user_id INTEGER,
+    reported_name TEXT,
+    reported_avatar TEXT,
+    message_link TEXT,
+    message_preview TEXT,
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    claimed_by INTEGER,
+    claimed_by_name TEXT,
+    claimed_by_avatar TEXT,
+    claimed_at REAL,
+    decided_by INTEGER,
+    decided_by_name TEXT,
+    decided_by_avatar TEXT,
+    decided_at REAL,
+    decision_reason TEXT,
+    created_at REAL NOT NULL,
+    closed_at REAL,
+    closed_by INTEGER,
+    closed_by_name TEXT,
+    closed_by_avatar TEXT
+);
+CREATE TABLE IF NOT EXISTS report_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER NOT NULL,
+    guild_id INTEGER NOT NULL,
+    author_id INTEGER,
+    author_name TEXT,
+    author_avatar TEXT,
+    body TEXT NOT NULL,
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_report_notes_ticket ON report_notes(ticket_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_report_tickets_guild ON report_tickets(guild_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_report_tickets_reporter ON report_tickets(guild_id, reporter_id, status);
+
+CREATE TABLE IF NOT EXISTS report_blocks (
+    guild_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    reason TEXT,
+    by INTEGER,
+    at REAL NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+);
 """
 
 FEATURE_SETTINGS_COLUMN = {
@@ -181,6 +273,8 @@ class Database:
         await self._db.executescript(SCHEMA)
         await self._migrate_feature_channels()
         await self._migrate_alt_flags()
+        await self._migrate_custom_roles_columns()
+        await self._migrate_report_columns()
         await self._db.commit()
 
     async def close(self) -> None:
@@ -1158,3 +1252,497 @@ class Database:
             (guild_id,),
         )
         return await cur.fetchone() is not None
+
+    async def _migrate_custom_roles_columns(self) -> None:
+        cur = await self.db.execute("PRAGMA table_info(custom_roles)")
+        cols = {str(row[1]) for row in await cur.fetchall()}
+        if not cols:
+            return
+        if "secondary_colour" not in cols:
+            await self.db.execute("ALTER TABLE custom_roles ADD COLUMN secondary_colour INTEGER")
+
+    # --- custom roles ---
+
+    async def get_customrole_settings(self, guild_id: int) -> aiosqlite.Row:
+        await self.db.execute(
+            "INSERT OR IGNORE INTO customrole_settings (guild_id) VALUES (?)",
+            (guild_id,),
+        )
+        await self.db.commit()
+        cur = await self.db.execute(
+            "SELECT * FROM customrole_settings WHERE guild_id = ?",
+            (guild_id,),
+        )
+        row = await cur.fetchone()
+        assert row is not None
+        return row
+
+    async def set_customrole_settings(self, guild_id: int, **fields) -> aiosqlite.Row:
+        await self.get_customrole_settings(guild_id)
+        if fields:
+            allowed = {"enabled", "min_level", "anchor_role_id"}
+            unknown = set(fields) - allowed
+            if unknown:
+                raise ValueError(f"Unknown custom role settings: {unknown}")
+            cols = ", ".join(f"{k} = ?" for k in fields)
+            values = list(fields.values()) + [guild_id]
+            await self.db.execute(
+                f"UPDATE customrole_settings SET {cols} WHERE guild_id = ?",
+                values,
+            )
+            await self.db.commit()
+        return await self.get_customrole_settings(guild_id)
+
+    async def get_custom_role(self, guild_id: int, user_id: int) -> aiosqlite.Row | None:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_roles WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        return await cur.fetchone()
+
+    async def get_custom_role_by_role_id(self, guild_id: int, role_id: int) -> aiosqlite.Row | None:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_roles WHERE guild_id = ? AND role_id = ?",
+            (guild_id, role_id),
+        )
+        return await cur.fetchone()
+
+    async def list_custom_roles(self, guild_id: int) -> list[aiosqlite.Row]:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_roles WHERE guild_id = ? ORDER BY created_at DESC",
+            (guild_id,),
+        )
+        return await cur.fetchall()
+
+    async def add_custom_role(
+        self, guild_id: int, user_id: int, role_id: int, *, secondary_colour: int | None = None
+    ) -> None:
+        import time
+        await self.db.execute(
+            """
+            INSERT INTO custom_roles (guild_id, user_id, role_id, created_at, secondary_colour)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (guild_id, user_id, role_id, time.time(), secondary_colour),
+        )
+        await self.db.commit()
+
+    async def set_custom_role_secondary(self, guild_id: int, user_id: int, secondary_colour: int | None) -> None:
+        await self.db.execute(
+            "UPDATE custom_roles SET secondary_colour = ? WHERE guild_id = ? AND user_id = ?",
+            (secondary_colour, guild_id, user_id),
+        )
+        await self.db.commit()
+
+    async def delete_custom_role(self, guild_id: int, user_id: int) -> aiosqlite.Row | None:
+        row = await self.get_custom_role(guild_id, user_id)
+        if row is None:
+            return None
+        await self.db.execute(
+            "DELETE FROM custom_roles WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        await self.db.commit()
+        return row
+
+    async def delete_custom_role_by_role_id(self, guild_id: int, role_id: int) -> aiosqlite.Row | None:
+        row = await self.get_custom_role_by_role_id(guild_id, role_id)
+        if row is None:
+            return None
+        await self.db.execute(
+            "DELETE FROM custom_roles WHERE guild_id = ? AND role_id = ?",
+            (guild_id, role_id),
+        )
+        await self.db.commit()
+        return row
+
+    async def is_custom_role_restricted(self, guild_id: int, user_id: int) -> bool:
+        cur = await self.db.execute(
+            "SELECT 1 FROM custom_role_restrictions WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        return await cur.fetchone() is not None
+
+    async def get_custom_role_restriction(self, guild_id: int, user_id: int) -> aiosqlite.Row | None:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_role_restrictions WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        return await cur.fetchone()
+
+    async def restrict_custom_role_user(
+        self, guild_id: int, user_id: int, *, reason: str | None, by: int | None
+    ) -> None:
+        import time
+        await self.db.execute(
+            """
+            INSERT INTO custom_role_restrictions (guild_id, user_id, reason, by, at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(guild_id, user_id) DO UPDATE SET
+                reason = excluded.reason,
+                by = excluded.by,
+                at = excluded.at
+            """,
+            (guild_id, user_id, reason, by, time.time()),
+        )
+        await self.db.commit()
+
+    async def unrestrict_custom_role_user(self, guild_id: int, user_id: int) -> bool:
+        cur = await self.db.execute(
+            "DELETE FROM custom_role_restrictions WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        await self.db.commit()
+        return cur.rowcount > 0
+
+    async def list_custom_role_restrictions(self, guild_id: int) -> list[aiosqlite.Row]:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_role_restrictions WHERE guild_id = ? ORDER BY at DESC",
+            (guild_id,),
+        )
+        return await cur.fetchall()
+
+    async def alt_flag_created_times(self, guild_id: int) -> list[aiosqlite.Row]:
+        cur = await self.db.execute(
+            """
+            SELECT user_id, MAX(account_created_at) AS account_created_at
+            FROM alt_flags
+            WHERE guild_id = ?
+            GROUP BY user_id
+            """,
+            (guild_id,),
+        )
+        return await cur.fetchall()
+
+    async def has_alt_flag(self, guild_id: int, user_id: int) -> bool:
+        cur = await self.db.execute(
+            "SELECT 1 FROM alt_flags WHERE guild_id = ? AND user_id = ? LIMIT 1",
+            (guild_id, user_id),
+        )
+        return await cur.fetchone() is not None
+
+
+
+    async def _migrate_report_columns(self) -> None:
+        cur = await self.db.execute("PRAGMA table_info(report_settings)")
+        settings_cols = {str(row[1]) for row in await cur.fetchall()}
+        if settings_cols and "closed_channel_id" not in settings_cols:
+            await self.db.execute("ALTER TABLE report_settings ADD COLUMN closed_channel_id INTEGER")
+        cur = await self.db.execute("PRAGMA table_info(report_tickets)")
+        cols = {str(row[1]) for row in await cur.fetchall()}
+        if cols:
+            additions = {
+                "announce_channel_id": "INTEGER",
+                "announce_message_id": "INTEGER",
+                "reporter_name": "TEXT",
+                "reporter_avatar": "TEXT",
+                "reported_name": "TEXT",
+                "reported_avatar": "TEXT",
+                "claimed_by_name": "TEXT",
+                "claimed_by_avatar": "TEXT",
+                "decided_by_name": "TEXT",
+                "decided_by_avatar": "TEXT",
+                "closed_by_name": "TEXT",
+                "closed_by_avatar": "TEXT",
+            }
+            for name, typ in additions.items():
+                if name not in cols:
+                    await self.db.execute(f"ALTER TABLE report_tickets ADD COLUMN {name} {typ}")
+        await self.db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS report_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket_id INTEGER NOT NULL,
+                guild_id INTEGER NOT NULL,
+                author_id INTEGER,
+                author_name TEXT,
+                author_avatar TEXT,
+                body TEXT NOT NULL,
+                created_at REAL NOT NULL
+            )
+            """
+        )
+        await self.db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_report_notes_ticket ON report_notes(ticket_id, created_at)"
+        )
+
+    # --- reports ---
+
+    async def get_report_settings(self, guild_id: int) -> aiosqlite.Row:
+        await self.db.execute(
+            "INSERT OR IGNORE INTO report_settings (guild_id) VALUES (?)",
+            (guild_id,),
+        )
+        await self.db.commit()
+        cur = await self.db.execute("SELECT * FROM report_settings WHERE guild_id = ?", (guild_id,))
+        row = await cur.fetchone()
+        assert row is not None
+        return row
+
+    async def set_report_settings(self, guild_id: int, **fields) -> aiosqlite.Row:
+        await self.get_report_settings(guild_id)
+        if fields:
+            allowed = {"enabled", "mode", "category_id", "alert_channel_id", "closed_channel_id", "staff_role_id"}
+            unknown = set(fields) - allowed
+            if unknown:
+                raise ValueError(f"Unknown report settings: {unknown}")
+            if "mode" in fields and fields["mode"] not in {"channel", "ticket"}:
+                raise ValueError("mode must be channel or ticket")
+            cols = ", ".join(f"{k} = ?" for k in fields)
+            values = list(fields.values()) + [guild_id]
+            await self.db.execute(f"UPDATE report_settings SET {cols} WHERE guild_id = ?", values)
+            await self.db.commit()
+        return await self.get_report_settings(guild_id)
+
+    async def create_report_ticket(
+        self,
+        guild_id: int,
+        *,
+        reporter_id: int,
+        reporter_name: str | None = None,
+        reporter_avatar: str | None = None,
+        reported_user_id: int | None,
+        reported_name: str | None = None,
+        reported_avatar: str | None = None,
+        message_link: str | None,
+        message_preview: str | None,
+        reason: str | None,
+        channel_id: int | None = None,
+        message_channel_id: int | None = None,
+        message_id: int | None = None,
+    ) -> int:
+        import time
+        cur = await self.db.execute(
+            """
+            INSERT INTO report_tickets (
+                guild_id, channel_id, message_channel_id, message_id,
+                reporter_id, reporter_name, reporter_avatar,
+                reported_user_id, reported_name, reported_avatar,
+                message_link, message_preview, reason, status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)
+            """,
+            (
+                guild_id, channel_id, message_channel_id, message_id,
+                reporter_id, reporter_name, reporter_avatar,
+                reported_user_id, reported_name, reported_avatar,
+                message_link, message_preview, reason, time.time(),
+            ),
+        )
+        await self.db.commit()
+        return int(cur.lastrowid)
+
+    async def set_report_panel(
+        self,
+        ticket_id: int,
+        *,
+        channel_id: int | None,
+        message_channel_id: int,
+        message_id: int,
+        announce_channel_id: int | None = None,
+        announce_message_id: int | None = None,
+    ) -> None:
+        await self.db.execute(
+            """
+            UPDATE report_tickets
+            SET channel_id = ?, message_channel_id = ?, message_id = ?,
+                announce_channel_id = ?, announce_message_id = ?
+            WHERE id = ?
+            """,
+            (channel_id, message_channel_id, message_id, announce_channel_id, announce_message_id, ticket_id),
+        )
+        await self.db.commit()
+
+    async def get_report_ticket(self, ticket_id: int, guild_id: int | None = None) -> aiosqlite.Row | None:
+        if guild_id is None:
+            cur = await self.db.execute("SELECT * FROM report_tickets WHERE id = ?", (ticket_id,))
+        else:
+            cur = await self.db.execute(
+                "SELECT * FROM report_tickets WHERE id = ? AND guild_id = ?",
+                (ticket_id, guild_id),
+            )
+        return await cur.fetchone()
+
+    async def list_report_tickets(
+        self, guild_id: int, *, status: str | None = None, limit: int = 50, offset: int = 0
+    ) -> list[aiosqlite.Row]:
+        if status:
+            cur = await self.db.execute(
+                """
+                SELECT * FROM report_tickets
+                WHERE guild_id = ? AND status = ?
+                ORDER BY created_at DESC LIMIT ? OFFSET ?
+                """,
+                (guild_id, status, limit, offset),
+            )
+        else:
+            cur = await self.db.execute(
+                "SELECT * FROM report_tickets WHERE guild_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (guild_id, limit, offset),
+            )
+        return await cur.fetchall()
+
+    async def count_reports(self, guild_id: int, status: str | None = None) -> int:
+        if status:
+            cur = await self.db.execute(
+                "SELECT COUNT(*) AS n FROM report_tickets WHERE guild_id = ? AND status = ?",
+                (guild_id, status),
+            )
+        else:
+            cur = await self.db.execute(
+                "SELECT COUNT(*) AS n FROM report_tickets WHERE guild_id = ?",
+                (guild_id,),
+            )
+        row = await cur.fetchone()
+        return int(row["n"] if row else 0)
+
+    async def count_open_reports(self, guild_id: int, reporter_id: int) -> int:
+        cur = await self.db.execute(
+            """
+            SELECT COUNT(*) AS n FROM report_tickets
+            WHERE guild_id = ? AND reporter_id = ? AND status = 'open'
+            """,
+            (guild_id, reporter_id),
+        )
+        row = await cur.fetchone()
+        return int(row["n"] if row else 0)
+
+    async def last_report_at(self, guild_id: int, reporter_id: int) -> float | None:
+        cur = await self.db.execute(
+            """
+            SELECT MAX(created_at) AS ts FROM report_tickets
+            WHERE guild_id = ? AND reporter_id = ?
+            """,
+            (guild_id, reporter_id),
+        )
+        row = await cur.fetchone()
+        if row is None or row["ts"] is None:
+            return None
+        return float(row["ts"])
+
+    async def claim_report_ticket(
+        self, ticket_id: int, user_id: int, *, name: str | None = None, avatar: str | None = None
+    ) -> None:
+        import time
+        await self.db.execute(
+            """
+            UPDATE report_tickets
+            SET claimed_by = ?, claimed_by_name = ?, claimed_by_avatar = ?, claimed_at = ?
+            WHERE id = ?
+            """,
+            (user_id, name, avatar, time.time(), ticket_id),
+        )
+        await self.db.commit()
+
+    async def decide_report_ticket(
+        self,
+        ticket_id: int,
+        *,
+        status: str,
+        decided_by: int,
+        decided_by_name: str | None = None,
+        decided_by_avatar: str | None = None,
+        decision_reason: str | None,
+    ) -> None:
+        import time
+        await self.db.execute(
+            """
+            UPDATE report_tickets
+            SET status = ?, decided_by = ?, decided_by_name = ?, decided_by_avatar = ?,
+                decided_at = ?, decision_reason = ?
+            WHERE id = ?
+            """,
+            (status, decided_by, decided_by_name, decided_by_avatar, time.time(), decision_reason, ticket_id),
+        )
+        await self.db.commit()
+
+    async def close_report_ticket(
+        self, ticket_id: int, *, closed_by: int | None, closed_by_name: str | None = None, closed_by_avatar: str | None = None
+    ) -> None:
+        import time
+        await self.db.execute(
+            """
+            UPDATE report_tickets
+            SET status = CASE WHEN status = 'open' THEN 'closed' ELSE status END,
+                closed_at = ?, closed_by = ?, closed_by_name = ?, closed_by_avatar = ?
+            WHERE id = ?
+            """,
+            (time.time(), closed_by, closed_by_name, closed_by_avatar, ticket_id),
+        )
+        await self.db.commit()
+
+    async def add_report_note(
+        self,
+        ticket_id: int,
+        guild_id: int,
+        *,
+        author_id: int | None,
+        author_name: str | None,
+        author_avatar: str | None,
+        body: str,
+    ) -> int:
+        import time
+        cur = await self.db.execute(
+            """
+            INSERT INTO report_notes (
+                ticket_id, guild_id, author_id, author_name, author_avatar, body, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (ticket_id, guild_id, author_id, author_name, author_avatar, body, time.time()),
+        )
+        await self.db.commit()
+        return int(cur.lastrowid)
+
+    async def list_report_notes(self, ticket_id: int) -> list[aiosqlite.Row]:
+        cur = await self.db.execute(
+            "SELECT * FROM report_notes WHERE ticket_id = ? ORDER BY created_at ASC",
+            (ticket_id,),
+        )
+        return await cur.fetchall()
+
+    async def list_report_notes_for(self, ticket_ids: list[int]) -> dict[int, list[aiosqlite.Row]]:
+        out: dict[int, list[aiosqlite.Row]] = {int(i): [] for i in ticket_ids}
+        if not ticket_ids:
+            return out
+        placeholders = ",".join("?" * len(ticket_ids))
+        cur = await self.db.execute(
+            f"SELECT * FROM report_notes WHERE ticket_id IN ({placeholders}) ORDER BY created_at ASC",
+            list(ticket_ids),
+        )
+        for row in await cur.fetchall():
+            out[int(row["ticket_id"])].append(row)
+        return out
+
+    async def is_report_blocked(self, guild_id: int, user_id: int) -> bool:
+        cur = await self.db.execute(
+            "SELECT 1 FROM report_blocks WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        return await cur.fetchone() is not None
+
+    async def block_reporter(self, guild_id: int, user_id: int, *, reason: str | None, by: int | None) -> None:
+        import time
+        await self.db.execute(
+            """
+            INSERT INTO report_blocks (guild_id, user_id, reason, by, at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(guild_id, user_id) DO UPDATE SET
+                reason = excluded.reason, by = excluded.by, at = excluded.at
+            """,
+            (guild_id, user_id, reason, by, time.time()),
+        )
+        await self.db.commit()
+
+    async def unblock_reporter(self, guild_id: int, user_id: int) -> bool:
+        cur = await self.db.execute(
+            "DELETE FROM report_blocks WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        await self.db.commit()
+        return cur.rowcount > 0
+
+    async def list_report_blocks(self, guild_id: int) -> list[aiosqlite.Row]:
+        cur = await self.db.execute(
+            "SELECT * FROM report_blocks WHERE guild_id = ? ORDER BY at DESC",
+            (guild_id,),
+        )
+        return await cur.fetchall()

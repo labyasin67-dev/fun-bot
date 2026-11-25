@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import discord
 
 COLOR = 0x7B5CFA
@@ -69,3 +71,19 @@ def progress_bar(current: int, maximum: int, size: int = 10) -> str:
     else:
         filled = max(0, min(size, round(size * current / maximum)))
     return "█" * filled + "░" * (size - filled)
+
+
+SAFE_MENTIONS = discord.AllowedMentions(everyone=False, roles=False, users=True)
+NO_MENTIONS = discord.AllowedMentions.none()
+
+
+USER_ID_RE = re.compile(r"^(?:<@!?(\d{15,20})>|(\d{15,20}))$")
+
+
+def parse_user_id(raw: str) -> int | None:
+    """Accept a raw Discord ID or a mention like <@123>."""
+    text = (raw or "").strip()
+    match = USER_ID_RE.fullmatch(text)
+    if not match:
+        return None
+    return int(match.group(1) or match.group(2))

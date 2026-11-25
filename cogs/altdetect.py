@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -17,6 +18,8 @@ from utils import DANGER, SUCCESS, WARNING, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
+
+log = logging.getLogger("socialize")
 
 ACTIONS = ("none", "log", "timeout", "kick", "quarantine")
 BAN_COMPARE_WINDOW = 6 * 3600  # account created within 6h of a recently banned user
@@ -468,6 +471,11 @@ class AltDetect(commands.Cog):
             action_taken="logged" if action != "none" else "none",
             status="in_server",
         )
+        try:
+            from cogs.customroles import enforce_custom_roles_on_alt_flag
+            await enforce_custom_roles_on_alt_flag(self.bot, member)
+        except Exception:
+            log.warning("Custom role alt enforcement failed for %s in %s", member.id, member.guild.id, exc_info=True)
         if action == "none":
             return
         log_id = await self.bot.db.get_feature_channel(member.guild.id, "alts")

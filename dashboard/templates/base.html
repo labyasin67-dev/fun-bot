@@ -41,10 +41,12 @@
         <option value="/servers/{{ guild.id }}/channels" {% if active=='channels' %}selected{% endif %}>Channels</option>
         <option value="/servers/{{ guild.id }}/levels" {% if active=='levels' %}selected{% endif %}>Levels</option>
         <option value="/servers/{{ guild.id }}/selfroles" {% if active=='selfroles' %}selected{% endif %}>Self roles</option>
+        <option value="/servers/{{ guild.id }}/customroles" {% if active=='customroles' %}selected{% endif %}>Custom Roles</option>
         <option value="/servers/{{ guild.id }}/alts" {% if active=='alts' %}selected{% endif %}>Alt detection</option>
         <option value="/servers/{{ guild.id }}/welcome" {% if active=='welcome' %}selected{% endif %}>Welcome</option>
         <option value="/servers/{{ guild.id }}/games" {% if active=='games' %}selected{% endif %}>Games</option>
         <option value="/servers/{{ guild.id }}/moderation" {% if active=='moderation' %}selected{% endif %}>Moderation</option>
+        <option value="/servers/{{ guild.id }}/reports" {% if active=='reports' %}selected{% endif %}>Reports</option>
         <option value="/servers/{{ guild.id }}/billing" {% if active=='billing' %}selected{% endif %}>Billing</option>
         <option value="/servers">All servers</option>
       </select>
@@ -59,10 +61,12 @@
           <a href="/servers/{{ guild.id }}/channels" class="{% if active=='channels' %}active{% endif %}">Channels</a>
           <a href="/servers/{{ guild.id }}/levels" class="{% if active=='levels' %}active{% endif %}">Levels</a>
           <a href="/servers/{{ guild.id }}/selfroles" class="{% if active=='selfroles' %}active{% endif %}">Self roles</a>
+          <a href="/servers/{{ guild.id }}/customroles" class="{% if active=='customroles' %}active{% endif %}">Custom Roles</a>
           <a href="/servers/{{ guild.id }}/alts" class="{% if active=='alts' %}active{% endif %}">Alt detection</a>
           <a href="/servers/{{ guild.id }}/welcome" class="{% if active=='welcome' %}active{% endif %}">Welcome</a>
           <a href="/servers/{{ guild.id }}/games" class="{% if active=='games' %}active{% endif %}">Games</a>
           <a href="/servers/{{ guild.id }}/moderation" class="{% if active=='moderation' %}active{% endif %}">Moderation</a>
+          <a href="/servers/{{ guild.id }}/reports" class="{% if active=='reports' %}active{% endif %}">Reports</a>
           <a href="/servers/{{ guild.id }}/billing" class="{% if active=='billing' %}active{% endif %}">Billing</a>
           <a href="/servers">← All servers</a>
         </nav>

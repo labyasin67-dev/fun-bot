@@ -14,6 +14,8 @@ from fastapi.templating import Jinja2Templates
 
 from cogs.channels import FEATURES as FEATURE_LABELS
 from cogs.welcome import DEFAULT_WELCOME
+from cogs.customroles import colour_hex, colour_hex_optional, remove_stored_custom_role, restrict_user
+from utils import parse_user_id
 from dashboard import DEFAULT_CLIENT_ID, INVITE_PERMISSIONS, ROOT, client_id, oauth_configured
 from dashboard.auth import (
     avatar_url,
@@ -228,6 +230,36 @@ def _flag_display(guild: discord.Guild, row, whitelist_ids: set[int], quarantine
         "status_key": status,
         "can_act": status != "banned",
     }
+
+
+
+def _is_owner(request: Request, user) -> bool:
+    bot = _bot(request)
+    from premium import owner_ids_from_env
+    ids = owner_ids_from_env()
+    if bot is not None:
+        ids |= set(getattr(bot, "app_owner_ids", None) or set())
+    try:
+        return bool(user and int(user["id"]) in ids)
+    except (TypeError, ValueError):
+        return False
+
+
+def _categories(guild: discord.Guild) -> list[discord.CategoryChannel]:
+    return sorted(guild.categories, key=lambda c: (c.position, c.id))
+
+
+def _staff_person(name: str | None, avatar: str | None, user_id: int | None, guild: discord.Guild | None = None) -> dict | None:
+    if not user_id and not name:
+        return None
+    label = name or (guild and _member_name(guild, user_id) if guild else None) or (f"ID {user_id}" if user_id else "Unknown")
+    return {"name": label, "avatar": avatar or "", "id": user_id}
+
+
+def _fmt_ts(ts) -> str:
+    if not ts:
+        return ""
+    return time.strftime("%Y-%m-%d %H:%M", time.localtime(float(ts)))
 
 
 def register_routes(app: FastAPI) -> None:
@@ -733,6 +765,313 @@ def register_routes(app: FastAPI) -> None:
             member_name=lambda uid: _member_name(guild, uid),
             fmt_time=lambda ts: time.strftime("%Y-%m-%d %H:%M", time.localtime(float(ts or 0))),
         )
+
+    @app.get("/servers/{guild_id}/customroles", response_class=HTMLResponse)
+    async def customroles_get(request: Request, guild_id: int):
+        redir, guild, _user = await _guild_or_redirect(request, guild_id)
+        if redir:
+            return redir
+        assert guild
+        db = _bot(request).db
+        settings = await db.get_customrole_settings(guild.id)
+        role_rows = []
+        for row in await db.list_custom_roles(guild.id):
+            role = guild.get_role(int(row["role_id"]))
+            created = float(row["created_at"] or 0)
+            role_rows.append(
+                {
+                    "user_id": int(row["user_id"]),
+                    "role_id": int(row["role_id"]),
+                    "role": role,
+                    "member_name": _member_name(guild, int(row["user_id"])),
+                    "colour": colour_hex(role.colour) if role else "",
+                    "colour2": (
+                        colour_hex(role.secondary_colour)
+                        if role and getattr(role, "secondary_colour", None) is not None
+                        else colour_hex_optional(row["secondary_colour"])
+                    ),
+                    "created": time.strftime("%Y-%m-%d %H:%M", time.localtime(created)) if created else "—",
+                }
+            )
+        restrictions = []
+        for row in await db.list_custom_role_restrictions(guild.id):
+            when = float(row["at"] or 0)
+            by_id = int(row["by"]) if row["by"] else None
+            restrictions.append(
+                {
+                    "user_id": int(row["user_id"]),
+                    "member_name": _member_name(guild, int(row["user_id"])),
+                    "reason": row["reason"] or "",
+                    "by_name": _member_name(guild, by_id) if by_id else "Automatic",
+                    "at": time.strftime("%Y-%m-%d %H:%M", time.localtime(when)) if when else "—",
+                }
+            )
+        anchor_id = int(settings["anchor_role_id"]) if settings["anchor_role_id"] else None
+        return render(
+            request,
+            "customroles.html",
+            **_nav(guild, "customroles"),
+            enabled=int(settings["enabled"] or 0),
+            min_level=int(settings["min_level"] or 0),
+            anchor_role_id=anchor_id,
+            assignable=_roles(guild),
+            roles=role_rows,
+            restrictions=restrictions,
+        )
+
+    @app.post("/servers/{guild_id}/customroles")
+    async def customroles_post(request: Request, guild_id: int):
+        redir, guild, user = await _guild_or_redirect(request, guild_id)
+        if redir:
+            return redir
+        assert guild
+        form = await _form(request)
+        db = _bot(request).db
+        action = str(form.get("action") or "")
+        redirect = f"/servers/{guild_id}/customroles"
+        actor_id = int(user["id"]) if user and user.get("id") else None
+        if action == "settings":
+            enabled = 1 if str(form.get("enabled") or "") == "1" else 0
+            try:
+                min_level = int(str(form.get("min_level") or "10"))
+            except ValueError:
+                flash(request, "error", "Minimum level must be a number.")
+                return RedirectResponse(redirect, status_code=303)
+            if min_level < 0 or min_level > 1000:
+                flash(request, "error", "Minimum level must be between 0 and 1000.")
+                return RedirectResponse(redirect, status_code=303)
+            valid_roles = {r.id for r in _roles(guild)}
+            raw_anchor = str(form.get("anchor_role_id") or "").strip()
+            anchor = int(raw_anchor) if raw_anchor.isdigit() and int(raw_anchor) in valid_roles else None
+            await db.set_customrole_settings(
+                guild.id, enabled=enabled, min_level=min_level, anchor_role_id=anchor
+            )
+            flash(request, "ok", "Custom role settings saved.")
+            return RedirectResponse(redirect, status_code=303)
+        raw = str(form.get("user_id") or "")
+        user_id = parse_user_id(raw)
+        if user_id is None and raw.strip().isdigit() and len(raw.strip()) >= 15:
+            user_id = int(raw.strip())
+        if action in {"remove", "restrict", "unrestrict"} and not user_id:
+            flash(request, "error", "Enter a valid Discord user ID.")
+            return RedirectResponse(redirect, status_code=303)
+        if action == "remove":
+            removed = await remove_stored_custom_role(
+                _bot(request), guild, user_id, reason=f"Removed from dashboard by {actor_id}"
+            )
+            if removed is None:
+                flash(request, "error", "That member doesn't have a custom role.")
+            else:
+                flash(request, "ok", f"Removed the custom role from {_member_name(guild, user_id)}.")
+            return RedirectResponse(redirect, status_code=303)
+        if action == "restrict":
+            reason = str(form.get("reason") or "").strip() or "Restricted from the dashboard"
+            await restrict_user(
+                _bot(request),
+                guild,
+                user_id,
+                reason=reason,
+                by=actor_id,
+                delete_role=True,
+            )
+            flash(request, "ok", f"{_member_name(guild, user_id)} is restricted from custom roles.")
+            return RedirectResponse(redirect, status_code=303)
+        if action == "unrestrict":
+            ok = await db.unrestrict_custom_role_user(guild.id, user_id)
+            if ok:
+                flash(request, "ok", f"{_member_name(guild, user_id)} can create a custom role again.")
+            else:
+                flash(request, "error", "That member isn't restricted.")
+            return RedirectResponse(redirect, status_code=303)
+        return RedirectResponse(redirect, status_code=303)
+
+
+    @app.get("/servers/{guild_id}/reports", response_class=HTMLResponse)
+    async def reports_get(request: Request, guild_id: int, open: int = 1, approved: int = 1, denied: int = 1, closed: int = 1):
+        redir, guild, user = await _guild_or_redirect(request, guild_id)
+        if redir:
+            return redir
+        assert guild
+        db = _bot(request).db
+        settings = await db.get_report_settings(guild.id)
+        owner_view = _is_owner(request, user)
+        per = 50
+
+        async def section(status: str, page: int):
+            page = max(1, int(page or 1))
+            total = await db.count_reports(guild.id, status)
+            pages = max(1, (total + per - 1) // per)
+            page = min(page, pages)
+            rows = await db.list_report_tickets(guild.id, status=status, limit=per, offset=(page - 1) * per)
+            notes_map = {}
+            if owner_view:
+                notes_map = await db.list_report_notes_for([int(r["id"]) for r in rows])
+            items = []
+            for row in rows:
+                notes = []
+                for note in notes_map.get(int(row["id"]), []):
+                    notes.append(
+                        {
+                            "author": _staff_person(note["author_name"], note["author_avatar"], note["author_id"], guild),
+                            "body": note["body"],
+                            "at": _fmt_ts(note["created_at"]),
+                        }
+                    )
+                items.append(
+                    {
+                        "id": int(row["id"]),
+                        "reason": row["reason"] or "",
+                        "message_link": row["message_link"] or "",
+                        "created": _fmt_ts(row["created_at"]),
+                        "reporter": _staff_person(row["reporter_name"], row["reporter_avatar"], row["reporter_id"], guild),
+                        "reported": _staff_person(row["reported_name"], row["reported_avatar"], row["reported_user_id"], guild) if row["reported_user_id"] or row["reported_name"] else None,
+                        "claimed": _staff_person(row["claimed_by_name"], row["claimed_by_avatar"], row["claimed_by"], guild) if row["claimed_by"] else None,
+                        "claimed_at": _fmt_ts(row["claimed_at"]),
+                        "decided": _staff_person(row["decided_by_name"], row["decided_by_avatar"], row["decided_by"], guild) if row["decided_by"] else None,
+                        "decided_at": _fmt_ts(row["decided_at"]),
+                        "decision_reason": row["decision_reason"] or "",
+                        "notes": notes,
+                    }
+                )
+            return items, total, page, pages
+
+        open_items, open_count, open_page, open_pages = await section("open", open)
+        approved_items, approved_count, approved_page, approved_pages = await section("approved", approved)
+        denied_items, denied_count, denied_page, denied_pages = await section("denied", denied)
+        closed_items, closed_count, closed_page, closed_pages = await section("closed", closed)
+        blocks = []
+        for row in await db.list_report_blocks(guild.id):
+            blocks.append(
+                {
+                    "user_id": int(row["user_id"]),
+                    "name": _member_name(guild, int(row["user_id"])),
+                    "reason": row["reason"] or "",
+                }
+            )
+        return render(
+            request,
+            "reports.html",
+            **_nav(guild, "reports"),
+            enabled=int(settings["enabled"] or 0),
+            mode=str(settings["mode"] or "channel"),
+            alert_channel_id=int(settings["alert_channel_id"]) if settings["alert_channel_id"] else None,
+            closed_channel_id=int(settings["closed_channel_id"]) if settings["closed_channel_id"] else None,
+            category_id=int(settings["category_id"]) if settings["category_id"] else None,
+            staff_role_id=int(settings["staff_role_id"]) if settings["staff_role_id"] else None,
+            grouped=_grouped_channels(guild),
+            categories=_categories(guild),
+            assignable=_roles(guild),
+            owner_view=owner_view,
+            open_items=open_items, open_count=open_count, open_page=open_page, open_pages=open_pages,
+            approved_items=approved_items, approved_count=approved_count, approved_page=approved_page, approved_pages=approved_pages,
+            denied_items=denied_items, denied_count=denied_count, denied_page=denied_page, denied_pages=denied_pages,
+            closed_items=closed_items, closed_count=closed_count, closed_page=closed_page, closed_pages=closed_pages,
+            blocks=blocks,
+        )
+
+    @app.post("/servers/{guild_id}/reports")
+    async def reports_post(request: Request, guild_id: int):
+        redir, guild, user = await _guild_or_redirect(request, guild_id)
+        if redir:
+            return redir
+        assert guild
+        form = await _form(request)
+        db = _bot(request).db
+        action = str(form.get("action") or "")
+        redirect = f"/servers/{guild_id}/reports"
+        if action == "settings":
+            enabled = 1 if str(form.get("enabled") or "") == "1" else 0
+            mode = str(form.get("mode") or "channel")
+            if mode not in {"channel", "ticket"}:
+                mode = "channel"
+            valid_ch = {c.id for c in _text_channels(guild)}
+            valid_cats = {c.id for c in _categories(guild)}
+            valid_roles = {r.id for r in _roles(guild)}
+            raw_alert = str(form.get("alert_channel_id") or "").strip()
+            raw_closed = str(form.get("closed_channel_id") or "").strip()
+            raw_cat = str(form.get("category_id") or "").strip()
+            raw_role = str(form.get("staff_role_id") or "").strip()
+            alert = int(raw_alert) if raw_alert.isdigit() and int(raw_alert) in valid_ch else None
+            closed = int(raw_closed) if raw_closed.isdigit() and int(raw_closed) in valid_ch else None
+            category = int(raw_cat) if raw_cat.isdigit() and int(raw_cat) in valid_cats else None
+            role = int(raw_role) if raw_role.isdigit() and int(raw_role) in valid_roles else None
+            await db.set_report_settings(
+                guild.id,
+                enabled=enabled,
+                mode=mode,
+                alert_channel_id=alert,
+                closed_channel_id=closed,
+                category_id=category,
+                staff_role_id=role,
+            )
+            flash(request, "ok", "Report settings saved.")
+            return RedirectResponse(redirect, status_code=303)
+        raw_tid = str(form.get("ticket_id") or "").strip()
+        ticket_id = int(raw_tid) if raw_tid.isdigit() else 0
+        actor_id = int(user["id"]) if user and user.get("id") else 0
+        actor_name = (user or {}).get("username") or (f"ID {actor_id}" if actor_id else "Staff")
+        actor_avatar = avatar_url(user) if user else ""
+        if action in {"approve", "deny"}:
+            if not ticket_id:
+                flash(request, "error", "Missing report ID.")
+                return RedirectResponse(redirect, status_code=303)
+            reason = str(form.get("reason") or "").strip() or None
+            cog = _bot(request).get_cog("Reports")
+            if cog is None:
+                flash(request, "error", "The reports module isn't loaded.")
+                return RedirectResponse(redirect, status_code=303)
+            err = await cog.apply_decision(
+                guild,
+                ticket_id,
+                status="approved" if action == "approve" else "denied",
+                actor_id=actor_id,
+                actor_name=actor_name,
+                actor_avatar=actor_avatar,
+                reason=reason,
+            )
+            if err:
+                flash(request, "error", err)
+            else:
+                flash(request, "ok", f"Report #{ticket_id} was {action}d. The reporter was notified if I could reach them.")
+            return RedirectResponse(redirect, status_code=303)
+        if action == "note":
+            if not _is_owner(request, user):
+                flash(request, "error", "Only the bot owner can add or view private comments.")
+                return RedirectResponse(redirect, status_code=303)
+            if not ticket_id:
+                flash(request, "error", "Missing report ID.")
+                return RedirectResponse(redirect, status_code=303)
+            body = str(form.get("body") or "").strip()
+            cog = _bot(request).get_cog("Reports")
+            if cog is None:
+                err = await db.add_report_note(
+                    ticket_id, guild.id, author_id=actor_id, author_name=actor_name, author_avatar=actor_avatar, body=body
+                )
+                flash(request, "ok" if body else "error", "Comment saved." if body else "Write a comment first.")
+            else:
+                err = await cog.add_private_note(
+                    guild, ticket_id, author_id=actor_id, author_name=actor_name, author_avatar=actor_avatar, body=body
+                )
+                if err:
+                    flash(request, "error", err)
+                else:
+                    flash(request, "ok", "Private comment saved. Only you can see it on this page.")
+            return RedirectResponse(redirect, status_code=303)
+        if action in {"block", "unblock"}:
+            raw = str(form.get("user_id") or "")
+            user_id = parse_user_id(raw)
+            if not user_id:
+                flash(request, "error", "Enter a valid Discord user ID.")
+                return RedirectResponse(redirect, status_code=303)
+            if action == "block":
+                reason = str(form.get("reason") or "").strip() or None
+                await db.block_reporter(guild.id, user_id, reason=reason, by=actor_id)
+                flash(request, "ok", f"{_member_name(guild, user_id)} is blocked from sending reports.")
+            else:
+                ok = await db.unblock_reporter(guild.id, user_id)
+                flash(request, "ok" if ok else "error", f"{_member_name(guild, user_id)} can report again." if ok else "That member isn't blocked.")
+            return RedirectResponse(redirect, status_code=303)
+        return RedirectResponse(redirect, status_code=303)
 
     from dashboard.billing_routes import register_billing_routes
     register_billing_routes(app)
