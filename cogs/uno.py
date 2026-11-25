@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from main import SocializeBot
 
 COLORS = ("red", "yellow", "green", "blue")
-COLOR_EMOJI = {"red": "🔴", "yellow": "🟡", "green": ":dollblink:", "blue": "🔵"}
+COLOR_EMOJI = {"red": "🔴", "yellow": "🟡", "green": "🟢", "blue": "🔵"}
 KIND_LABEL = {"skip": "Skip", "reverse": "Reverse", "draw2": "+2", "wild": "Wild", "wild4": "Wild +4"}
 UNO_XP = 50
 TURN_SECONDS = 60
