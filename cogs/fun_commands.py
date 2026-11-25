@@ -340,15 +340,12 @@ class FunCommands(commands.Cog):
         verb_past = _verb_past(action)
 
         # Subtext: describes what just happened
-        # Preposition-ending verbs: "-# @target laughed at @author."
-        # Transitive verbs: "-# @target slapped by @author."
-        subtext = f"-# {target.mention} {_verb_past_with_author(action, author.mention)}."
+        # Transitive verbs: "-# @target got slapped by @author."
+        # Preposition verbs: "-# @target got ate with @author."
+        subtext = f"-# {target.mention} got {_verb_past_with_author(action, author.mention)}."
 
         # Footer: tracks how many times this has happened
-        if action in ACTION_VERBS_PAST_PREP:
-            footer_text = f"{target.display_name} has {verb_past} {ordinal(count)} time."
-        else:
-            footer_text = f"{target.display_name} has been {verb_past} {ordinal(count)} time."
+        footer_text = f"{target.display_name} got {verb_past} {ordinal(count)} time."
 
         # Download GIF and attach as a file so Discord renders it large in the embed
         gif_url = self._random_gif(action)
