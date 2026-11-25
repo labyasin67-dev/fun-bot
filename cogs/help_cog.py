@@ -121,7 +121,11 @@ HELP_SECTIONS = [
         "• `.yeet @user` — yeet someone\n"
         "• `.tickle @user` — tickle someone\n"
         "• `.hug @user` — hug someone\n"
-        "• `.dap @user` — dap someone up",
+        "• `.dap @user` — dap someone up\n"
+        "• `.bonk @user` — bonk someone on the head\n"
+        "• `.cuddle @user` — cuddle someone\n"
+        "• `.flirt @user` — flirt with someone\n"
+        "• `.poke @user` — poke someone",
     ),
 ]
 

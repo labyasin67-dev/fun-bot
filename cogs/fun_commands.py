@@ -1,4 +1,4 @@
-"""Fun interaction commands: .slap, .kiss, .laugh, .boot, .yeet, .tickle, .hug, .dap"""
+"""Fun interaction commands: .slap, .kiss, .laugh, .boot, .yeet, .tickle, .hug, .dap, .bonk, .cuddle, .flirt, .poke"""
 
 from __future__ import annotations
 
@@ -18,25 +18,33 @@ if TYPE_CHECKING:
 BASE_GIF_URL = "https://raw.githubusercontent.com/iceefruit/giffycdn/main"
 
 ACTION_GIFS: dict[str, list[str]] = {
-    "slap": [f"{BASE_GIF_URL}/slap/{i}.gif" for i in range(1, 30)],
-    "kiss": [f"{BASE_GIF_URL}/kiss/{i}.gif" for i in range(1, 42)],
-    "laugh": [f"{BASE_GIF_URL}/laugh/{i}.gif" for i in range(1, 32)],
-    "boot": [f"{BASE_GIF_URL}/punch/{i}.gif" for i in range(1, 13)],
-    "yeet": [f"{BASE_GIF_URL}/happy/{i}.gif" for i in range(1, 24)],
+    "slap":   [f"{BASE_GIF_URL}/slap/{i}.gif"   for i in range(1, 30)],
+    "kiss":   [f"{BASE_GIF_URL}/kiss/{i}.gif"   for i in range(1, 42)],
+    "laugh":  [f"{BASE_GIF_URL}/laugh/{i}.gif"  for i in range(1, 32)],
+    "boot":   [f"{BASE_GIF_URL}/punch/{i}.gif"  for i in range(1, 13)],
+    "yeet":   [f"{BASE_GIF_URL}/happy/{i}.gif"  for i in range(1, 24)],
     "tickle": [f"{BASE_GIF_URL}/tickle/{i}.gif" for i in range(1, 20)],
-    "hug": [f"{BASE_GIF_URL}/hug/{i}.gif" for i in range(1, 34)],
-    "dap": [f"{BASE_GIF_URL}/brofist/{i}.gif" for i in range(1, 9)],
+    "hug":    [f"{BASE_GIF_URL}/hug/{i}.gif"    for i in range(1, 34)],
+    "dap":    [f"{BASE_GIF_URL}/brofist/{i}.gif" for i in range(1, 9)],
+    "bonk":   [f"{BASE_GIF_URL}/slap/{i}.gif"   for i in range(1, 30)],
+    "cuddle": [f"{BASE_GIF_URL}/cuddle/{i}.gif" for i in range(1, 32)],
+    "flirt":  [f"{BASE_GIF_URL}/love/{i}.gif"   for i in range(1, 10)],
+    "poke":   [f"{BASE_GIF_URL}/poke/{i}.gif"   for i in range(1, 28)],
 }
 
 ACTION_VERBS: dict[str, str] = {
-    "slap": "slaps",
-    "kiss": "kisses",
-    "laugh": "laughs at",
-    "boot": "kicks",
-    "yeet": "yeets",
+    "slap":   "slaps",
+    "kiss":   "kisses",
+    "laugh":  "laughs at",
+    "boot":   "kicks",
+    "yeet":   "yeets",
     "tickle": "tickles",
-    "hug": "hugs",
-    "dap": "daps up",
+    "hug":    "hugs",
+    "dap":    "daps up",
+    "bonk":   "bonks",
+    "cuddle": "cuddles",
+    "flirt":  "flirts with",
+    "poke":   "pokes",
 }
 
 
@@ -115,16 +123,19 @@ class FunCommands(commands.Cog):
             count = await self.bot.db.count_fun_slaps(ctx.guild.id, target.id)
 
         verb = ACTION_VERBS[action]
-        # Build subtext for every action type
         subtext_map = {
-            "slap": f"-# {target.mention} has been slapped {ordinal(count)} time.",
-            "kiss": f"-# {target.mention} was kissed by {author.mention}.",
-            "laugh": f"-# {target.mention} is being laughed at by {author.mention}.",
-            "boot": f"-# {target.mention} got booted by {author.mention}.",
-            "yeet": f"-# {target.mention} was yeeted by {author.mention}.",
+            "slap":   f"-# {target.mention} has been slapped {ordinal(count)} time.",
+            "kiss":   f"-# {target.mention} was kissed by {author.mention}.",
+            "laugh":  f"-# {target.mention} is being laughed at by {author.mention}.",
+            "boot":   f"-# {target.mention} got booted by {author.mention}.",
+            "yeet":   f"-# {target.mention} was yeeted by {author.mention}.",
             "tickle": f"-# {target.mention} was tickled by {author.mention}.",
-            "hug": f"-# {target.mention} got a hug from {author.mention}.",
-            "dap": f"-# {target.mention} got dapped by {author.mention}.",
+            "hug":    f"-# {target.mention} got a hug from {author.mention}.",
+            "dap":    f"-# {target.mention} got dapped by {author.mention}.",
+            "bonk":   f"-# {target.mention} got bonked by {author.mention}.",
+            "cuddle": f"-# {target.mention} got cuddled by {author.mention}.",
+            "flirt":  f"-# {target.mention} got flirted with by {author.mention}.",
+            "poke":   f"-# {target.mention} got poked by {author.mention}.",
         }
         subtext = subtext_map[action]
 
@@ -190,6 +201,26 @@ class FunCommands(commands.Cog):
     @commands.guild_only()
     async def dap(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "dap", target)
+
+    @commands.hybrid_command(name="bonk", description="Bonk someone on the head!")
+    @commands.guild_only()
+    async def bonk(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "bonk", target)
+
+    @commands.hybrid_command(name="cuddle", description="Cuddle someone!")
+    @commands.guild_only()
+    async def cuddle(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "cuddle", target)
+
+    @commands.hybrid_command(name="flirt", description="Flirt with someone!")
+    @commands.guild_only()
+    async def flirt(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "flirt", target)
+
+    @commands.hybrid_command(name="poke", description="Poke someone!")
+    @commands.guild_only()
+    async def poke(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "poke", target)
 
 
 async def setup(bot: SocializeBot) -> None:
