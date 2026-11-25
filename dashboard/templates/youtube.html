@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}YouTube · {{ guild.name }}{% endblock %}
+{% block body %}
+<h1>YouTube</h1>
+<p class="lede">Schedule YouTube videos to post automatically in a channel, play videos as embeds, and authenticate for uploads.</p>
+
+<div class="card">
+  <h2>Settings</h2>
+  <form method="post" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="settings">
+    <div class="field" style="flex:0 0 140px">
+      <label>YouTube integration</label>
+      <select name="enabled">
+        <option value="1" {% if enabled %}selected{% endif %}>On</option>
+        <option value="0" {% if not enabled %}selected{% endif %}>Off</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Default channel (optional)</label>
+      <input type="text" name="channel_id" placeholder="Channel ID" value="{{ channel_id or '' }}">
+      <span class="faint">Leave blank to pick per-post in the form.</span>
+    </div>
+    <button class="btn" type="submit">Save</button>
+  </form>
+  <p class="faint">Commands: <code>/youtube post</code> (schedule), <code>/youtube embed &lt;link&gt;</code> (play), <code>/youtube auth</code> (login), <code>/youtube scheduled</code> (list).</p>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>Fun commands</h2>
+  <p>Member interaction commands work in this server:</p>
+  <ul class="muted">
+    <li><code>.slap @user</code> — slap someone (tracks slap count)</li>
+    <li><code>.kiss @user</code> — kiss someone</li>
+    <li><code>.laugh @user</code> — laugh at someone</li>
+    <li><code>.kick @user</code> — kick someone (fun)</li>
+    <li><code>.yeet @user</code> — yeet someone</li>
+    <li><code>.tickle @user</code> — tickle someone</li>
+    <li><code>.greet @user</code> — greet someone</li>
+    <li><code>.dap @user</code> — dap someone up</li>
+  </ul>
+</div>
+{% endblock %}

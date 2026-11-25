@@ -105,6 +105,24 @@ HELP_SECTIONS = [
         "• `.premium status` — whether this server is subscribed or granted\n"
         "The bot owner can also use `.premium grant`, `.premium revoke`, and `.premium list`.",
     ),
+    (
+        "YouTube",
+        "• `/youtube post` — open a form to schedule a video post\n"
+        "• `/youtube embed <link>` — play a YouTube video as an embed\n"
+        "• `/youtube auth` — authenticate with YouTube\n"
+        "• `/youtube scheduled` — list scheduled posts",
+    ),
+    (
+        "Fun",
+        "• `.slap @user` — slap someone (tracks count)\n"
+        "• `.kiss @user` — kiss someone\n"
+        "• `.laugh @user` — laugh at someone\n"
+        "• `.kick @user` — kick someone (fun)\n"
+        "• `.yeet @user` — yeet someone\n"
+        "• `.tickle @user` — tickle someone\n"
+        "• `.greet @user` — greet someone\n"
+        "• `.dap @user` — dap someone up",
+    ),
 ]
 
 

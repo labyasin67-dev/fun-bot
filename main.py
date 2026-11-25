@@ -55,6 +55,8 @@ EXTENSIONS = (
     "cogs.voice",
     "cogs.help_cog",
     "cogs.premium",
+    "cogs.youtube",
+    "cogs.fun_commands",
 )
 
 

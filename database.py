@@ -251,6 +251,33 @@ CREATE TABLE IF NOT EXISTS report_blocks (
     at REAL NOT NULL,
     PRIMARY KEY (guild_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS youtube_settings (
+    guild_id INTEGER PRIMARY KEY,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    channel_id INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS youtube_schedule (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id INTEGER NOT NULL,
+    channel_id INTEGER NOT NULL,
+    video_url TEXT NOT NULL,
+    scheduled_at REAL NOT NULL,
+    posted INTEGER NOT NULL DEFAULT 0,
+    posted_at REAL
+);
+
+CREATE TABLE IF NOT EXISTS fun_slaps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id INTEGER NOT NULL,
+    slapper_id INTEGER NOT NULL,
+    slapped_id INTEGER NOT NULL,
+    created_at REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_youtube_schedule_guild ON youtube_schedule(guild_id, scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_fun_slaps_guild ON fun_slaps(guild_id, slapped_id);
 """
 
 FEATURE_SETTINGS_COLUMN = {
@@ -1744,5 +1771,109 @@ class Database:
         cur = await self.db.execute(
             "SELECT * FROM report_blocks WHERE guild_id = ? ORDER BY at DESC",
             (guild_id,),
+        )
+        return await cur.fetchall()
+
+    # --- YouTube settings ---
+
+    async def get_youtube_settings(self, guild_id: int) -> aiosqlite.Row:
+        await self.db.execute(
+            "INSERT OR IGNORE INTO youtube_settings (guild_id) VALUES (?)",
+            (guild_id,),
+        )
+        await self.db.commit()
+        cur = await self.db.execute(
+            "SELECT * FROM youtube_settings WHERE guild_id = ?",
+            (guild_id,),
+        )
+        row = await cur.fetchone()
+        assert row is not None
+        return row
+
+    async def set_youtube_settings(self, guild_id: int, **fields) -> aiosqlite.Row:
+        await self.get_youtube_settings(guild_id)
+        if fields:
+            allowed = {"enabled", "channel_id"}
+            unknown = set(fields) - allowed
+            if unknown:
+                raise ValueError(f"Unknown youtube settings: {unknown}")
+            cols = ", ".join(f"{k} = ?" for k in fields)
+            values = list(fields.values()) + [guild_id]
+            await self.db.execute(
+                f"UPDATE youtube_settings SET {cols} WHERE guild_id = ?",
+                values,
+            )
+            await self.db.commit()
+        return await self.get_youtube_settings(guild_id)
+
+    async def is_youtube_enabled(self, guild_id: int) -> bool:
+        row = await self.get_youtube_settings(guild_id)
+        return int(row["enabled"] or 0) == 1
+
+    # --- YouTube schedule ---
+
+    async def add_youtube_schedule(
+        self, guild_id: int, channel_id: int, video_url: str, scheduled_at: float
+    ) -> int:
+        import time
+        cur = await self.db.execute(
+            """
+            INSERT INTO youtube_schedule (guild_id, channel_id, video_url, scheduled_at, posted)
+            VALUES (?, ?, ?, ?, 0)
+            """,
+            (guild_id, channel_id, video_url, scheduled_at),
+        )
+        await self.db.commit()
+        return int(cur.lastrowid)
+
+    async def list_youtube_schedule(self, guild_id: int) -> list[aiosqlite.Row]:
+        cur = await self.db.execute(
+            "SELECT * FROM youtube_schedule WHERE guild_id = ? AND posted = 0 ORDER BY scheduled_at ASC",
+            (guild_id,),
+        )
+        return await cur.fetchall()
+
+    async def mark_youtube_posted(self, schedule_id: int) -> None:
+        import time
+        await self.db.execute(
+            "UPDATE youtube_schedule SET posted = 1, posted_at = ? WHERE id = ?",
+            (time.time(), schedule_id),
+        )
+        await self.db.commit()
+
+    async def delete_youtube_schedule(self, schedule_id: int) -> bool:
+        cur = await self.db.execute(
+            "DELETE FROM youtube_schedule WHERE id = ?",
+            (schedule_id,),
+        )
+        await self.db.commit()
+        return cur.rowcount > 0
+
+    # --- fun slaps ---
+
+    async def add_fun_slap(self, guild_id: int, slapper_id: int, slapped_id: int) -> int:
+        import time
+        cur = await self.db.execute(
+            """
+            INSERT INTO fun_slaps (guild_id, slapper_id, slapped_id, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (guild_id, slapper_id, slapped_id, time.time()),
+        )
+        await self.db.commit()
+        return int(cur.lastrowid)
+
+    async def count_fun_slaps(self, guild_id: int, slapped_id: int) -> int:
+        cur = await self.db.execute(
+            "SELECT COUNT(*) as n FROM fun_slaps WHERE guild_id = ? AND slapped_id = ?",
+            (guild_id, slapped_id),
+        )
+        row = await cur.fetchone()
+        return int(row["n"]) if row else 0
+
+    async def list_recent_slaps(self, guild_id: int, limit: int = 10) -> list[aiosqlite.Row]:
+        cur = await self.db.execute(
+            "SELECT * FROM fun_slaps WHERE guild_id = ? ORDER BY created_at DESC LIMIT ?",
+            (guild_id, limit),
         )
         return await cur.fetchall()

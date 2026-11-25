@@ -747,6 +747,38 @@ def register_routes(app: FastAPI) -> None:
         flash(request, "ok", "Game settings saved. They apply to the next game start.")
         return RedirectResponse(f"/servers/{guild_id}/games", status_code=303)
 
+    @app.get("/servers/{guild_id}/youtube", response_class=HTMLResponse)
+    async def youtube_get(request: Request, guild_id: int):
+        redir, guild, _user = await _guild_or_redirect(request, guild_id)
+        if redir:
+            return redir
+        assert guild
+        db = _bot(request).db
+        settings = await db.get_youtube_settings(guild.id)
+        return render(
+            request,
+            "youtube.html",
+            **_nav(guild, "youtube"),
+            enabled=int(settings["enabled"] or 0),
+            channel_id=settings["channel_id"],
+        )
+
+    @app.post("/servers/{guild_id}/youtube")
+    async def youtube_post(request: Request, guild_id: int):
+        redir, guild, _user = await _guild_or_redirect(request, guild_id)
+        if redir:
+            return redir
+        assert guild
+        form = await _form(request)
+        db = _bot(request).db
+        action = str(form.get("action") or "")
+        redirect = f"/servers/{guild_id}/youtube"
+        if action == "settings":
+            enabled = 1 if str(form.get("enabled") or "") == "1" else 0
+            await db.set_youtube_settings(guild.id, enabled=enabled)
+            flash(request, "ok", "YouTube settings saved.")
+        return RedirectResponse(redirect, status_code=303)
+
     @app.get("/servers/{guild_id}/moderation", response_class=HTMLResponse)
     async def moderation(request: Request, guild_id: int):
         redir, guild, _user = await _guild_or_redirect(request, guild_id)
