@@ -329,10 +329,11 @@ class FunCommands(commands.Cog):
             )
             return
 
-        description = f"# <@{author.id}> {verb} <@{target.id}>\n\n{subtext}"
+        description = f"# <@{author.id}> {verb} <@{target.id}>"
         e = make_embed(description=description, color=SUCCESS)
-        file = discord.File(io.BytesIO(gif_bytes), filename="fun.gif")
+        e.set_footer(text=subtext)
         e.set_image(url="attachment://fun.gif")
+        file = discord.File(io.BytesIO(gif_bytes), filename="fun.gif")
 
         await ctx.send(embed=e, file=file)
 
