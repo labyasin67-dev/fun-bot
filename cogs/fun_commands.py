@@ -37,6 +37,14 @@ ACTION_VERBS: dict[str, str] = {
 }
 
 
+def ordinal(n: int) -> str:
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
 class FunCommands(commands.Cog):
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
@@ -78,16 +86,14 @@ class FunCommands(commands.Cog):
         if action == "slap":
             await self.bot.db.add_fun_slap(ctx.guild.id, author.id, target.id)
             count = await self.bot.db.count_fun_slaps(ctx.guild.id, target.id)
-            count_text = f"This is the **{count}** time {target.mention} has been slapped."
+            subtext = f"-# {target.mention} has been slapped {ordinal(count)} time."
         else:
-            count_text = ""
-
-        gif_url = self._random_gif(action)
+            subtext = None
 
         verb = ACTION_VERBS[action]
-        desc = f"{author.mention} {verb} {target.mention}! {count_text}".strip()
-        e = make_embed(f"{action.capitalize()}!", desc, color=SUCCESS)
-        e.set_image(url=gif_url)
+        title = f"{author.mention} {verb} {target.mention}!"
+        e = make_embed(title=title, description=subtext, color=SUCCESS)
+        e.set_image(url=self._random_gif(action))
 
         await ctx.send(embed=e)
 
