@@ -48,6 +48,8 @@ EXTENSIONS = (
     "cogs.altdetect",
     "cogs.channels",
     "cogs.roles",
+    "cogs.customroles",
+    "cogs.reports",
     "cogs.leveling",
     "cogs.welcome",
     "cogs.voice",

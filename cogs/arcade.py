@@ -51,25 +51,25 @@ def host_details(dest: Any, host_id: int) -> tuple[str | None, str | None]:
 # key, emoji, title, blurb, command name
 MENU_GAMES = [
     ("buttonhunt", "🔘", "Button Hunt", "A grid of buttons — first to hit the right one wins."),
-    ("diceduel", "⚔️", "Dice Roll Duel", "The first two to join roll; highest roll wins."),
-    ("backwards", "🔄", "Word Backwards", "Type the word shown, but reversed."),
-    ("scramble", "🔀", "Word Scramble", "Unscramble the letters to make a word."),
-    ("celebrity", "🌟", "Guess the Celebrity", "Name the famous person in the photo."),
-    ("landmark", "🗽", "Guess the Landmark", "Name the famous landmark in the photo."),
-    ("pattern", "🧩", "Pattern Puzzle", "Work out the next item in the sequence."),
-    ("capital", "🏙️", "Capital Scramble", "Unscramble the capital city. Hint: the country."),
-    ("redlight", "🟢", "Red Light Green Light", "Type on green to score; typing on red is out."),
-    ("missingemoji", "🕳️", "Missing Emoji", "Spot which emoji was removed from the line."),
-    ("sequencehunt", "🧠", "Sequence Hunt", "Remember the order, then tap it back."),
-    ("colorhunt", "🌈", "Color Hunt", "Click the colour you're asked for — labels try to trick you."),
-    ("emojieq", "➕", "Emoji Equation", "Solve the emoji maths puzzle."),
-    ("flag", "🌍", "Flag", "Name the country from its flag."),
-    ("reaction", "⏱️", "Reaction", "Wait for GO, then be first to click or type."),
-    ("language", "🗣️", "Language", "Guess which language the phrase is written in."),
-    ("word", "📝", "Word", "Be first to type a word that fits the rule."),
-    ("nickname", "🏷️", "Nickname", "Guess the person or team from their nickname."),
-    ("trivia", "💡", "Trivia", "A multiple-choice question for the channel."),
-    ("hilo", "📈", "HILO", "Will the next number be higher or lower?"),
+    ("diceduel", ":Sword:", "Dice Roll Duel", "The first two to join roll; highest roll wins."),
+    ("backwards", ":spinning-arrow-ball:", "Word Backwards", "Type the word shown, but reversed."),
+    ("scramble", ":shuffleparrot:", "Word Scramble", "Unscramble the letters to make a word."),
+    ("celebrity", ":star:", "Guess the Celebrity", "Name the famous person in the photo."),
+    ("landmark", ":MinecraftTorch:", "Guess the Landmark", "Name the famous landmark in the photo."),
+    ("pattern", ":wordlesolve:", "Pattern Puzzle", "Work out the next item in the sequence."),
+    ("capital", ":purplecity:", "Capital Scramble", "Unscramble the capital city. Hint: the country."),
+    ("redlight", ":dollblink:", "Red Light Green Light", "Type on green to score; typing on red is out."),
+    ("missingemoji", ":BluePortal:", "Missing Emoji", "Spot which emoji was removed from the line."),
+    ("sequencehunt", ":brain:", "Sequence Hunt", "Remember the order, then tap it back."),
+    ("colorhunt", ":rainbow:", "Color Hunt", "Click the colour you're asked for — labels try to trick you."),
+    ("emojieq", ":plussign:", "Emoji Equation", "Solve the emoji maths puzzle."),
+    ("flag", ":aEarth:", "Flag", "Name the country from its flag."),
+    ("reaction", ":60_sec_timer:", "Reaction", "Wait for GO, then be first to click or type."),
+    ("language", ":speakinghead:", "Language", "Guess which language the phrase is written in."),
+    ("word", ":notebook:", "Word", "Be first to type a word that fits the rule."),
+    ("nickname", ":verified:", "Nickname", "Guess the person or team from their nickname."),
+    ("trivia", ":Light:", "Trivia", "A multiple-choice question for the channel."),
+    ("hilo", ":chartincreasing:", "HILO", "Will the next number be higher or lower?"),
     ("uno", "🃏", "UNO", "Multiplayer UNO for 2–10 players."),
 ]
 
@@ -89,7 +89,7 @@ MENU_CATEGORIES = [
     },
     {
         "key": "trivia",
-        "emoji": "🧠",
+        "emoji": ":brain:",
         "label": "Trivia & knowledge",
         "games": ["celebrity", "landmark", "pattern", "missingemoji", "emojieq", "flag", "language", "trivia"],
     },
@@ -397,7 +397,7 @@ class WordRuleGame(ChannelGame):
         return game_embed(
             "Word",
             f"{self.prompt}\n\nFirst valid English word wins.",
-            emoji="📝",
+            emoji=":notebook:",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -423,7 +423,7 @@ class WordRuleGame(ChannelGame):
                 e = result_embed(
                     "Word",
                     "Nobody found a word that fits.",
-                    emoji="📝",
+                    emoji=":notebook:",
                     phase="timeout",
                     play_again=f"Play again with `{command_for_title('Word')}`.",
                     host=self.host_name,
@@ -451,7 +451,7 @@ class WordRuleGame(ChannelGame):
         e = result_embed(
             "Word",
             f"{message.author.mention} played **{word}**",
-            emoji="📝",
+            emoji=":notebook:",
             phase="win",
             xp=DEFAULT_WIN_XP,
             play_again=f"Play again with `{command_for_title('Word')}`.",
@@ -638,7 +638,7 @@ class DiceDuelGame(ChannelGame):
         return game_embed(
             "Dice Roll Duel",
             "First two players to join will each roll a d6. Highest roll wins.",
-            emoji="⚔️",
+            emoji=":Sword:",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -685,7 +685,7 @@ class DiceDuelGame(ChannelGame):
         e = result_embed(
             "Dice Roll Duel",
             f"{a.mention} rolled **{ra}**.\n{b.mention} rolled **{rb}**.\n\n{winner.mention} wins!",
-            emoji="⚔️",
+            emoji=":Sword:",
             phase="win",
             xp=DEFAULT_WIN_XP,
             play_again=f"Play again with `{command_for_title('Dice Roll Duel')}`.",
@@ -708,7 +708,7 @@ class DiceDuelGame(ChannelGame):
             e = result_embed(
                 "Dice Roll Duel",
                 "Not enough players joined.",
-                emoji="⚔️",
+                emoji=":Sword:",
                 phase="timeout",
                 play_again=f"Play again with `{command_for_title('Dice Roll Duel')}`.",
                 host=self.host_name,
@@ -784,7 +784,7 @@ class ColorHuntGame(ChannelGame):
         return game_embed(
             "Color Hunt",
             f"Click the **{target}** button.\nThat's the actual button colour, not the word written on it.",
-            emoji="🌈",
+            emoji=":rainbow:",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -834,7 +834,7 @@ class ColorHuntGame(ChannelGame):
         e = result_embed(
             "Color Hunt",
             f"{interaction.user.mention} clicked the right colour!",
-            emoji="🌈",
+            emoji=":rainbow:",
             phase="win",
             xp=DEFAULT_WIN_XP,
             play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
@@ -857,7 +857,7 @@ class ColorHuntGame(ChannelGame):
             e = result_embed(
                 "Color Hunt",
                 "Nobody clicked the right colour.",
-                emoji="🌈",
+                emoji=":rainbow:",
                 phase="timeout",
                 play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
                 host=self.host_name,
@@ -908,7 +908,7 @@ class ReactionGame(ChannelGame):
         return game_embed(
             "Reaction",
             description,
-            emoji="⏱️",
+            emoji=":60_sec_timer:",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -967,7 +967,7 @@ class ReactionGame(ChannelGame):
                     e = result_embed(
                         "Reaction",
                         "Nobody reacted in time.",
-                        emoji="⏱️",
+                        emoji=":60_sec_timer:",
                         phase="timeout",
                         play_again=f"Play again with `{command_for_title('Reaction')}`.",
                         host=self.host_name,
@@ -1007,7 +1007,7 @@ class ReactionGame(ChannelGame):
         e = result_embed(
             "Reaction",
             f"{user.mention} was first!",
-            emoji="⏱️",
+            emoji=":60_sec_timer:",
             phase="win",
             xp=DEFAULT_WIN_XP,
             play_again=f"Play again with `{command_for_title('Reaction')}`.",
@@ -1041,7 +1041,7 @@ class ReactionGame(ChannelGame):
 
 
 class SequenceHuntView(discord.ui.View):
-    EMOJIS = ["🔴", "🟢", "🔵", "🟡"]
+    EMOJIS = ["🔴", ":dollblink:", "🔵", "🟡"]
 
     def __init__(self, game: "SequenceHuntGame", enabled: bool, *, timeout: float = 120):
         super().__init__(timeout=timeout)
@@ -1096,7 +1096,7 @@ class SequenceHuntGame(ChannelGame):
         return game_embed(
             "Sequence Hunt",
             description,
-            emoji="🧠",
+            emoji=":brain:",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -1182,7 +1182,7 @@ class SequenceHuntGame(ChannelGame):
         e = result_embed(
             "Sequence Hunt",
             f"{interaction.user.mention} repeated the sequence!",
-            emoji="🧠",
+            emoji=":brain:",
             phase="win",
             answer=self._seq_text(),
             xp=DEFAULT_WIN_XP,
@@ -1206,7 +1206,7 @@ class SequenceHuntGame(ChannelGame):
             e = result_embed(
                 "Sequence Hunt",
                 "Time's up!",
-                emoji="🧠",
+                emoji=":brain:",
                 phase="timeout",
                 answer=self._seq_text(),
                 play_again=f"Play again with `{command_for_title('Sequence Hunt')}`.",
@@ -1270,7 +1270,7 @@ class HiLoGame(ChannelGame):
             return game_embed(
                 title or "HILO over",
                 body,
-                emoji="📈",
+                emoji=":chartincreasing:",
                 phase=phase or ("win" if self.streak else "lose"),
                 host=self.host_name,
                 host_avatar=self.host_avatar,
@@ -1282,7 +1282,7 @@ class HiLoGame(ChannelGame):
         return game_embed(
             "HILO",
             f"The number is **{self.current}**.\nWill the next number (1–100) be higher or lower?\n\nStreak: **{self.streak}**",
-            emoji="📈",
+            emoji=":chartincreasing:",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -1332,7 +1332,7 @@ class HiLoGame(ChannelGame):
             e = result_embed(
                 "HILO",
                 f"{interaction.user.mention} got it right!\n**{self.current}** → **{self.next_number}**\nStreak of **{self.streak}** — that's the limit.",
-                emoji="📈",
+                emoji=":chartincreasing:",
                 phase="win",
                 xp=10,
                 play_again=f"Play again with `{command_for_title('HILO')}`.",
@@ -1422,7 +1422,7 @@ class TriviaGame(ChannelGame):
         return game_embed(
             "Trivia",
             self.question,
-            emoji="💡",
+            emoji=":Light:",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -1463,7 +1463,7 @@ class TriviaGame(ChannelGame):
         e = result_embed(
             "Trivia",
             f"{interaction.user.mention} answered correctly!",
-            emoji="💡",
+            emoji=":Light:",
             phase="win",
             answer=self.correct,
             xp=DEFAULT_WIN_XP,
@@ -1489,7 +1489,7 @@ class TriviaGame(ChannelGame):
             e = result_embed(
                 "Trivia",
                 "Time's up!",
-                emoji="💡",
+                emoji=":Light:",
                 phase="timeout",
                 answer=self.correct,
                 play_again=f"Play again with `{command_for_title('Trivia')}`.",
@@ -1529,7 +1529,7 @@ class RedLightGame(ChannelGame):
         return game_embed(
             "Red Light Green Light",
             body,
-            emoji="🟢",
+            emoji=":dollblink:",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -1592,7 +1592,7 @@ class RedLightGame(ChannelGame):
             e = result_embed(
                 "Red Light Green Light",
                 "Nobody scored this time.",
-                emoji="🟢",
+                emoji=":dollblink:",
                 phase="timeout",
                 play_again=f"Play again with `{command_for_title('Red Light Green Light')}`.",
                 host=self.host_name,
@@ -1615,7 +1615,7 @@ class RedLightGame(ChannelGame):
             e = result_embed(
                 "Red Light Green Light",
                 f"{label}: {mentions} with **{best}** point{'s' if best != 1 else ''}!",
-                emoji="🟢",
+                emoji=":dollblink:",
                 phase="win",
                 xp=DEFAULT_WIN_XP,
                 play_again=f"Play again with `{command_for_title('Red Light Green Light')}`.",

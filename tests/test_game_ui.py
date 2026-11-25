@@ -103,7 +103,7 @@ class PhaseTests(unittest.TestCase):
 
     def test_phase_emojis(self):
         self.assertEqual(phase_emoji("play"), "🎮")
-        self.assertEqual(phase_emoji("hint"), "💡")
+        self.assertEqual(phase_emoji("hint"), ":Light:")
         self.assertEqual(phase_emoji("win"), "🏆")
         self.assertEqual(phase_emoji("lose"), "❌")
         self.assertEqual(phase_emoji("timeout"), "⏰")
@@ -192,14 +192,14 @@ class GameMenuLineTests(unittest.TestCase):
         )
 
     def test_default_players_are_omitted(self):
-        line = game_menu_line("💡", "Trivia", ".trivia", players=DEFAULT_PLAYERS)
+        line = game_menu_line(":Light:", "Trivia", ".trivia", players=DEFAULT_PLAYERS)
         self.assertNotIn("players", line)
         self.assertNotIn("30s", line)
 
     def test_exception_players_are_shown_inline(self):
         self.assertEqual(
-            game_menu_line("⚔️", "Dice Roll Duel", ".diceduel", players="2 players"),
-            "⚔️ **Dice Roll Duel** · .diceduel · 2 players",
+            game_menu_line(":Sword:", "Dice Roll Duel", ".diceduel", players="2 players"),
+            ":Sword: **Dice Roll Duel** · .diceduel · 2 players",
         )
 
     def test_duration_is_never_shown(self):
@@ -212,7 +212,7 @@ class GamesMenuEmbedTests(unittest.TestCase):
     def setUp(self):
         self.games = [
             ("buttonhunt", "🔘", "Button Hunt", "blurb"),
-            ("diceduel", "⚔️", "Dice Roll Duel", "blurb"),
+            ("diceduel", ":Sword:", "Dice Roll Duel", "blurb"),
             ("uno", "🃏", "UNO", "blurb"),
         ]
         self.categories = [
@@ -247,7 +247,7 @@ class GamesMenuEmbedTests(unittest.TestCase):
         self.assertEqual(
             multi_lines,
             [
-                "⚔️ **Dice Roll Duel** · .diceduel · 2 players",
+            ":Sword: **Dice Roll Duel** · .diceduel · 2 players",
                 "🃏 **UNO** · .uno · 2–10 players",
             ],
         )
@@ -261,7 +261,7 @@ class GamesMenuEmbedTests(unittest.TestCase):
             self.assertNotIn("min", f.value)
 
     def test_empty_categories_are_skipped(self):
-        embed = self._build(games=[("diceduel", "⚔️", "Dice Roll Duel", "blurb")])
+        embed = self._build(games=[("diceduel", ":Sword:", "Dice Roll Duel", "blurb")])
         self.assertEqual([f.name for f in embed.fields], ["**Multiplayer**"])
 
 
@@ -284,7 +284,7 @@ class CountdownFieldTests(unittest.TestCase):
 
 class WithCountdownTests(unittest.TestCase):
     def _embed(self):
-        return game_embed("Trivia", "What is 2+2?", emoji="💡", phase="play")
+        return game_embed("Trivia", "What is 2+2?", emoji=":Light:", phase="play")
 
     def test_adds_time_left_field(self):
         embed = self._embed()
@@ -315,7 +315,7 @@ class WithCountdownTests(unittest.TestCase):
 
 class ClearCountdownTests(unittest.TestCase):
     def _embed_with_countdown(self):
-        embed = game_embed("Trivia", "What is 2+2?", emoji="💡", phase="play")
+        embed = game_embed("Trivia", "What is 2+2?", emoji=":Light:", phase="play")
         end_ts, _ = countdown_field(25)
         with_countdown(embed, end_ts)
         return embed
@@ -327,7 +327,7 @@ class ClearCountdownTests(unittest.TestCase):
         self.assertFalse(any(f.name == "Time left" for f in embed.fields))
 
     def test_noop_when_no_countdown(self):
-        embed = game_embed("Trivia", "What is 2+2?", emoji="💡", phase="play")
+        embed = game_embed("Trivia", "What is 2+2?", emoji=":Light:", phase="play")
         try:
             clear_countdown(embed)
         except Exception:

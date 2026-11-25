@@ -76,11 +76,28 @@ HELP_SECTIONS = [
     ),
     (
         "Roles & welcome",
-        "• `.role add/remove @user @role` — (manage roles)\n"
+        "• `.role create <name> [#hex1] [#hex2]` — one custom role; two colours make a gradient\n"
+        "• `.role create` — open a form for the name and colours\n"
+        "• `.role name <new>` / `.role colour <hex>` / `.role gradient #hex1 #hex2` / `.role delete` / `.role info`\n"
+        "• `.role toggle on|off` / `.role minlevel <n>` / `.role list` — (manage roles)\n"
+        "• `.role restrict @user [reason]` / `.role unrestrict @user`\n"
+        "• `.role remove @user` — take away their custom role; add `@role` to remove a normal role\n"
+        "• `.role add @user @role` — (manage roles)\n"
         "• `.selfrole add/remove/list/panel` — button panel so members can pick roles\n"
         "• `.setwelcome #channel [message]` — greet new members\n"
         "  Placeholders: `{mention}` `{user}` `{server}` `{membercount}`\n"
         "• `.welcometest` — preview the welcome message",
+    ),
+    (
+        "Reports",
+        "• `.report` — reply to a message, or `.report @user [reason]`\n"
+        "• Right-click a message → **Report Message**\n"
+        "• `.report toggle on|off` — (manage server)\n"
+        "• `.reportsetup tickets #channel` — where new reports are posted\n"
+        "• `.reportsetup closed #channel` — where approved, denied or closed reports go\n"
+        "• `.reportsetup mode channel|ticket` / `.reportsetup category` / `.reportsetup staffrole @role`\n"
+        "• `.report block @user [reason]` / `.report unblock @user`\n"
+        "Staff can claim, approve or deny a report (optional reason). The reporter is DMed the decision.",
     ),
     (
         "Premium",

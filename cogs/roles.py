@@ -90,54 +90,6 @@ class Roles(commands.Cog):
         self.bot = bot
         bot.add_dynamic_items(SelfRoleButton)
 
-    @commands.hybrid_group(name="role", description="Add or remove a role from a member.", invoke_without_command=True)
-    @commands.guild_only()
-    @commands.has_guild_permissions(manage_roles=True)
-    @commands.bot_has_guild_permissions(manage_roles=True)
-    async def role(self, ctx: commands.Context) -> None:
-        await ctx.send(
-            embed=make_embed(
-                "Role commands",
-                "• `.role add @user @role` / `/role add`\n"
-                "• `.role remove @user @role` / `/role remove`\n"
-                "• `.selfrole add`, `.selfrole remove`, `.selfrole panel`, `.selfrole list`",
-            )
-        )
-
-    @role.command(name="add", description="Give a member a role.")
-    @commands.guild_only()
-    @commands.has_guild_permissions(manage_roles=True)
-    @commands.bot_has_guild_permissions(manage_roles=True)
-    @app_commands.describe(member="The member to give the role to.", role="The role to add.")
-    async def role_add(self, ctx: commands.Context, member: discord.Member, role: discord.Role) -> None:
-        assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
-        err = can_manage_role(ctx.author, ctx.guild.me, role)
-        if err:
-            await ctx.send(embed=make_embed("Can't add that role", err, color=DANGER), ephemeral=True)
-            return
-        if role in member.roles:
-            await ctx.send(embed=make_embed("Already has it", f"{member.mention} already has {role.mention}."), ephemeral=True)
-            return
-        await member.add_roles(role, reason=f"Added by {ctx.author}")
-        await ctx.send(embed=make_embed("Role added", f"Gave {role.mention} to {member.mention}.", color=SUCCESS))
-
-    @role.command(name="remove", description="Remove a role from a member.")
-    @commands.guild_only()
-    @commands.has_guild_permissions(manage_roles=True)
-    @commands.bot_has_guild_permissions(manage_roles=True)
-    @app_commands.describe(member="The member to remove the role from.", role="The role to remove.")
-    async def role_remove(self, ctx: commands.Context, member: discord.Member, role: discord.Role) -> None:
-        assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
-        err = can_manage_role(ctx.author, ctx.guild.me, role)
-        if err:
-            await ctx.send(embed=make_embed("Can't remove that role", err, color=DANGER), ephemeral=True)
-            return
-        if role not in member.roles:
-            await ctx.send(embed=make_embed("Doesn't have it", f"{member.mention} doesn't have {role.mention}."), ephemeral=True)
-            return
-        await member.remove_roles(role, reason=f"Removed by {ctx.author}")
-        await ctx.send(embed=make_embed("Role removed", f"Removed {role.mention} from {member.mention}.", color=SUCCESS))
-
     @commands.hybrid_group(name="selfrole", description="Manage the self-role button panel.", invoke_without_command=True)
     @commands.guild_only()
     @commands.has_guild_permissions(manage_roles=True)
