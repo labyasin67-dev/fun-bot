@@ -35,7 +35,7 @@ PHASE_COLORS: dict[str, int] = {
 
 PHASE_EMOJI: dict[str, str] = {
     "play": "🎮",
-    "hint": "💡",
+    "hint": ":Light:",
     "win": "🏆",
     "lose": "❌",
     "timeout": "⏰",

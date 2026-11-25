@@ -294,7 +294,7 @@ class TriviaView(discord.ui.View):
             e = result_embed(
                 "Trivia",
                 "Time's up!",
-                emoji="🧠",
+                emoji=":brain:",
                 phase="timeout",
                 answer=self.correct,
                 play_again="Start another round with `.trivia`.",
@@ -325,12 +325,12 @@ class TriviaButton(discord.ui.Button):
                 elif child is self and not child.is_correct:
                     child.style = discord.ButtonStyle.danger
         if self.is_correct:
-            e = game_embed("Correct!", f"**{self.label}** is the right answer.", emoji="🧠", phase="win")
+            e = game_embed("Correct!", f"**{self.label}** is the right answer.", emoji=":brain:", phase="win")
         else:
             e = game_embed(
                 "Not quite.",
                 f"You picked **{self.label}**. The answer was **{view.correct}**.",
-                emoji="🧠",
+                emoji=":brain:",
                 phase="lose",
             )
         await interaction.response.defer()
@@ -447,7 +447,7 @@ class GamesMenu(discord.ui.View):
     @discord.ui.select(
         placeholder="Pick a game to start...",
         options=[
-            discord.SelectOption(label="Trivia", value="trivia", emoji="🧠", description="Answer a multiple-choice question"),
+            discord.SelectOption(label="Trivia", value="trivia", emoji=":brain:", description="Answer a multiple-choice question"),
             discord.SelectOption(label="Rock Paper Scissors", value="rps", emoji="✊", description="Play against the bot"),
             discord.SelectOption(label="Would You Rather", value="wyr", emoji="🤔", description="Vote on a tough choice"),
             discord.SelectOption(label="Truth or Dare", value="tod", emoji="🎲", description="Get a truth or a dare"),
@@ -493,7 +493,7 @@ class Games(commands.Cog):
         e = game_embed(
             "Trivia",
             question,
-            emoji="🧠",
+            emoji=":brain:",
             phase="play",
             host=host,
             host_avatar=host_avatar,
