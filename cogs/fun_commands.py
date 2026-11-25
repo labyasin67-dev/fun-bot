@@ -1,4 +1,21 @@
-"""Fun interaction commands: .slap, .kiss, .laugh, .boot, .yeet, .tickle, .hug, .dap, .bonk, .cuddle, .flirt, .poke"""
+"""Fun interaction commands — all 956 GIFs from iceefruit/giffycdn mapped to relatable commands.
+
+Categories → commands (every category covered):
+slap→.slap, kiss→.kiss, laugh→.laugh, punch→.boot, happy→.yeet, tickle→.tickle,
+hug→.hug, brofist→.dap, slap→.bonk, cuddle→.cuddle, love→.flirt, poke→.poke,
+airkiss→.airkiss, angrystare→.angrystare, bite→.bite, bleh→.bleh,
+celebrate→.celebrate, cheers→.cheers, clap→.clap, confused→.confused,
+cool→.cool, cry→.cry, dance→.dance, drool→.drool, evillaugh→.evillaugh,
+facepalm→.facepalm, handhold→.handhold, headbang→.headbang, lick→.lick,
+mad→.mad, nervous→.nervous, nom→.eat, nuzzle→.boop, nyah→.nyah,
+pat→.pat, peek→.peek, pinch→.pinch, pout→.pout, sad→.sad,
+scared→.scared, shout→.shout, shrug→.shrug, shy→.shy, sigh→.sigh,
+sip→.sip, sleep→.sleep, slowclap→.slowclap, smack→.smack,
+smile→.smile, sneeze→.sneeze, sorry→.sorry, stare→.stare,
+surprised→.surprised, sweat→.sweat, thumbsup→.thumbsup,
+tired→.tired, wave→.wave, wink→.wink, woah→.woah,
+yawn→.yawn, yay→.yay, yes→.yes
+"""
 
 from __future__ import annotations
 
@@ -18,21 +35,75 @@ if TYPE_CHECKING:
 BASE_GIF_URL = "https://raw.githubusercontent.com/iceefruit/giffycdn/main"
 
 ACTION_GIFS: dict[str, list[str]] = {
+    # Original commands
     "slap":   [f"{BASE_GIF_URL}/slap/{i}.gif"   for i in range(1, 30)],
     "kiss":   [f"{BASE_GIF_URL}/kiss/{i}.gif"   for i in range(1, 42)],
     "laugh":  [f"{BASE_GIF_URL}/laugh/{i}.gif"  for i in range(1, 32)],
     "boot":   [f"{BASE_GIF_URL}/punch/{i}.gif"  for i in range(1, 13)],
     "yeet":   [f"{BASE_GIF_URL}/happy/{i}.gif"  for i in range(1, 24)],
-    "tickle": [f"{BASE_GIF_URL}/tickle/{i}.gif" for i in range(1, 20)],
+    "tickle": [f"{BASE_GIF_URL}/tickle/{i}.gif" for i in range(1, 21)],
     "hug":    [f"{BASE_GIF_URL}/hug/{i}.gif"    for i in range(1, 34)],
     "dap":    [f"{BASE_GIF_URL}/brofist/{i}.gif" for i in range(1, 9)],
     "bonk":   [f"{BASE_GIF_URL}/slap/{i}.gif"   for i in range(1, 30)],
     "cuddle": [f"{BASE_GIF_URL}/cuddle/{i}.gif" for i in range(1, 32)],
     "flirt":  [f"{BASE_GIF_URL}/love/{i}.gif"   for i in range(1, 10)],
     "poke":   [f"{BASE_GIF_URL}/poke/{i}.gif"   for i in range(1, 28)],
+
+    # New commands (all remaining giffycdn categories)
+    "airkiss": [f"{BASE_GIF_URL}/airkiss/{i}.gif" for i in range(1, 7)],
+    "angrystare": [f"{BASE_GIF_URL}/angrystare/{i}.gif" for i in range(1, 19)],
+    "bite": [f"{BASE_GIF_URL}/bite/{i}.gif" for i in range(1, 24)],
+    "bleh": [f"{BASE_GIF_URL}/bleh/{i}.gif" for i in range(1, 8)],
+    "celebrate": [f"{BASE_GIF_URL}/celebrate/{i}.gif" for i in range(1, 8)],
+    "cheers": [f"{BASE_GIF_URL}/cheers/{i}.gif" for i in range(1, 7)],
+    "clap": [f"{BASE_GIF_URL}/clap/{i}.gif" for i in range(1, 9)],
+    "confused": [f"{BASE_GIF_URL}/confused/{i}.gif" for i in range(1, 9)],
+    "cool": [f"{BASE_GIF_URL}/cool/{i}.gif" for i in range(1, 5)],
+    "cry": [f"{BASE_GIF_URL}/cry/{i}.gif" for i in range(1, 40)],
+    "dance": [f"{BASE_GIF_URL}/dance/{i}.gif" for i in range(1, 30)],
+    "drool": [f"{BASE_GIF_URL}/drool/{i}.gif" for i in range(1, 11)],
+    "evillaugh": [f"{BASE_GIF_URL}/evillaugh/{i}.gif" for i in range(1, 11)],
+    "facepalm": [f"{BASE_GIF_URL}/facepalm/{i}.gif" for i in range(1, 16)],
+    "handhold": [f"{BASE_GIF_URL}/handhold/{i}.gif" for i in range(1, 11)],
+    "headbang": [f"{BASE_GIF_URL}/headbang/{i}.gif" for i in range(1, 9)],
+    "lick": [f"{BASE_GIF_URL}/lick/{i}.gif" for i in range(1, 11)],
+    "mad": [f"{BASE_GIF_URL}/mad/{i}.gif" for i in range(1, 21)],
+    "nervous": [f"{BASE_GIF_URL}/nervous/{i}.gif" for i in range(1, 14)],
+    "eat": [f"{BASE_GIF_URL}/nom/{i}.gif" for i in range(1, 32)],
+    "boop": [f"{BASE_GIF_URL}/nuzzle/{i}.gif" for i in range(1, 10)],
+    "nyah": [f"{BASE_GIF_URL}/nyah/{i}.gif" for i in range(1, 8)],
+    "pat": [f"{BASE_GIF_URL}/pat/{i}.gif" for i in range(1, 32)],
+    "peek": [f"{BASE_GIF_URL}/peek/{i}.gif" for i in range(1, 7)],
+    "pinch": [f"{BASE_GIF_URL}/pinch/{i}.gif" for i in range(1, 10)],
+    "pout": [f"{BASE_GIF_URL}/pout/{i}.gif" for i in range(1, 30)],
+    "sad": [f"{BASE_GIF_URL}/sad/{i}.gif" for i in range(1, 6)],
+    "scared": [f"{BASE_GIF_URL}/scared/{i}.gif" for i in range(1, 18)],
+    "shout": [f"{BASE_GIF_URL}/shout/{i}.gif" for i in range(1, 10)],
+    "shrug": [f"{BASE_GIF_URL}/shrug/{i}.gif" for i in range(1, 13)],
+    "shy": [f"{BASE_GIF_URL}/shy/{i}.gif" for i in range(1, 14)],
+    "sigh": [f"{BASE_GIF_URL}/sigh/{i}.gif" for i in range(1, 8)],
+    "sip": [f"{BASE_GIF_URL}/sip/{i}.gif" for i in range(1, 11)],
+    "sleep": [f"{BASE_GIF_URL}/sleep/{i}.gif" for i in range(1, 30)],
+    "slowclap": [f"{BASE_GIF_URL}/slowclap/{i}.gif" for i in range(1, 4)],
+    "smack": [f"{BASE_GIF_URL}/smack/{i}.gif" for i in range(1, 17)],
+    "smile": [f"{BASE_GIF_URL}/smile/{i}.gif" for i in range(1, 32)],
+    "sneeze": [f"{BASE_GIF_URL}/sneeze/{i}.gif" for i in range(1, 5)],
+    "sorry": [f"{BASE_GIF_URL}/sorry/{i}.gif" for i in range(1, 5)],
+    "stare": [f"{BASE_GIF_URL}/stare/{i}.gif" for i in range(1, 28)],
+    "surprised": [f"{BASE_GIF_URL}/surprised/{i}.gif" for i in range(1, 15)],
+    "sweat": [f"{BASE_GIF_URL}/sweat/{i}.gif" for i in range(1, 5)],
+    "thumbsup": [f"{BASE_GIF_URL}/thumbsup/{i}.gif" for i in range(1, 17)],
+    "tired": [f"{BASE_GIF_URL}/tired/{i}.gif" for i in range(1, 13)],
+    "wave": [f"{BASE_GIF_URL}/wave/{i}.gif" for i in range(1, 27)],
+    "wink": [f"{BASE_GIF_URL}/wink/{i}.gif" for i in range(1, 30)],
+    "woah": [f"{BASE_GIF_URL}/woah/{i}.gif" for i in range(1, 9)],
+    "yawn": [f"{BASE_GIF_URL}/yawn/{i}.gif" for i in range(1, 10)],
+    "yay": [f"{BASE_GIF_URL}/yay/{i}.gif" for i in range(1, 8)],
+    "yes": [f"{BASE_GIF_URL}/yes/{i}.gif" for i in range(1, 9)],
 }
 
 ACTION_VERBS: dict[str, str] = {
+    # Original
     "slap":   "slaps",
     "kiss":   "kisses",
     "laugh":  "laughs at",
@@ -45,6 +116,57 @@ ACTION_VERBS: dict[str, str] = {
     "cuddle": "cuddles",
     "flirt":  "flirts with",
     "poke":   "pokes",
+    # New
+    "airkiss": "air kisses",
+    "angrystare": "angrily stares at",
+    "bite": "bites",
+    "bleh": "makes a bleh face at",
+    "celebrate": "celebrates with",
+    "cheers": "cheers with",
+    "clap": "claps for",
+    "confused": "looks confused at",
+    "cool": "looks cool with",
+    "cry": "cries at",
+    "dance": "dances with",
+    "drool": "drools at",
+    "evillaugh": "evilly laughs at",
+    "facepalm": "facepalms at",
+    "handhold": "holds hands with",
+    "headbang": "headbangs with",
+    "lick": "licks",
+    "mad": "gets mad at",
+    "nervous": "gets nervous around",
+    "eat": "eats with",
+    "boop": "boops",
+    "nyah": "nyahs at",
+    "pat": "pats",
+    "peek": "peeks at",
+    "pinch": "pinches",
+    "pout": "pouts at",
+    "sad": "gets sad at",
+    "scared": "gets scared at",
+    "shout": "shouts at",
+    "shrug": "shrugs at",
+    "shy": "gets shy around",
+    "sigh": "sighs at",
+    "sip": "sips with",
+    "sleep": "sleeps with",
+    "slowclap": "slow claps for",
+    "smack": "smacks",
+    "smile": "smiles at",
+    "sneeze": "sneezes at",
+    "sorry": "says sorry to",
+    "stare": "stares at",
+    "surprised": "gets surprised at",
+    "sweat": "sweats at",
+    "thumbsup": "gives a thumbs up to",
+    "tired": "gets tired with",
+    "wave": "waves at",
+    "wink": "winks at",
+    "woah": "says woah at",
+    "yawn": "yawns with",
+    "yay": "yays with",
+    "yes": "says yes to",
 }
 
 
@@ -136,6 +258,57 @@ class FunCommands(commands.Cog):
             "cuddle": f"-# {target.mention} got cuddled by {author.mention}.",
             "flirt":  f"-# {target.mention} got flirted with by {author.mention}.",
             "poke":   f"-# {target.mention} got poked by {author.mention}.",
+            # New subtexts
+            "airkiss": f"-# {target.mention} got an air kiss from {author.mention}.",
+            "angrystare": f"-# {target.mention} got an angry stare from {author.mention}.",
+            "bite": f"-# {target.mention} got bitten by {author.mention}.",
+            "bleh": f"-# {target.mention} got a bleh face from {author.mention}.",
+            "celebrate": f"-# {target.mention} is celebrating with {author.mention}.",
+            "cheers": f"-# {target.mention} is cheering with {author.mention}.",
+            "clap": f"-# {target.mention} is getting clapped for by {author.mention}.",
+            "confused": f"-# {target.mention} is looking confused at {author.mention}.",
+            "cool": f"-# {target.mention} is looking cool with {author.mention}.",
+            "cry": f"-# {target.mention} is crying at {author.mention}.",
+            "dance": f"-# {target.mention} is dancing with {author.mention}.",
+            "drool": f"-# {target.mention} is being drooled at by {author.mention}.",
+            "evillaugh": f"-# {target.mention} is being evil laughed at by {author.mention}.",
+            "facepalm": f"-# {target.mention} is being facepalmed by {author.mention}.",
+            "handhold": f"-# {target.mention} is holding hands with {author.mention}.",
+            "headbang": f"-# {target.mention} is headbanging with {author.mention}.",
+            "lick": f"-# {target.mention} got licked by {author.mention}.",
+            "mad": f"-# {target.mention} made {author.mention} mad.",
+            "nervous": f"-# {target.mention} made {author.mention} nervous.",
+            "eat": f"-# {target.mention} is eating with {author.mention}.",
+            "boop": f"-# {target.mention} got booped by {author.mention}.",
+            "nyah": f"-# {target.mention} got nyah'd by {author.mention}.",
+            "pat": f"-# {target.mention} got patted by {author.mention}.",
+            "peek": f"-# {target.mention} is being peeked at by {author.mention}.",
+            "pinch": f"-# {target.mention} got pinched by {author.mention}.",
+            "pout": f"-# {target.mention} is being pouted at by {author.mention}.",
+            "sad": f"-# {target.mention} is making {author.mention} sad.",
+            "scared": f"-# {target.mention} is scaring {author.mention}.",
+            "shout": f"-# {target.mention} got shouted at by {author.mention}.",
+            "shrug": f"-# {target.mention} is being shrugged at by {author.mention}.",
+            "shy": f"-# {target.mention} is making {author.mention} shy.",
+            "sigh": f"-# {target.mention} is being sighed at by {author.mention}.",
+            "sip": f"-# {target.mention} is sipping with {author.mention}.",
+            "sleep": f"-# {target.mention} is sleeping with {author.mention}.",
+            "slowclap": f"-# {target.mention} is getting slow clapped by {author.mention}.",
+            "smack": f"-# {target.mention} got smacked by {author.mention}.",
+            "smile": f"-# {target.mention} is being smiled at by {author.mention}.",
+            "sneeze": f"-# {target.mention} is being sneezed at by {author.mention}.",
+            "sorry": f"-# {target.mention} is getting an apology from {author.mention}.",
+            "stare": f"-# {target.mention} is being stared at by {author.mention}.",
+            "surprised": f"-# {target.mention} surprised {author.mention}.",
+            "sweat": f"-# {target.mention} is making {author.mention} sweat.",
+            "thumbsup": f"-# {target.mention} got a thumbs up from {author.mention}.",
+            "tired": f"-# {target.mention} is getting {author.mention} tired.",
+            "wave": f"-# {target.mention} got waved at by {author.mention}.",
+            "wink": f"-# {target.mention} got winked at by {author.mention}.",
+            "woah": f"-# {target.mention} made {author.mention} say woah.",
+            "yawn": f"-# {target.mention} is yawning with {author.mention}.",
+            "yay": f"-# {target.mention} is yaying with {author.mention}.",
+            "yes": f"-# {target.mention} got a yes from {author.mention}.",
         }
         subtext = subtext_map[action]
 
@@ -221,6 +394,258 @@ class FunCommands(commands.Cog):
     @commands.guild_only()
     async def poke(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "poke", target)
+
+    # --- new commands ---
+
+    @commands.hybrid_command(name="airkiss", description="Air kiss someone!")
+    @commands.guild_only()
+    async def airkiss(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "airkiss", target)
+
+    @commands.hybrid_command(name="angrystare", description="Angrily stare at someone!")
+    @commands.guild_only()
+    async def angrystare(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "angrystare", target)
+
+    @commands.hybrid_command(name="bite", description="Bite someone!")
+    @commands.guild_only()
+    async def bite(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "bite", target)
+
+    @commands.hybrid_command(name="bleh", description="Make a bleh face at someone!")
+    @commands.guild_only()
+    async def bleh(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "bleh", target)
+
+    @commands.hybrid_command(name="celebrate", description="Celebrate with someone!")
+    @commands.guild_only()
+    async def celebrate(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "celebrate", target)
+
+    @commands.hybrid_command(name="cheers", description="Cheers with someone!")
+    @commands.guild_only()
+    async def cheers(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "cheers", target)
+
+    @commands.hybrid_command(name="clap", description="Clap for someone!")
+    @commands.guild_only()
+    async def clap(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "clap", target)
+
+    @commands.hybrid_command(name="confused", description="Look confused at someone!")
+    @commands.guild_only()
+    async def confused(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "confused", target)
+
+    @commands.hybrid_command(name="cool", description="Look cool with someone!")
+    @commands.guild_only()
+    async def cool(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "cool", target)
+
+    @commands.hybrid_command(name="cry", description="Cry at someone!")
+    @commands.guild_only()
+    async def cry(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "cry", target)
+
+    @commands.hybrid_command(name="dance", description="Dance with someone!")
+    @commands.guild_only()
+    async def dance(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "dance", target)
+
+    @commands.hybrid_command(name="drool", description="Drool at someone!")
+    @commands.guild_only()
+    async def drool(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "drool", target)
+
+    @commands.hybrid_command(name="evillaugh", description="Evil laugh at someone!")
+    @commands.guild_only()
+    async def evillaugh(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "evillaugh", target)
+
+    @commands.hybrid_command(name="facepalm", description="Facepalm at someone!")
+    @commands.guild_only()
+    async def facepalm(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "facepalm", target)
+
+    @commands.hybrid_command(name="handhold", description="Hold hands with someone!")
+    @commands.guild_only()
+    async def handhold(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "handhold", target)
+
+    @commands.hybrid_command(name="headbang", description="Headbang with someone!")
+    @commands.guild_only()
+    async def headbang(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "headbang", target)
+
+    @commands.hybrid_command(name="lick", description="Lick someone!")
+    @commands.guild_only()
+    async def lick(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "lick", target)
+
+    @commands.hybrid_command(name="mad", description="Get mad at someone!")
+    @commands.guild_only()
+    async def mad(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "mad", target)
+
+    @commands.hybrid_command(name="nervous", description="Get nervous around someone!")
+    @commands.guild_only()
+    async def nervous(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "nervous", target)
+
+    @commands.hybrid_command(name="eat", description="Eat with someone!")
+    @commands.guild_only()
+    async def eat(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "eat", target)
+
+    @commands.hybrid_command(name="boop", description="Boop someone!")
+    @commands.guild_only()
+    async def boop(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "boop", target)
+
+    @commands.hybrid_command(name="nyah", description="Nyah at someone!")
+    @commands.guild_only()
+    async def nyah(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "nyah", target)
+
+    @commands.hybrid_command(name="pat", description="Pat someone!")
+    @commands.guild_only()
+    async def pat(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "pat", target)
+
+    @commands.hybrid_command(name="peek", description="Peek at someone!")
+    @commands.guild_only()
+    async def peek(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "peek", target)
+
+    @commands.hybrid_command(name="pinch", description="Pinch someone!")
+    @commands.guild_only()
+    async def pinch(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "pinch", target)
+
+    @commands.hybrid_command(name="pout", description="Pout at someone!")
+    @commands.guild_only()
+    async def pout(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "pout", target)
+
+    @commands.hybrid_command(name="sad", description="Get sad at someone!")
+    @commands.guild_only()
+    async def sad(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sad", target)
+
+    @commands.hybrid_command(name="scared", description="Get scared at someone!")
+    @commands.guild_only()
+    async def scared(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "scared", target)
+
+    @commands.hybrid_command(name="shout", description="Shout at someone!")
+    @commands.guild_only()
+    async def shout(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "shout", target)
+
+    @commands.hybrid_command(name="shrug", description="Shrug at someone!")
+    @commands.guild_only()
+    async def shrug(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "shrug", target)
+
+    @commands.hybrid_command(name="shy", description="Get shy around someone!")
+    @commands.guild_only()
+    async def shy(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "shy", target)
+
+    @commands.hybrid_command(name="sigh", description="Sigh at someone!")
+    @commands.guild_only()
+    async def sigh(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sigh", target)
+
+    @commands.hybrid_command(name="sip", description="Sip with someone!")
+    @commands.guild_only()
+    async def sip(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sip", target)
+
+    @commands.hybrid_command(name="sleep", description="Sleep with someone!")
+    @commands.guild_only()
+    async def sleep(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sleep", target)
+
+    @commands.hybrid_command(name="slowclap", description="Slow clap for someone!")
+    @commands.guild_only()
+    async def slowclap(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "slowclap", target)
+
+    @commands.hybrid_command(name="smack", description="Smack someone!")
+    @commands.guild_only()
+    async def smack(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "smack", target)
+
+    @commands.hybrid_command(name="smile", description="Smile at someone!")
+    @commands.guild_only()
+    async def smile(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "smile", target)
+
+    @commands.hybrid_command(name="sneeze", description="Sneeze at someone!")
+    @commands.guild_only()
+    async def sneeze(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sneeze", target)
+
+    @commands.hybrid_command(name="sorry", description="Say sorry to someone!")
+    @commands.guild_only()
+    async def sorry(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sorry", target)
+
+    @commands.hybrid_command(name="stare", description="Stare at someone!")
+    @commands.guild_only()
+    async def stare(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "stare", target)
+
+    @commands.hybrid_command(name="surprised", description="Get surprised at someone!")
+    @commands.guild_only()
+    async def surprised(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "surprised", target)
+
+    @commands.hybrid_command(name="sweat", description="Sweat at someone!")
+    @commands.guild_only()
+    async def sweat(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "sweat", target)
+
+    @commands.hybrid_command(name="thumbsup", description="Give someone a thumbs up!")
+    @commands.guild_only()
+    async def thumbsup(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "thumbsup", target)
+
+    @commands.hybrid_command(name="tired", description="Get tired with someone!")
+    @commands.guild_only()
+    async def tired(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "tired", target)
+
+    @commands.hybrid_command(name="wave", description="Wave at someone!")
+    @commands.guild_only()
+    async def wave(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "wave", target)
+
+    @commands.hybrid_command(name="wink", description="Wink at someone!")
+    @commands.guild_only()
+    async def wink(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "wink", target)
+
+    @commands.hybrid_command(name="woah", description="Say woah at someone!")
+    @commands.guild_only()
+    async def woah(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "woah", target)
+
+    @commands.hybrid_command(name="yawn", description="Yawn with someone!")
+    @commands.guild_only()
+    async def yawn(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "yawn", target)
+
+    @commands.hybrid_command(name="yay", description="Yay with someone!")
+    @commands.guild_only()
+    async def yay(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "yay", target)
+
+    @commands.hybrid_command(name="yes", description="Say yes to someone!")
+    @commands.guild_only()
+    async def yes(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "yes", target)
 
 
 async def setup(bot: SocializeBot) -> None:
