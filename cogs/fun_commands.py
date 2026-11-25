@@ -173,11 +173,11 @@ ACTION_VERBS: dict[str, str] = {
 }
 
 # Past-tense verb forms for subtexts and footers
-ACTION_VERBS_PAST: dict[str, str] = {
+# Verbs that take "by @author" (transitive): "slapped by @author"
+ACTION_VERBS_PAST_BY: dict[str, str] = {
     # Original
     "slap":   "slapped",
     "kiss":   "kissed",
-    "laugh":  "laughed at",
     "boot":   "kicked",
     "yeet":   "yeeted",
     "tickle": "tickled",
@@ -185,12 +185,28 @@ ACTION_VERBS_PAST: dict[str, str] = {
     "dap":    "dapped",
     "bonk":   "bonked",
     "cuddle": "cuddled",
-    "flirt":  "flirted with",
     "poke":   "poked",
     # New
     "airkiss": "air kissed",
-    "angrystare": "angrily stared at",
     "bite": "bitten",
+    "facepalm": "facepalmed",
+    "lick": "licked",
+    "pinch": "pinched",
+    "smack": "smacked",
+    "scared": "scared",
+    "shrug": "shrugged",
+    "sigh": "sighed",
+    "surprised": "surprised",
+}
+
+# Verbs that end with a preposition (with, at, for, to, around) — take direct object, no "by":
+# "ate with @author", "danced with @author", "shrugged at @author", etc.
+ACTION_VERBS_PAST_PREP: dict[str, str] = {
+    # Original
+    "laugh":  "laughed at",
+    "flirt":  "flirted with",
+    # New
+    "angrystare": "angrily stared at",
     "bleh": "made a bleh face at",
     "celebrate": "celebrated with",
     "cheers": "cheered with",
@@ -201,10 +217,8 @@ ACTION_VERBS_PAST: dict[str, str] = {
     "dance": "danced with",
     "drool": "drooled at",
     "evillaugh": "evilly laughed at",
-    "facepalm": "facepalmed",
     "handhold": "held hands with",
     "headbang": "headbanged with",
-    "lick": "licked",
     "mad": "made mad at",
     "nervous": "made nervous around",
     "eat": "ate with",
@@ -212,23 +226,17 @@ ACTION_VERBS_PAST: dict[str, str] = {
     "nyah": "nyah'd at",
     "pat": "patted",
     "peek": "peeked at",
-    "pinch": "pinched",
     "pout": "pouted at",
     "sad": "made sad at",
-    "scared": "scared",
     "shout": "shouted at",
-    "shrug": "shrugged at",
     "shy": "made shy around",
-    "sigh": "sighed at",
     "sip": "sipped with",
     "sleep": "slept with",
     "slowclap": "slow clapped for",
-    "smack": "smacked",
     "smile": "smiled at",
     "sneeze": "sneezed at",
     "sorry": "said sorry to",
     "stare": "stared at",
-    "surprised": "surprised",
     "sweat": "sweated at",
     "thumbsup": "gave a thumbs up to",
     "tired": "made tired with",
@@ -239,6 +247,21 @@ ACTION_VERBS_PAST: dict[str, str] = {
     "yay": "yayed with",
     "yes": "said yes to",
 }
+
+
+def _verb_past(action: str) -> str:
+    """Return the past-tense verb phrase, checking preposition-ending first."""
+    if action in ACTION_VERBS_PAST_PREP:
+        return ACTION_VERBS_PAST_PREP[action]
+    return ACTION_VERBS_PAST_BY.get(action, action)
+
+
+def _verb_past_with_author(action: str, author_mention: str) -> str:
+    """Return past-tense phrase with author — direct object for preposition verbs,
+    'by @author' for transitive verbs."""
+    if action in ACTION_VERBS_PAST_PREP:
+        return f"{ACTION_VERBS_PAST_PREP[action]} {author_mention}"
+    return f"{ACTION_VERBS_PAST_BY.get(action, action)} by {author_mention}"
 
 
 def ordinal(n: int) -> str:
@@ -314,13 +337,18 @@ class FunCommands(commands.Cog):
         count = await self.bot.db.count_fun_slaps(ctx.guild.id, target.id, action)
 
         verb = ACTION_VERBS[action]
-        verb_past = ACTION_VERBS_PAST[action]
+        verb_past = _verb_past(action)
 
         # Subtext: describes what just happened
-        subtext = f"-# {target.mention} {verb_past} by {author.mention}."
+        # Preposition-ending verbs: "-# @target laughed at @author."
+        # Transitive verbs: "-# @target slapped by @author."
+        subtext = f"-# {target.mention} {_verb_past_with_author(action, author.mention)}."
 
         # Footer: tracks how many times this has happened
-        footer_text = f"{target.display_name} has been {verb_past} {ordinal(count)} time."
+        if action in ACTION_VERBS_PAST_PREP:
+            footer_text = f"{target.display_name} has {verb_past} {ordinal(count)} time."
+        else:
+            footer_text = f"{target.display_name} has been {verb_past} {ordinal(count)} time."
 
         # Download GIF and attach as a file so Discord renders it large in the embed
         gif_url = self._random_gif(action)
