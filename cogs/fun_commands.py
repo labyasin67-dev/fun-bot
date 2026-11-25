@@ -320,7 +320,7 @@ class FunCommands(commands.Cog):
         subtext = f"-# {target.mention} {verb_past} by {author.mention}."
 
         # Footer: tracks how many times this has happened
-        footer_text = f"-# {target.display_name} has been {verb_past} {ordinal(count)} time."
+        footer_text = f"{target.display_name} has been {verb_past} {ordinal(count)} time."
 
         # Download GIF and attach as a file so Discord renders it large in the embed
         gif_url = self._random_gif(action)
