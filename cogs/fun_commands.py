@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import io
-import random
 from typing import TYPE_CHECKING
 
-import aiohttp
 import discord
 from discord.ext import commands
 
@@ -15,48 +12,7 @@ from utils import COLOR, SUCCESS, embed as make_embed
 if TYPE_CHECKING:
     from main import SocializeBot
 
-ACTION_GIFS: dict[str, list[str]] = {
-    "slap": [
-        "https://i.giphy.com/media/L1K396A1e2yoM/giphy.gif",
-        "https://i.giphy.com/media/13H57c5kh0yB0c/giphy.gif",
-        "https://i.giphy.com/media/l0MYr5Qmw988ZB77a/giphy.gif",
-    ],
-    "kiss": [
-        "https://i.giphy.com/media/l0HlN7Ow7RtE4Bq8I/giphy.gif",
-        "https://i.giphy.com/media/xT9IgLjqeZ7S33b1rK/giphy.gif",
-        "https://i.giphy.com/media/3o7WIVsJ16qZJpf5mI/giphy.gif",
-    ],
-    "laugh": [
-        "https://i.giphy.com/media/103gZ5UKVNPMjO/giphy.gif",
-        "https://i.giphy.com/media/l0MYr5Qmw988ZB77a/giphy.gif",
-        "https://i.giphy.com/media/xT9IgLjqeZ7S33b1rK/giphy.gif",
-    ],
-    "boot": [
-        "https://i.giphy.com/media/l0HlO731fS0gO/giphy.gif",
-        "https://i.giphy.com/media/3o7WIVsJ16qZJpf5mI/giphy.gif",
-        "https://i.giphy.com/media/xT9IgLjqeZ7S33b1rK/giphy.gif",
-    ],
-    "yeet": [
-        "https://i.giphy.com/media/3ohhwdB7daQfXM5vPq/giphy.gif",
-        "https://i.giphy.com/media/l0HlN7Ow7RtE4Bq8I/giphy.gif",
-        "https://i.giphy.com/media/xT9IgLjqeZ7S33b1rK/giphy.gif",
-    ],
-    "tickle": [
-        "https://i.giphy.com/media/l0HlN7Ow7RtE4Bq8I/giphy.gif",
-        "https://i.giphy.com/media/103gZ5UKVNPMjO/giphy.gif",
-        "https://i.giphy.com/media/l0MYr5Qmw988ZB77a/giphy.gif",
-    ],
-    "greet": [
-        "https://i.giphy.com/media/l0HlO731fS0gO/giphy.gif",
-        "https://i.giphy.com/media/103gZ5UKVNPMjO/giphy.gif",
-        "https://i.giphy.com/media/xT9IgLjqeZ7S33b1rK/giphy.gif",
-    ],
-    "dap": [
-        "https://i.giphy.com/media/l0MYr5Qmw988ZB77a/giphy.gif",
-        "https://i.giphy.com/media/3o7WIVsJ16qZJpf5mI/giphy.gif",
-        "https://i.giphy.com/media/l0HlN7Ow7RtE4Bq8I/giphy.gif",
-    ],
-}
+TEST_GIF_URL = "https://media.tenor.com/ZD3Y4WRSxJwAAAAM/tiger-woods-big-dawg.gif"
 
 ACTION_VERBS: dict[str, str] = {
     "slap": "slaps",
@@ -73,31 +29,6 @@ ACTION_VERBS: dict[str, str] = {
 class FunCommands(commands.Cog):
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
-        self._session: aiohttp.ClientSession | None = None
-
-    @property
-    def session(self) -> aiohttp.ClientSession:
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    "Accept": "image/gif, image/*, */*",
-                    "Referer": "https://giphy.com/",
-                }
-            )
-        return self._session
-
-    def _random_gif(self, action: str) -> str:
-        return random.choice(ACTION_GIFS[action])
-
-    async def _download_gif(self, url: str) -> bytes | None:
-        try:
-            async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                if resp.status == 200:
-                    return await resp.read()
-        except Exception:
-            pass
-        return None
 
     async def _do_action(
         self,
@@ -136,13 +67,10 @@ class FunCommands(commands.Cog):
         else:
             count_text = ""
 
-        # Test GIF loaded directly into embed image field
-        gif_url = "https://media.tenor.com/ZD3Y4WRSxJwAAAAM/tiger-woods-big-dawg.gif"
-
         verb = ACTION_VERBS[action]
         desc = f"{author.mention} {verb} {target.mention}! {count_text}".strip()
         e = make_embed(f"{action.capitalize()}!", desc, color=SUCCESS)
-        e.set_image(url=gif_url)
+        e.set_image(url=TEST_GIF_URL)
 
         await ctx.send(embed=e)
 
