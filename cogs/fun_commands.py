@@ -329,9 +329,9 @@ class FunCommands(commands.Cog):
             )
             return
 
-        description = f"# <@{author.id}> {verb} <@{target.id}>"
+        description = f"# <@{author.id}> {verb} <@{target.id}>\n\n{subtext}"
         e = make_embed(description=description, color=SUCCESS)
-        e.set_footer(text=subtext)
+        e.set_footer(text=f"Powered by Meowchi Cafe")
         e.set_image(url="attachment://fun.gif")
         file = discord.File(io.BytesIO(gif_bytes), filename="fun.gif")
 
