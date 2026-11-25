@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import io
+import random
 from typing import TYPE_CHECKING
 
+import aiohttp
 import discord
 from discord.ext import commands
+from PIL import Image, ImageSequence
 
 from utils import COLOR, SUCCESS, embed as make_embed
 
@@ -36,6 +40,10 @@ ACTION_VERBS: dict[str, str] = {
     "dap": "daps up",
 }
 
+# Target max width for enlarged GIFs (keeps file size reasonable while
+# making them visibly larger on PC screens).
+ENLARGE_MAX_WIDTH = 900
+
 
 def ordinal(n: int) -> str:
     if 10 <= n % 100 <= 20:
@@ -45,12 +53,86 @@ def ordinal(n: int) -> str:
     return f"{n}{suffix}"
 
 
+async def download_bytes(session: aiohttp.ClientSession, url: str) -> bytes | None:
+    """Download raw bytes from a URL."""
+    try:
+        async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+            if resp.status == 200:
+                return await resp.read()
+    except Exception:
+        pass
+    return None
+
+
+def enlarge_gif(gif_bytes: bytes, max_width: int = ENLARGE_MAX_WIDTH) -> bytes:
+    """Enlarge an animated GIF by scaling every frame up to max_width.
+
+    Returns the enlarged GIF as raw bytes. Falls back to the original bytes
+    if anything goes wrong (so the command still works even if resizing
+    fails).
+    """
+    try:
+        buf = io.BytesIO(gif_bytes)
+        with Image.open(buf) as im:
+            if im.n_frames <= 1:
+                # Single image — just resize and return
+                frame = im.convert("RGBA")
+                w, h = frame.size
+                if w > max_width:
+                    scale = max_width / w
+                    new_size = (max_width, max(1, int(h * scale)))
+                    frame = frame.resize(new_size, Image.LANCZOS)
+                out = io.BytesIO()
+                frame.save(out, format="GIF")
+                return out.getvalue()
+
+            frames = []
+            durations = []
+            for frame in ImageSequence.Iterator(im):
+                durations.append(frame.info.get("duration", 100))
+                frame_rgba = frame.convert("RGBA")
+                w, h = frame_rgba.size
+                if w > max_width:
+                    scale = max_width / w
+                    new_size = (max_width, max(1, int(h * scale)))
+                    frame_rgba = frame_rgba.resize(new_size, Image.LANCZOS)
+                frames.append(frame_rgba)
+
+            out = io.BytesIO()
+            frames[0].save(
+                out,
+                format="GIF",
+                save_all=True,
+                append_images=frames[1:],
+                duration=durations,
+                loop=0,
+                disposal=2,
+            )
+            return out.getvalue()
+    except Exception:
+        # If resizing fails for any reason, return original bytes so the
+        # command still works (just without enlargement).
+        return gif_bytes
+
+
 class FunCommands(commands.Cog):
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
+        self._session: aiohttp.ClientSession | None = None
+
+    @property
+    def session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "image/gif, image/*, */*",
+                    "Referer": "https://github.com/",
+                }
+            )
+        return self._session
 
     def _random_gif(self, action: str) -> str:
-        import random
         return random.choice(ACTION_GIFS[action])
 
     async def _do_action(
@@ -102,13 +184,29 @@ class FunCommands(commands.Cog):
         }
         subtext = subtext_map[action]
 
-        # Use raw <@id> mention format for reliable ping rendering in embeds
-        # Format: # <@author> slaps <@target>\n\n-# subtext
+        # Download GIF, enlarge it, and attach as a file so it covers more
+        # of the screen on PC.
+        gif_url = self._random_gif(action)
+        gif_bytes = await download_bytes(self.session, gif_url)
+        if gif_bytes is None:
+            await ctx.send(
+                embed=make_embed(
+                    "Error",
+                    "Failed to load GIF. Try again later.",
+                    color=COLOR,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        enlarged = enlarge_gif(gif_bytes)
+
         description = f"# <@{author.id}> {verb} <@{target.id}>\n\n{subtext}"
         e = make_embed(description=description, color=SUCCESS)
-        e.set_image(url=self._random_gif(action))
+        file = discord.File(io.BytesIO(enlarged), filename="fun.gif")
+        e.set_image(url="attachment://fun.gif")
 
-        await ctx.send(embed=e)
+        await ctx.send(embed=e, file=file)
 
     # --- prefix commands ---
 
