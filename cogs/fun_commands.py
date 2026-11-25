@@ -1,11 +1,13 @@
-"""Fun interaction commands: .slap, .kiss, .laugh, .fun_kick, .yeet, .tickle, .greet, .dap"""
+"""Fun interaction commands: .slap, .kiss, .laugh, .boot, .yeet, .tickle, .greet, .dap"""
 
 from __future__ import annotations
 
+import io
 import random
 import time
 from typing import TYPE_CHECKING
 
+import aiohttp
 import discord
 from discord.ext import commands
 
@@ -30,7 +32,7 @@ ACTION_GIFS: dict[str, list[str]] = {
         "https://media.giphy.com/media/l0MYr5Qmw988ZB77a/giphy.gif",
         "https://media.giphy.com/media/xT9IgLjqeZ7S33b1rK/giphy.gif",
     ],
-    "kick": [
+    "boot": [
         "https://media.giphy.com/media/l0HlO731fS0gO/giphy.gif",
         "https://media.giphy.com/media/3o7WIVsJ16qZJpf5mI/giphy.gif",
         "https://media.giphy.com/media/xT9IgLjqeZ7S33b1rK/giphy.gif",
@@ -61,7 +63,7 @@ ACTION_VERBS: dict[str, str] = {
     "slap": "slaps",
     "kiss": "kisses",
     "laugh": "laughs at",
-    "kick": "kicks",
+    "boot": "kicks",
     "yeet": "yeets",
     "tickle": "tickles",
     "greet": "greets",
@@ -72,9 +74,25 @@ ACTION_VERBS: dict[str, str] = {
 class FunCommands(commands.Cog):
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
+        self._session: aiohttp.ClientSession | None = None
+
+    @property
+    def session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession()
+        return self._session
 
     def _random_gif(self, action: str) -> str:
         return random.choice(ACTION_GIFS[action])
+
+    async def _download_gif(self, url: str) -> bytes | None:
+        try:
+            async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    return await resp.read()
+        except Exception:
+            pass
+        return None
 
     async def _do_action(
         self,
@@ -113,12 +131,19 @@ class FunCommands(commands.Cog):
         else:
             count_text = ""
 
-        gif = self._random_gif(action)
+        gif_url = self._random_gif(action)
+        gif_bytes = await self._download_gif(gif_url)
+
         verb = ACTION_VERBS[action]
         desc = f"{author.mention} {verb} {target.mention}! {count_text}".strip()
         e = make_embed(f"{action.capitalize()}!", desc, color=SUCCESS)
-        e.set_image(url=gif)
-        await ctx.send(embed=e)
+
+        if gif_bytes:
+            file = discord.File(io.BytesIO(gif_bytes), filename="fun.gif")
+            e.set_image(url="attachment://fun.gif")
+            await ctx.send(embed=e, file=file)
+        else:
+            await ctx.send(embed=e)
 
     # --- prefix commands ---
 
@@ -137,10 +162,10 @@ class FunCommands(commands.Cog):
     async def laugh(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "laugh", target)
 
-    @commands.hybrid_command(name="fun_kick", description="Kick someone (fun, not a mod kick)!")
+    @commands.hybrid_command(name="boot", description="Boot someone (fun, not a mod kick)!")
     @commands.guild_only()
-    async def fun_kick(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
-        await self._do_action(ctx, "kick", target)
+    async def boot(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
+        await self._do_action(ctx, "boot", target)
 
     @commands.hybrid_command(name="yeet", description="Yeet someone!")
     @commands.guild_only()

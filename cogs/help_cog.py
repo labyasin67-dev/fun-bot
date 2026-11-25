@@ -117,7 +117,7 @@ HELP_SECTIONS = [
         "• `.slap @user` — slap someone (tracks count)\n"
         "• `.kiss @user` — kiss someone\n"
         "• `.laugh @user` — laugh at someone\n"
-        "• `.fun_kick @user` — kick someone (fun)\n"
+        "• `.boot @user` — kick someone (fun)\n"
         "• `.yeet @user` — yeet someone\n"
         "• `.tickle @user` — tickle someone\n"
         "• `.greet @user` — greet someone\n"
