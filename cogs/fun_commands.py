@@ -9,7 +9,12 @@ from typing import TYPE_CHECKING
 import aiohttp
 import discord
 from discord.ext import commands
-from PIL import Image, ImageSequence
+
+try:
+    from PIL import Image, ImageSequence
+    _PIL_AVAILABLE = True
+except ImportError:
+    _PIL_AVAILABLE = False
 
 from utils import COLOR, SUCCESS, embed as make_embed
 
@@ -68,9 +73,11 @@ def enlarge_gif(gif_bytes: bytes, max_width: int = ENLARGE_MAX_WIDTH) -> bytes:
     """Enlarge an animated GIF by scaling every frame up to max_width.
 
     Returns the enlarged GIF as raw bytes. Falls back to the original bytes
-    if anything goes wrong (so the command still works even if resizing
-    fails).
+    if PIL isn't installed or anything goes wrong.
     """
+    if not _PIL_AVAILABLE:
+        return gif_bytes
+
     try:
         buf = io.BytesIO(gif_bytes)
         with Image.open(buf) as im:
