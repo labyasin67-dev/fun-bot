@@ -21,7 +21,7 @@ ACTION_GIFS: dict[str, list[str]] = {
     "boot": [f"{BASE_GIF_URL}/punch/{i}.gif" for i in range(1, 13)],
     "yeet": [f"{BASE_GIF_URL}/happy/{i}.gif" for i in range(1, 24)],
     "tickle": [f"{BASE_GIF_URL}/tickle/{i}.gif" for i in range(1, 20)],
-    "greet": [f"{BASE_GIF_URL}/hug/{i}.gif" for i in range(1, 34)],
+    "hug": [f"{BASE_GIF_URL}/hug/{i}.gif" for i in range(1, 34)],
     "dap": [f"{BASE_GIF_URL}/brofist/{i}.gif" for i in range(1, 9)],
 }
 
