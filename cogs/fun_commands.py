@@ -103,8 +103,8 @@ class FunCommands(commands.Cog):
         subtext = subtext_map[action]
 
         # Use raw <@id> mention format for reliable ping rendering in embeds
-        title = f"<@{author.id}> {verb} <@{target.id}>!"
-        e = make_embed(title=title, description=subtext, color=SUCCESS)
+        description = f"<@{author.id}> {verb} <@{target.id}>\n{subtext}"
+        e = make_embed(description=description, color=SUCCESS)
         e.set_image(url=self._random_gif(action))
 
         await ctx.send(embed=e)
