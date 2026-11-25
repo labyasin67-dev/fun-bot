@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 BASE_GIF_URL = "https://raw.githubusercontent.com/iceefruit/giffycdn/main"
 
 ACTION_GIFS: dict[str, list[str]] = {
-    "slap": [f"{BASE_GIF_URL}/slap/{i}.gif" for i in range(1, 11)],
-    "kiss": [f"{BASE_GIF_URL}/kiss/{i}.gif" for i in range(1, 11)],
-    "laugh": [f"{BASE_GIF_URL}/laugh/{i}.gif" for i in range(1, 11)],
-    "boot": [f"{BASE_GIF_URL}/punch/{i}.gif" for i in range(1, 11)],
-    "yeet": [f"{BASE_GIF_URL}/happy/{i}.gif" for i in range(1, 11)],
-    "tickle": [f"{BASE_GIF_URL}/tickle/{i}.gif" for i in range(1, 11)],
-    "greet": [f"{BASE_GIF_URL}/hug/{i}.gif" for i in range(1, 11)],
+    "slap": [f"{BASE_GIF_URL}/slap/{i}.gif" for i in range(1, 30)],
+    "kiss": [f"{BASE_GIF_URL}/kiss/{i}.gif" for i in range(1, 42)],
+    "laugh": [f"{BASE_GIF_URL}/laugh/{i}.gif" for i in range(1, 32)],
+    "boot": [f"{BASE_GIF_URL}/punch/{i}.gif" for i in range(1, 13)],
+    "yeet": [f"{BASE_GIF_URL}/happy/{i}.gif" for i in range(1, 24)],
+    "tickle": [f"{BASE_GIF_URL}/tickle/{i}.gif" for i in range(1, 20)],
+    "greet": [f"{BASE_GIF_URL}/hug/{i}.gif" for i in range(1, 34)],
     "dap": [f"{BASE_GIF_URL}/brofist/{i}.gif" for i in range(1, 9)],
 }
 
