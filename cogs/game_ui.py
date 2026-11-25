@@ -15,6 +15,8 @@ import discord
 
 from utils import COLOR, DANGER, SUCCESS, WARNING
 
+from cogs.emoji_assets import emoji_discord, emoji_path
+
 # Discord hard limits (kept here so callers and tests share one source).
 MAX_TITLE = 256
 MAX_DESCRIPTION = 4096
@@ -102,6 +104,8 @@ def game_embed(
     resolved_color = phase_color(phase) if color is None else color
     if emoji is None:
         emoji = phase_emoji(phase)
+    if isinstance(emoji, str) and emoji.startswith(":") and emoji.endswith(":"):
+        emoji = emoji_discord(emoji[1:-1])
 
     if footer is None and host is not None:
         footer = game_footer(title, host)
