@@ -12,7 +12,18 @@ from utils import COLOR, SUCCESS, embed as make_embed
 if TYPE_CHECKING:
     from main import SocializeBot
 
-TEST_GIF_URL = "https://media.tenor.com/ZD3Y4WRSxJwAAAAM/tiger-woods-big-dawg.gif"
+BASE_GIF_URL = "https://raw.githubusercontent.com/iceefruit/giffycdn/main"
+
+ACTION_GIFS: dict[str, list[str]] = {
+    "slap": [f"{BASE_GIF_URL}/slap/{i}.gif" for i in range(1, 11)],
+    "kiss": [f"{BASE_GIF_URL}/kiss/{i}.gif" for i in range(1, 11)],
+    "laugh": [f"{BASE_GIF_URL}/laugh/{i}.gif" for i in range(1, 11)],
+    "boot": [f"{BASE_GIF_URL}/punch/{i}.gif" for i in range(1, 11)],
+    "yeet": [f"{BASE_GIF_URL}/happy/{i}.gif" for i in range(1, 11)],
+    "tickle": [f"{BASE_GIF_URL}/tickle/{i}.gif" for i in range(1, 11)],
+    "greet": [f"{BASE_GIF_URL}/hug/{i}.gif" for i in range(1, 11)],
+    "dap": [f"{BASE_GIF_URL}/brofist/{i}.gif" for i in range(1, 9)],
+}
 
 ACTION_VERBS: dict[str, str] = {
     "slap": "slaps",
@@ -29,6 +40,10 @@ ACTION_VERBS: dict[str, str] = {
 class FunCommands(commands.Cog):
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
+
+    def _random_gif(self, action: str) -> str:
+        import random
+        return random.choice(ACTION_GIFS[action])
 
     async def _do_action(
         self,
@@ -67,10 +82,12 @@ class FunCommands(commands.Cog):
         else:
             count_text = ""
 
+        gif_url = self._random_gif(action)
+
         verb = ACTION_VERBS[action]
         desc = f"{author.mention} {verb} {target.mention}! {count_text}".strip()
         e = make_embed(f"{action.capitalize()}!", desc, color=SUCCESS)
-        e.set_image(url=TEST_GIF_URL)
+        e.set_image(url=gif_url)
 
         await ctx.send(embed=e)
 
