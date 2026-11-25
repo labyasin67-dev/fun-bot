@@ -647,6 +647,134 @@ class FunCommands(commands.Cog):
     async def yes_prefix(self, ctx: commands.Context, target: discord.Member | None = None) -> None:
         await self._do_action(ctx, "yes", target)
 
+    # --- fun commands list with pagination ---
+
+    FUN_COMMAND_LIST: list[tuple[str, str]] = [
+        ("slap", "Slap someone!"),
+        ("kiss", "Kiss someone!"),
+        ("laugh", "Laugh at someone!"),
+        ("boot", "Boot someone (fun, not a mod kick)!"),
+        ("yeet", "Yeet someone!"),
+        ("tickle", "Tickle someone!"),
+        ("hug", "Hug someone!"),
+        ("dap", "Dap someone up!"),
+        ("bonk", "Bonk someone on the head!"),
+        ("cuddle", "Cuddle someone!"),
+        ("flirt", "Flirt with someone!"),
+        ("poke", "Poke someone!"),
+        ("airkiss", "Air kiss someone!"),
+        ("angrystare", "Angrily stare at someone!"),
+        ("bite", "Bite someone!"),
+        ("bleh", "Make a bleh face at someone!"),
+        ("celebrate", "Celebrate with someone!"),
+        ("cheers", "Cheers with someone!"),
+        ("clap", "Clap for someone!"),
+        ("confused", "Look confused at someone!"),
+        ("cool", "Look cool with someone!"),
+        ("cry", "Cry at someone!"),
+        ("dance", "Dance with someone!"),
+        ("drool", "Drool at someone!"),
+        ("evillaugh", "Evil laugh at someone!"),
+        ("facepalm", "Facepalm at someone!"),
+        ("handhold", "Hold hands with someone!"),
+        ("headbang", "Headbang with someone!"),
+        ("lick", "Lick someone!"),
+        ("mad", "Get mad at someone!"),
+        ("nervous", "Get nervous around someone!"),
+        ("eat", "Eat with someone!"),
+        ("boop", "Boop someone!"),
+        ("nyah", "Nyah at someone!"),
+        ("pat", "Pat someone!"),
+        ("peek", "Peek at someone!"),
+        ("pinch", "Pinch someone!"),
+        ("pout", "Pout at someone!"),
+        ("sad", "Get sad at someone!"),
+        ("scared", "Get scared at someone!"),
+        ("shout", "Shout at someone!"),
+        ("shrug", "Shrug at someone!"),
+        ("shy", "Get shy around someone!"),
+        ("sigh", "Sigh at someone!"),
+        ("sip", "Sip with someone!"),
+        ("sleep", "Sleep with someone!"),
+        ("slowclap", "Slow clap for someone!"),
+        ("smack", "Smack someone!"),
+        ("smile", "Smile at someone!"),
+        ("sneeze", "Sneeze at someone!"),
+        ("sorry", "Say sorry to someone!"),
+        ("stare", "Stare at someone!"),
+        ("surprised", "Get surprised at someone!"),
+        ("sweat", "Sweat at someone!"),
+        ("thumbsup", "Give someone a thumbs up!"),
+        ("tired", "Get tired with someone!"),
+        ("wave", "Wave at someone!"),
+        ("wink", "Wink at someone!"),
+        ("woah", "Say woah at someone!"),
+        ("yawn", "Yawn with someone!"),
+        ("yay", "Yay with someone!"),
+        ("yes", "Say yes to someone!"),
+    ]
+
+    COMMANDS_PER_PAGE = 10
+
+    class FunCommandsPagination(discord.ui.View):
+        def __init__(self, command_list: list[tuple[str, str]], per_page: int = 10) -> None:
+            super().__init__(timeout=180)
+            self.command_list = command_list
+            self.per_page = per_page
+            self.total_pages = max(1, (len(command_list) + per_page - 1) // per_page)
+            self.page = 0
+            self._update_buttons()
+
+        def _update_buttons(self) -> None:
+            self.prev_button.disabled = self.page == 0
+            self.next_button.disabled = self.page >= self.total_pages - 1
+            self.page_button.label = f"Page {self.page + 1}/{self.total_pages}"
+
+        def _build_embed(self) -> discord.Embed:
+            start = self.page * self.per_page
+            end = start + self.per_page
+            page_items = self.command_list[start:end]
+
+            lines = []
+            for name, desc in page_items:
+                gif_count = len(ACTION_GIFS.get(name, []))
+                lines.append(f"• `.{name} @user` — {desc} ({gif_count} GIFs)")
+
+            e = make_embed(
+                "Fun Interaction Commands",
+                "\n".join(lines),
+                color=COLOR,
+            )
+            e.set_footer(
+                text=f"Page {self.page + 1}/{self.total_pages} | Use .{page_items[0][0]} @user to try one!"
+                if page_items else "No commands",
+            )
+            return e
+
+        @discord.ui.button(label="<", style=discord.ButtonStyle.secondary)
+        async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+            if self.page > 0:
+                self.page -= 1
+                self._update_buttons()
+                await interaction.response.edit_message(embed=self._build_embed(), view=self)
+
+        @discord.ui.button(label="Page 1/1", style=discord.ButtonStyle.secondary, disabled=True)
+        async def page_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+            pass
+
+        @discord.ui.button(label=">", style=discord.ButtonStyle.secondary)
+        async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+            if self.page < self.total_pages - 1:
+                self.page += 1
+                self._update_buttons()
+                await interaction.response.edit_message(embed=self._build_embed(), view=self)
+
+    @commands.command(name="funcommands", description="List all fun interaction commands with pagination.")
+    @commands.guild_only()
+    async def funcommands(self, ctx: commands.Context) -> None:
+        view = self.FunCommandsPagination(self.FUN_COMMAND_LIST, self.COMMANDS_PER_PAGE)
+        await ctx.send(embed=view._build_embed(), view=view)
+
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(FunCommands(bot))
