@@ -167,7 +167,12 @@ class YoutubeGroup(app_commands.Group, name="youtube"):
         url = f"{auth_url}?{urlencode(params)}"
         e = make_embed(
             "YouTube Auth",
-            f"[Click here to authenticate with YouTube]({url})\n\nAfter authorising, paste the code back here.",
+            f"**[Click here to authenticate with YouTube]({url})**\n\nAfter authorising, paste the code back here.\n\n---\n**Troubleshooting auth errors:**\n"
+            "**Browser cache:** Clear cookies/cache for google.com and youtube.com, then retry.\n"
+            "**Account permissions:** Ensure the Google account has YouTube upload access and is not a restricted/workspace account.\n"
+            "**Extension interference:** Disable ad-blockers or privacy extensions, then try again.\n"
+            "**Desktop:** Use Chrome/Firefox/Edge in incognito mode if issues persist.\n"
+            "**Mobile:** Use the Chrome app (not in-app browsers), enable cookies, then retry.",
             color=COLOR,
         )
         await interaction.response.send_message(embed=e, ephemeral=True)
