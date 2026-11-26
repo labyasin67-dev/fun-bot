@@ -7,6 +7,7 @@
   {{ ui.head() }}
 </head>
 <body class="site">
+  <canvas id="space-bg" aria-hidden="true"></canvas>
   {% set nav_active = active if active is defined else None %}
   <div class="wrap">
     {{ ui.topbar(user=user, guild=(guild if guild is defined else None), is_admin=is_admin, avatar_url=avatar_url, csrf_token=csrf_token) }}
@@ -29,5 +30,6 @@
     </div>
     {{ ui.footer() }}
   </div>
+  <script src="/static/space.js?v=fh3" defer></script>
 </body>
 </html>

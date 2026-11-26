@@ -50,7 +50,7 @@ from monsterui.all import (
     UkIcon,
 )
 
-CSS_VERSION = "fh2"
+CSS_VERSION = "fh3"
 
 # (group, [(active key, label, path under /servers/{id})])
 NAV_GROUPS: tuple[tuple[str, tuple[tuple[str, str, str], ...]], ...] = (

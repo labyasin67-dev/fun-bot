@@ -13,7 +13,7 @@ DEFAULT_CONTACT = """# Contact Us
 
 Last updated: 26 November 2026
 
-The Discord All In One Bot (also called Meowchi Cafe) and this website are operated by an individual known as Whiskey/WarRaven.
+Meowchi Cafe and this website are operated by Whiskey/WarRaven.
 
 Please do not send passwords, payment card details, or Discord tokens in a message. If your question is about a paid subscription, say so and include the server name or server ID if you can.
 """
