@@ -337,6 +337,19 @@ def holder_id_of(row) -> int:
     return int(raw) if raw else int(row["user_id"])
 
 
+def given_custom_roles_held(member_role_ids: set[int], rows, *, member_id: int):
+    """Custom roles owned by someone else that this member currently holds."""
+    found = []
+    held = set(member_role_ids)
+    for row in rows:
+        if int(row["user_id"]) == int(member_id):
+            continue
+        if int(row["role_id"]) not in held:
+            continue
+        found.append(row)
+    return found
+
+
 async def member_owns_or_holds(db, guild_id: int, user_id: int):
     owned = await db.get_custom_role(guild_id, user_id)
     if owned is not None:
@@ -638,6 +651,101 @@ class HideRolesView(discord.ui.View):
         )
 
 
+class RemoveGivenRolesView(discord.ui.View):
+    def __init__(self, cog: "CustomRoles", member: discord.Member, items: list[tuple]) -> None:
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.member = member
+        self.items = {int(role.id): row for row, role in items}
+        options = []
+        for row, role in items[:25]:
+            owner_id = int(row["user_id"])
+            options.append(
+                discord.SelectOption(
+                    label=role.name[:100],
+                    value=str(role.id),
+                    description=f"Owned by {owner_id}"[:100],
+                )
+            )
+        select = discord.ui.Select(
+            placeholder="Select custom roles to remove from yourself",
+            min_values=1,
+            max_values=len(options),
+            options=options,
+        )
+        select.callback = self.on_select
+        self.add_item(select)
+
+    async def on_select(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != self.member.id:
+            await interaction.response.send_message("Only you can remove roles from yourself.", ephemeral=True)
+            return
+        guild = interaction.guild
+        if guild is None or not isinstance(interaction.user, discord.Member):
+            await interaction.response.send_message("This only works in a server.", ephemeral=True)
+            return
+        member = guild.get_member(self.member.id) or interaction.user
+        values = [int(v) for v in (interaction.data or {}).get("values", [])]
+        rows = await self.cog.bot.db.list_custom_roles(guild.id)
+        allowed = {
+            int(row["role_id"]): row
+            for row in given_custom_roles_held({role.id for role in member.roles}, rows, member_id=member.id)
+        }
+        removed = []
+        errors = []
+        for role_id in values:
+            row = allowed.get(role_id)
+            if row is None:
+                errors.append(f"`{role_id}` isn't a custom role someone else gave you.")
+                continue
+            err = await drop_given_custom_role(self.cog.bot, guild, member, row)
+            role = guild.get_role(role_id)
+            name = role.mention if role else f"`{role_id}`"
+            if err:
+                errors.append(f"{name}: {err}")
+            else:
+                removed.append(name)
+        parts = []
+        if removed:
+            parts.append("Removed: " + " ".join(removed))
+        if errors:
+            parts.append("\n".join(errors))
+        title = "Custom roles removed" if removed else "Couldn't remove those roles"
+        color = SUCCESS if removed and not errors else (WARNING if removed else DANGER)
+        await interaction.response.edit_message(
+            embed=make_embed(title, "\n".join(parts) or "Nothing was removed.", color=color),
+            view=None,
+        )
+
+
+async def drop_given_custom_role(bot: "SocializeBot", guild: discord.Guild, member: discord.Member, row) -> str | None:
+    """Remove a custom role owned by someone else from this member. Does not touch staff or server roles."""
+    owner_id = int(row["user_id"])
+    if owner_id == member.id:
+        return "That's your own custom role."
+    role = guild.get_role(int(row["role_id"]))
+    if role is None:
+        return "That custom role no longer exists."
+    if role not in member.roles:
+        return "You don't have that role."
+    stored = await bot.db.get_custom_role_by_role_id(guild.id, role.id)
+    if stored is None or int(stored["user_id"]) == member.id:
+        return "That isn't a custom role someone else gave you."
+    me = guild.me
+    if me is not None and me.top_role <= role:
+        return "My highest role is too low to remove that custom role."
+    if holder_id_of(stored) == member.id:
+        owner = guild.get_member(owner_id)
+        return await transfer_custom_role(
+            bot, guild, stored, owner if owner is not None else None, reason=f"Dropped with .roleremoveme by {member}"
+        )
+    try:
+        await member.remove_roles(role, reason=f"Dropped with .roleremoveme by {member}")
+    except discord.HTTPException:
+        return "I couldn't remove that role."
+    return None
+
+
 class CustomRoles(commands.Cog):
     """Custom roles members can create once they reach a set level."""
 
@@ -667,6 +775,7 @@ class CustomRoles(commands.Cog):
                 "• `.role delete` / `.role remove` — delete your own custom role\n"
                 "• `.role info`\n"
                 "• `.role give @user @role` / `.role take @user`\n"
+                "• `.roleremoveme` — drop a custom role someone gave you\n"
                 "• `.role add @user @role` / `.role remove @user [@role]` — (manage roles)\n"
                 "• `.role toggle on|off` / `.role minlevel <n>` — (manage roles)\n"
                 "• `.role restrict @user [reason]` / `.role unrestrict @user`\n"
@@ -1225,6 +1334,45 @@ class CustomRoles(commands.Cog):
             f"**Roles:** {role_line}"
         )
         await reply(ctx, make_embed(f"{target.display_name}'s profile", body), ephemeral=False)
+
+    @commands.hybrid_command(name="roleremoveme", description="Remove a custom role someone else gave you.")
+    @commands.guild_only()
+    @commands.bot_has_guild_permissions(manage_roles=True)
+    async def roleremoveme(self, ctx: commands.Context) -> None:
+        assert ctx.guild and isinstance(ctx.author, discord.Member)
+        rows = await self.bot.db.list_custom_roles(ctx.guild.id)
+        held_rows = given_custom_roles_held({role.id for role in ctx.author.roles}, rows, member_id=ctx.author.id)
+        items = []
+        for row in held_rows:
+            role = ctx.guild.get_role(int(row["role_id"]))
+            if role is not None:
+                items.append((row, role))
+        if not items:
+            await reply(
+                ctx,
+                make_embed(
+                    "No given custom roles",
+                    "You don't have any custom roles that someone else gave you. This command can't remove your own custom role or server roles.",
+                    color=DANGER,
+                ),
+                ephemeral=True,
+            )
+            return
+        extra = ""
+        if len(items) > 25:
+            items = items[:25]
+            extra = " Only the first 25 are listed."
+        await reply(
+            ctx,
+            make_embed(
+                "Remove given custom roles",
+                "Select any custom roles other members gave you that you want to remove from yourself."
+                " Server and staff roles can't be removed this way."
+                + extra,
+            ),
+            ephemeral=True,
+            view=RemoveGivenRolesView(self, ctx.author, items),
+        )
 
     @role.command(name="list", description="List custom roles and restrictions in this server.")
     @commands.guild_only()

@@ -97,6 +97,18 @@ class CustomRoleTests(unittest.IsolatedAsyncioTestCase):
         shown = visible_profile_roles(member, custom_role_id=50, hidden={20})
         self.assertEqual([r.id for r in shown], [50, 40, 30])
 
+    def test_roleremoveme_only_lists_others_custom_roles(self):
+        from cogs.customroles import given_custom_roles_held
+
+        rows = [
+            {"user_id": 22, "role_id": 100},  # member's own custom role
+            {"user_id": 33, "role_id": 200},  # given custom role they hold
+            {"user_id": 44, "role_id": 300},  # custom role they don't hold
+        ]
+        # 999 is a staff/server role they hold but it is not in custom_roles
+        held = given_custom_roles_held({100, 200, 999}, rows, member_id=22)
+        self.assertEqual([int(row["role_id"]) for row in held], [200])
+
 
 class ReportTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
