@@ -202,7 +202,7 @@ class YoutubeGroup(app_commands.Group, name="youtube"):
                 ephemeral=True,
             )
             return
-        e = discord.Embed(url=f"https://youtu.be/{video_id}", color=COLOR)
+        e = discord.Embed(title="\u200b", url=f"https://youtu.be/{video_id}", color=COLOR)
         await interaction.response.send_message(embed=e)
 
     @app_commands.command(name="auth", description="Open YouTube authentication login.")
