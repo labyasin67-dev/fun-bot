@@ -411,13 +411,12 @@ class FunCommands(commands.Cog):
         verb = ACTION_VERBS[action]
 
         # Subtext: describes what just happened
-        # Transitive verbs: "-# @target got slapped by @author."
-        # Preposition verbs: "-# @target ate @author."
-        past_subtext = ACTION_VERB_PAST_SUBTEXT.get(action, action)
-        if action in ACTION_VERB_USES_BY:
-            subtext = f"-# {target.mention} got {past_subtext} by {author.mention}."
-        else:
-            subtext = f"-# {target.mention} {past_subtext} {author.mention}."
+        subtext_template = ACTION_SUBTEXT_TEMPLATE.get(action, action)
+        subtext = subtext_template.format(target=target.mention, author=author.mention)
+
+        # Footer: tracks how many times this has happened
+        verb_past = ACTION_VERB_PAST_FOOTER.get(action, action)
+        footer_text = f"{target.display_name} got {verb_past} {ordinal(count)} time."
 
         # Footer: tracks how many times this has happened
         verb_past = ACTION_VERB_PAST_FOOTER.get(action, action)
