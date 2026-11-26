@@ -178,6 +178,36 @@
 {{ report_section("Closed", "closed", closed_items, closed_count, closed_page, closed_pages, "closed") }}
 {% endif %}
 
+{% if owner_view %}
+<div class="uk-card card" style="margin-top:14px">
+  <h2>Removed warnings</h2>
+  {% if removed_warnings %}
+  <table class="uk-table uk-table-divider uk-table-hover table">
+    <tr>
+      <th>Warning</th>
+      <th>User</th>
+      <th>Original reason</th>
+      <th>Removed by</th>
+      <th>Removal reason</th>
+      <th>Removed</th>
+    </tr>
+    {% for item in removed_warnings %}
+      <tr>
+        <td data-label="Warning">#{{ item.warning_id }}</td>
+        <td data-label="User">{{ item.user }}</td>
+        <td data-label="Original reason">{{ item.original_reason }}</td>
+        <td data-label="Removed by">{{ item.removed_by }}</td>
+        <td data-label="Removal reason">{{ item.removal_reason }}</td>
+        <td data-label="Removed">{{ item.removed_at }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p class="muted">No warnings have been removed yet.</p>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="uk-card card" style="margin-top:14px">
   <h2>Blocked reporters</h2>
   <form method="post" class="row">

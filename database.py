@@ -67,6 +67,19 @@ CREATE TABLE IF NOT EXISTS warnings (
     reason TEXT,
     created_at REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS warning_removals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id INTEGER NOT NULL,
+    warning_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    user_name TEXT,
+    original_reason TEXT,
+    removed_by INTEGER NOT NULL,
+    removed_by_name TEXT,
+    removal_reason TEXT,
+    removed_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_warning_removals_guild ON warning_removals(guild_id, removed_at DESC);
 
 CREATE TABLE IF NOT EXISTS guild_channels (
     guild_id INTEGER NOT NULL,
@@ -341,6 +354,7 @@ class Database:
         await self._migrate_custom_roles_columns()
         await self._migrate_report_columns()
         await self._migrate_fun_slaps_columns()
+        await self._migrate_warning_removals()
         await self._db.commit()
 
     async def close(self) -> None:
@@ -638,7 +652,55 @@ class Database:
         )
         return await cur.fetchall()
 
-    async def clear_warnings(self, guild_id: int, user_id: int) -> int:
+    async def _insert_warning_removal(
+        self,
+        row,
+        *,
+        removed_by: int,
+        removed_by_name: str | None = None,
+        user_name: str | None = None,
+        removal_reason: str | None = None,
+    ) -> None:
+        import time
+        await self.db.execute(
+            """
+            INSERT INTO warning_removals (
+                guild_id, warning_id, user_id, user_name, original_reason,
+                removed_by, removed_by_name, removal_reason, removed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                int(row["guild_id"]),
+                int(row["id"]),
+                int(row["user_id"]),
+                user_name,
+                row["reason"],
+                int(removed_by),
+                removed_by_name,
+                removal_reason,
+                time.time(),
+            ),
+        )
+
+    async def clear_warnings(
+        self,
+        guild_id: int,
+        user_id: int,
+        *,
+        removed_by: int,
+        removed_by_name: str | None = None,
+        user_name: str | None = None,
+        removal_reason: str | None = None,
+    ) -> int:
+        rows = await self.get_warnings(guild_id, user_id)
+        for row in rows:
+            await self._insert_warning_removal(
+                row,
+                removed_by=removed_by,
+                removed_by_name=removed_by_name,
+                user_name=user_name,
+                removal_reason=removal_reason,
+            )
         cur = await self.db.execute(
             "DELETE FROM warnings WHERE guild_id = ? AND user_id = ?",
             (guild_id, user_id),
@@ -646,7 +708,28 @@ class Database:
         await self.db.commit()
         return cur.rowcount
 
-    async def delete_warning(self, guild_id: int, user_id: int, warning_id: int) -> bool:
+    async def delete_warning(
+        self,
+        guild_id: int,
+        user_id: int,
+        warning_id: int,
+        *,
+        removed_by: int,
+        removed_by_name: str | None = None,
+        user_name: str | None = None,
+        removal_reason: str | None = None,
+    ) -> bool:
+        rows = await self.get_warnings(guild_id, user_id)
+        row = next((r for r in rows if int(r["id"]) == int(warning_id)), None)
+        if row is None:
+            return False
+        await self._insert_warning_removal(
+            row,
+            removed_by=removed_by,
+            removed_by_name=removed_by_name,
+            user_name=user_name,
+            removal_reason=removal_reason,
+        )
         cur = await self.db.execute(
             "DELETE FROM warnings WHERE guild_id = ? AND user_id = ? AND id = ?",
             (guild_id, user_id, int(warning_id)),
@@ -654,13 +737,58 @@ class Database:
         await self.db.commit()
         return cur.rowcount > 0
 
-    async def delete_latest_warning(self, guild_id: int, user_id: int):
+    async def delete_latest_warning(
+        self,
+        guild_id: int,
+        user_id: int,
+        *,
+        removed_by: int,
+        removed_by_name: str | None = None,
+        user_name: str | None = None,
+        removal_reason: str | None = None,
+    ):
         rows = await self.get_warnings(guild_id, user_id)
         if not rows:
             return None
         latest = rows[-1]
-        ok = await self.delete_warning(guild_id, user_id, int(latest["id"]))
+        ok = await self.delete_warning(
+            guild_id,
+            user_id,
+            int(latest["id"]),
+            removed_by=removed_by,
+            removed_by_name=removed_by_name,
+            user_name=user_name,
+            removal_reason=removal_reason,
+        )
         return latest if ok else None
+
+    async def list_warning_removals(self, guild_id: int, limit: int = 80) -> list:
+        cur = await self.db.execute(
+            "SELECT * FROM warning_removals WHERE guild_id = ? ORDER BY removed_at DESC LIMIT ?",
+            (int(guild_id), int(limit)),
+        )
+        return await cur.fetchall()
+
+    async def _migrate_warning_removals(self) -> None:
+        await self.db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS warning_removals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER NOT NULL,
+                warning_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                user_name TEXT,
+                original_reason TEXT,
+                removed_by INTEGER NOT NULL,
+                removed_by_name TEXT,
+                removal_reason TEXT,
+                removed_at REAL NOT NULL
+            )
+            """
+        )
+        await self.db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_warning_removals_guild ON warning_removals(guild_id, removed_at DESC)"
+        )
 
 
     # --- feature channels (setchannel) ---

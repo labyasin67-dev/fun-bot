@@ -393,6 +393,16 @@ def _fmt_ts(ts) -> str:
     return time.strftime("%Y-%m-%d %H:%M", time.localtime(float(ts)))
 
 
+def _fmt_ts_melbourne(ts) -> str:
+    if not ts:
+        return ""
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+    dt = datetime.fromtimestamp(float(ts), tz=timezone.utc).astimezone(ZoneInfo("Australia/Melbourne"))
+    zone = dt.tzname() or "Australia/Melbourne"
+    return f"{dt.strftime('%Y-%m-%d %H:%M')} {zone}"
+
+
 def register_routes(app: FastAPI) -> None:
     @app.get("/", response_class=HTMLResponse)
     async def home(request: Request):
@@ -1060,7 +1070,7 @@ def register_routes(app: FastAPI) -> None:
                 flash(request, "error", "Missing member ID.")
             else:
                 label = _member_name(guild, user_id)
-                summary = await perform_clearwarns(_bot(request), guild, label, user_id)
+                summary = await perform_clearwarns(_bot(request), guild, label, user_id, actor=actor)
                 flash(request, "ok", summary)
             return RedirectResponse(f"{redirect}?warns={user_id}", status_code=303)
         if action == "act":
@@ -1357,6 +1367,19 @@ def register_routes(app: FastAPI) -> None:
                     "reason": row["reason"] or "",
                 }
             )
+        removed_warnings = []
+        if owner_view:
+            for row in await db.list_warning_removals(guild.id):
+                removed_warnings.append(
+                    {
+                        "warning_id": int(row["warning_id"]),
+                        "user": _claimer_label(guild, int(row["user_id"]), row["user_name"], bot=bot),
+                        "original_reason": row["original_reason"] or "—",
+                        "removed_by": _claimer_label(guild, int(row["removed_by"]), row["removed_by_name"], bot=bot),
+                        "removal_reason": row["removal_reason"] or "—",
+                        "removed_at": _fmt_ts_melbourne(row["removed_at"]),
+                    }
+                )
         return render(
             request,
             "reports.html",
@@ -1371,6 +1394,7 @@ def register_routes(app: FastAPI) -> None:
             categories=_categories(guild),
             assignable=_roles(guild),
             owner_view=owner_view,
+            removed_warnings=removed_warnings,
             open_items=open_items, open_count=open_count, open_page=open_page, open_pages=open_pages,
             approved_items=approved_items, approved_count=approved_count, approved_page=approved_page, approved_pages=approved_pages,
             denied_items=denied_items, denied_count=denied_count, denied_page=denied_page, denied_pages=denied_pages,

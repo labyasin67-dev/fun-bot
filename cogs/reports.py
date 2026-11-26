@@ -376,6 +376,24 @@ class Reports(commands.Cog):
             ephemeral=True,
             delete_command=True,
         )
+        await self._dm_report_copy(author, guild, ticket_id, reported_id, reported_name, reason)
+
+    async def _dm_report_copy(
+        self,
+        user: discord.abc.User,
+        guild: discord.Guild,
+        ticket_id: int,
+        reported_id: int | None,
+        reported_name: str | None,
+        reason: str | None,
+    ) -> None:
+        reported = format_claimer(guild, reported_id, reported_name) if reported_id or reported_name else "—"
+        why = (reason or "").strip() or "No reason provided."
+        embed = make_embed(
+            "Your report",
+            f"**Server:** {guild.name}\n**Reported:** {reported}\n**Reason:** {why}\n**Report ID:** #{ticket_id}",
+        )
+        await try_dm(user, embed)
 
     async def _deliver(self, guild: discord.Guild, settings, ticket_id: int) -> None:
         row = await self.bot.db.get_report_ticket(ticket_id, guild.id)

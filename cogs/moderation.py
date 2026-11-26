@@ -296,8 +296,31 @@ async def perform_warn(
     return f"**{member}** was warned. Reason: {why}\nWarning **#{warning_id}**. They now have **{total}** warning{'s' if total != 1 else ''}."
 
 
-async def perform_clearwarns(bot: Any, guild: discord.Guild, member_label: str, user_id: int) -> str:
-    removed = await bot.db.clear_warnings(guild.id, user_id)
+def _staff_username(user: Any) -> str | None:
+    if user is None:
+        return None
+    return getattr(user, "name", None) or getattr(user, "global_name", None) or getattr(user, "display_name", None)
+
+
+async def perform_clearwarns(
+    bot: Any,
+    guild: discord.Guild,
+    member_label: str,
+    user_id: int,
+    *,
+    actor: Any = None,
+    reason: str | None = None,
+    user_name: str | None = None,
+) -> str:
+    member = guild.get_member(int(user_id)) if guild is not None else None
+    removed = await bot.db.clear_warnings(
+        guild.id,
+        user_id,
+        removed_by=int(getattr(actor, "id", 0) or 0),
+        removed_by_name=_staff_username(actor),
+        user_name=user_name or _staff_username(member),
+        removal_reason=reason,
+    )
     return f"Removed **{removed}** warning{'s' if removed != 1 else ''} from **{member_label}**."
 
 
@@ -432,32 +455,57 @@ class Moderation(commands.Cog):
     @warn.command(name="remove", description="Remove one warning from a member.")
     @commands.guild_only()
     @commands.has_permissions(moderate_members=True)
-    @app_commands.describe(member="The member to remove a warning from.", warning="The warning id, or latest.")
-    async def warn_remove(self, ctx: commands.Context, member: discord.Member, warning: str | None = None) -> None:
+    @app_commands.describe(
+        member="The member to remove a warning from.",
+        warning="The warning id, or latest.",
+        reason="Optional reason for removing the warning.",
+    )
+    async def warn_remove(
+        self,
+        ctx: commands.Context,
+        member: discord.Member,
+        warning: str | None = None,
+        *,
+        reason: str | None = None,
+    ) -> None:
         assert ctx.guild
-        raw = (warning or "latest").strip()
-        if raw.lower() in {"latest", "last", "recent"}:
-            row = await self.bot.db.delete_latest_warning(ctx.guild.id, member.id)
+        raw = (warning or "").strip()
+        rest = (reason or "").strip()
+        if not raw or raw.lower() in {"latest", "last", "recent"}:
+            selector = "latest"
+            why = rest or None
+        elif raw.isdigit():
+            selector = raw
+            why = rest or None
+        else:
+            selector = "latest"
+            why = " ".join(part for part in (raw, rest) if part) or None
+        record = {
+            "removed_by": ctx.author.id,
+            "removed_by_name": _staff_username(ctx.author),
+            "user_name": _staff_username(member),
+            "removal_reason": why,
+        }
+        if selector == "latest":
+            row = await self.bot.db.delete_latest_warning(ctx.guild.id, member.id, **record)
             if row is None:
                 await ctx.send(embed=make_embed("No warnings", f"**{member}** has no warnings to remove.", color=DANGER), ephemeral=True)
                 return
-        elif raw.isdigit():
-            warning_id = int(raw)
+        else:
+            warning_id = int(selector)
             rows = await self.bot.db.get_warnings(ctx.guild.id, member.id)
             row = next((r for r in rows if int(r["id"]) == warning_id), None)
             if row is None:
                 await ctx.send(embed=make_embed("Warning not found", f"**{member}** has no warning **#{warning_id}** in this server.", color=DANGER), ephemeral=True)
                 return
-            await self.bot.db.delete_warning(ctx.guild.id, member.id, warning_id)
-        else:
-            await ctx.send(embed=make_embed("Invalid warning", "Give a warning id, or `latest`.", color=DANGER), ephemeral=True)
-            return
+            await self.bot.db.delete_warning(ctx.guild.id, member.id, warning_id, **record)
         left = len(await self.bot.db.get_warnings(ctx.guild.id, member.id))
-        reason = row["reason"] or "No reason provided."
+        original = row["reason"] or "No reason provided."
+        extra = f"\n**Removed because:** {why}" if why else ""
         await ctx.send(
             embed=make_embed(
                 "Warning removed",
-                f"Removed warning **#{row['id']}** from **{member}**. Reason was: {reason}\nThey now have **{left}** warning{'s' if left != 1 else ''}.",
+                f"Removed warning **#{row['id']}** from **{member}**. Original reason: {original}{extra}\nThey now have **{left}** warning{'s' if left != 1 else ''}.",
                 color=SUCCESS,
             )
         )
@@ -481,11 +529,19 @@ class Moderation(commands.Cog):
     @commands.hybrid_command(name="clearwarns", description="Clear all warnings for a member.")
     @commands.guild_only()
     @commands.has_permissions(moderate_members=True)
-    @app_commands.describe(member="The member whose warnings should be cleared.")
-    async def clearwarns(self, ctx: commands.Context, member: discord.Member) -> None:
+    @app_commands.describe(member="The member whose warnings should be cleared.", reason="Optional reason for clearing the warnings.")
+    async def clearwarns(self, ctx: commands.Context, member: discord.Member, *, reason: str | None = None) -> None:
         assert ctx.guild
-        removed = await self.bot.db.clear_warnings(ctx.guild.id, member.id)
-        await ctx.send(embed=make_embed("Warnings cleared", f"Removed **{removed}** warning{'s' if removed != 1 else ''} from **{member}**.", color=SUCCESS))
+        summary = await perform_clearwarns(
+            self.bot,
+            ctx.guild,
+            str(member),
+            member.id,
+            actor=ctx.author,
+            reason=reason,
+            user_name=_staff_username(member),
+        )
+        await ctx.send(embed=make_embed("Warnings cleared", summary, color=SUCCESS))
 
     @commands.hybrid_command(name="purge", description="Delete a number of recent messages in this channel.")
     @commands.guild_only()
