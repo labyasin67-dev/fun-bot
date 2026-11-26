@@ -3,7 +3,7 @@
 {% block title %}Levels · {{ guild.name }}{% endblock %}
 {% block body %}
 <h1>Levels</h1>
-<p class="lede">Automatic roles, where level-ups are announced, and the current leaderboard.</p>
+<p class="lede">Automatic roles, where level-ups are announced, the current leaderboard, and tools to add or remove XP.</p>
 
 <div class="card">
   <h2>Level-up channel</h2>
@@ -17,6 +17,25 @@
     <button class="btn" type="submit">Save</button>
   </form>
   <p class="faint">If not set, chat level-ups are posted in the channel where they happened.</p>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>Add or remove XP</h2>
+  <form method="post" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="xp">
+    <div class="field">
+      <label>Member</label>
+      <input type="text" name="member" placeholder="User ID, @mention, or username" required>
+    </div>
+    <div class="field" style="flex:0 0 140px">
+      <label>Amount</label>
+      <input type="number" name="amount" min="1" max="1000000" required>
+    </div>
+    <button class="btn" type="submit" name="xp_op" value="add">Add XP</button>
+    <button class="btn danger" type="submit" name="xp_op" value="remove">Remove XP</button>
+  </form>
+  <p class="faint">Works like <code>.addxp</code> and <code>.removexp</code>: 1 to 1,000,000 XP, and XP never goes below 0.</p>
 </div>
 
 <div class="card" style="margin-top:14px">
@@ -66,9 +85,9 @@
   <h2>Leaderboard</h2>
   {% if board %}
   <table class="table">
-    <tr><th>#</th><th>Member</th><th>XP</th></tr>
+    <tr><th>#</th><th>Member</th><th>Level</th><th>XP</th></tr>
     {% for row in board %}
-      <tr><td>{{ row.rank }}</td><td>{{ row.name }}</td><td>{{ row.xp }}</td></tr>
+      <tr><td>{{ row.rank }}</td><td>{{ row.name }}</td><td>{{ row.level }}</td><td>{{ row.xp }}</td></tr>
     {% endfor %}
   </table>
   {% else %}

@@ -13,10 +13,22 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from cogs.channels import FEATURES as FEATURE_LABELS
-from cogs.welcome import DEFAULT_WELCOME
-from cogs.customroles import colour_hex, colour_hex_optional, remove_stored_custom_role, restrict_user
-from utils import parse_user_id
+from cogs.moderation import (
+    DEFAULT_BAN_ANNOUNCE,
+    DEFAULT_BAN_DM,
+    ModerationActionError,
+    perform_ban,
+    perform_clearwarns,
+    perform_kick,
+    perform_timeout,
+    perform_unban,
+    perform_warn,
+)
+from cogs.welcome import DEFAULT_LEAVE, DEFAULT_WELCOME
+from cogs.customroles import colour_hex, colour_hex_optional, edit_role_colours, guild_has_gradients, parse_hex_colour, remove_stored_custom_role, restrict_user
 from dashboard import DEFAULT_CLIENT_ID, INVITE_PERMISSIONS, ROOT, client_id, oauth_configured
+from site_pages import CONTACT_KEY, load_site_page, render_page_body
+from utils import level_from_xp, parse_user_id, resolve_member
 from dashboard.auth import (
     avatar_url,
     can_manage_guild,
@@ -152,6 +164,61 @@ def _member_name(guild: discord.Guild, user_id: int | None) -> str:
     return str(member) if member else f"ID {user_id}"
 
 
+def _row_get(row, key: str, default=None):
+    if row is None:
+        return default
+    try:
+        val = row[key]
+    except (KeyError, IndexError, TypeError):
+        return default
+    return default if val is None else val
+
+
+def _form_channel(form, name: str, valid: set[int]) -> int | None:
+    value = str(form.get(name) or "").strip()
+    return int(value) if value.isdigit() and int(value) in valid else None
+
+
+def _form_flag(form, name: str) -> int:
+    return 1 if str(form.get(name) or "") in {"1", "on", "true", "yes"} else 0
+
+
+def _resolve_target(guild: discord.Guild, raw: str) -> tuple[discord.Member | None, int | None]:
+    member = resolve_member(guild, raw)
+    if member is not None:
+        return member, member.id
+    return None, parse_user_id(raw)
+
+
+async def _dashboard_xp_change(bot, cog, guild: discord.Guild, user: dict, user_id: int, delta: int) -> dict:
+    """Dashboard XP add/remove using the same database calls and limits as .addxp / .removexp."""
+    amount = abs(int(delta))
+    if amount <= 0 or amount > 1_000_000:
+        raise ValueError("Amount must be between 1 and 1,000,000.")
+    member = guild.get_member(user_id)
+    if member is not None and member.bot:
+        raise ValueError("Bots don't earn XP.")
+    if delta > 0:
+        old, new = await bot.db.add_xp(guild.id, user_id, amount)
+        if new > old and member is not None:
+            await cog._handle_level_up(guild, member, None, old, new)
+        title, colour_name = "XP added", "SUCCESS"
+    else:
+        old_xp = int((await bot.db.ensure_member(guild.id, user_id))["xp"])
+        old, new = await bot.db.set_xp(guild.id, user_id, max(0, old_xp - amount))
+        title, colour_name = "XP removed", "WARNING"
+    from cogs.channels import post_modlog
+    import utils as _utils
+    target = member.mention if member is not None else f"<@{user_id}>"
+    await post_modlog(
+        bot,
+        guild,
+        title,
+        f"**Staff:** Dashboard ({user.get('username', user.get('id'))})\n**Target:** {target} (`{user_id}`)\n**Old:** {old:,} → **New:** {new:,}",
+        color=getattr(_utils, colour_name),
+    )
+    return {"old_xp": old, "new_xp": new, "level": level_from_xp(new)}
+
 
 def _age_label(seconds: float | None) -> str:
     if seconds is None or seconds < 0:
@@ -268,6 +335,21 @@ def register_routes(app: FastAPI) -> None:
         if current_user(request):
             return RedirectResponse("/servers", status_code=302)
         return render(request, "home.html")
+
+    async def _public_page(request: Request, key: str, title: str):
+        bot = _bot(request)
+        db = getattr(bot, "db", None) if bot is not None else None
+        body = await load_site_page(db, key)
+        return render(
+            request,
+            "site_page.html",
+            page_title=title,
+            body_html=render_page_body(body),
+        )
+
+    @app.get("/contact", response_class=HTMLResponse)
+    async def contact_page(request: Request):
+        return await _public_page(request, CONTACT_KEY, "Contact Us")
 
     @app.get("/login")
     async def login(request: Request, next: str = "/servers"):
@@ -405,7 +487,13 @@ def register_routes(app: FastAPI) -> None:
         board = []
         for i, row in enumerate(await db.top_xp(guild.id, 15), start=1):
             member = guild.get_member(int(row["user_id"]))
-            board.append({"rank": i, "name": str(member) if member else f"ID {row['user_id']}", "xp": int(row["xp"])})
+            xp = int(row["xp"])
+            board.append({
+                "rank": i,
+                "name": str(member) if member else f"ID {row['user_id']}",
+                "xp": xp,
+                "level": level_from_xp(xp),
+            })
         levelup_id = await db.get_feature_channel(guild.id, "levelups")
         return render(
             request,
@@ -455,6 +543,38 @@ def register_routes(app: FastAPI) -> None:
             channel_id = int(value) if value.isdigit() and int(value) in valid else None
             await db.set_feature_channel(guild.id, "levelups", channel_id)
             flash(request, "ok", "Level-up channel updated.")
+        elif action == "xp":
+            raw = str(form.get("member") or "")
+            op = str(form.get("xp_op") or "add")
+            try:
+                amount = int(form.get("amount") or 0)
+            except ValueError:
+                amount = 0
+            if amount <= 0:
+                flash(request, "error", "Enter a positive XP amount.")
+            else:
+                member, user_id = _resolve_target(guild, raw)
+                if user_id is None:
+                    flash(request, "error", "I couldn't find that member. Use a user ID, mention, or a unique username.")
+                else:
+                    delta = amount if op != "remove" else -amount
+                    cog = _bot(request).get_cog("Leveling")
+                    if cog is None:
+                        flash(request, "error", "The leveling module is still starting. Try again in a moment.")
+                    else:
+                        try:
+                            result = await _dashboard_xp_change(_bot(request), cog, guild, _user, user_id, delta)
+                        except ValueError as err:
+                            flash(request, "error", str(err))
+                        else:
+                            label = member.display_name if member else f"ID {user_id}"
+                            verb = "Added" if delta > 0 else "Removed"
+                            flash(
+                                request,
+                                "ok",
+                                f"{verb} {abs(delta):,} XP {'to' if delta > 0 else 'from'} {label}. "
+                                f"They now have {result['new_xp']:,} XP (level {result['level']}).",
+                            )
         return RedirectResponse(f"/servers/{guild_id}/levels", status_code=303)
 
     @app.get("/servers/{guild_id}/selfroles", response_class=HTMLResponse)
@@ -674,6 +794,14 @@ def register_routes(app: FastAPI) -> None:
             **_nav(guild, "welcome"),
             channel_id=channel_id,
             message=message,
+            leave_enabled=int(_row_get(settings, "leave_enabled", 0) or 0),
+            leave_channel_id=_row_get(settings, "leave_channel_id"),
+            leave_message=_row_get(settings, "leave_message") or DEFAULT_LEAVE,
+            ban_dm_enabled=int(_row_get(settings, "ban_dm_enabled", 0) or 0),
+            ban_dm_message=_row_get(settings, "ban_dm_message") or DEFAULT_BAN_DM,
+            ban_announce_enabled=int(_row_get(settings, "ban_announce_enabled", 0) or 0),
+            ban_announce_channel_id=_row_get(settings, "ban_announce_channel_id"),
+            ban_announce_message=_row_get(settings, "ban_announce_message") or DEFAULT_BAN_ANNOUNCE,
             grouped=_grouped_channels(guild),
         )
 
@@ -687,13 +815,23 @@ def register_routes(app: FastAPI) -> None:
         db = _bot(request).db
         action = str(form.get("action") or "save")
         if action == "save":
-            raw = str(form.get("channel_id") or "").strip()
             valid = {c.id for c in _text_channels(guild)}
-            channel_id = int(raw) if raw.isdigit() and int(raw) in valid else None
+            channel_id = _form_channel(form, "channel_id", valid)
             message = (str(form.get("message") or "").strip() or DEFAULT_WELCOME)[:1800]
             await db.set_feature_channel(guild.id, "welcome", channel_id)
-            await db.update_settings(guild.id, welcome_message=message)
-            flash(request, "ok", "Welcome settings saved. They apply to the next join.")
+            await db.update_settings(
+                guild.id,
+                welcome_message=message,
+                leave_enabled=_form_flag(form, "leave_enabled"),
+                leave_channel_id=_form_channel(form, "leave_channel_id", valid),
+                leave_message=(str(form.get("leave_message") or "").strip() or DEFAULT_LEAVE)[:1800],
+                ban_dm_enabled=_form_flag(form, "ban_dm_enabled"),
+                ban_dm_message=(str(form.get("ban_dm_message") or "").strip() or DEFAULT_BAN_DM)[:1800],
+                ban_announce_enabled=_form_flag(form, "ban_announce_enabled"),
+                ban_announce_channel_id=_form_channel(form, "ban_announce_channel_id", valid),
+                ban_announce_message=(str(form.get("ban_announce_message") or "").strip() or DEFAULT_BAN_ANNOUNCE)[:1800],
+            )
+            flash(request, "ok", "Welcome, leave and ban messages saved. They apply to the next event.")
         elif action == "test":
             member = guild.get_member(int(user["id"])) or guild.me
             cog = _bot(request).get_cog("Welcome")
@@ -779,24 +917,113 @@ def register_routes(app: FastAPI) -> None:
             flash(request, "ok", "YouTube settings saved.")
         return RedirectResponse(redirect, status_code=303)
 
-    @app.get("/servers/{guild_id}/moderation", response_class=HTMLResponse)
-    async def moderation(request: Request, guild_id: int):
-        redir, guild, _user = await _guild_or_redirect(request, guild_id)
-        if redir:
-            return redir
-        assert guild
+    async def _moderation_page(request: Request, guild, warns_query: str = ""):
         db = _bot(request).db
         logs = await db.recent_mod_log(guild.id, 40)
         warns = await db.recent_warnings_guild(guild.id, 40)
+        member_warns = []
+        warns_target = ""
+        warns_user_id = None
+        if warns_query:
+            member, user_id = _resolve_target(guild, warns_query)
+            if user_id is None:
+                flash(request, "error", "I couldn't find that member. Use a user ID, mention, or a unique username.")
+            else:
+                warns_user_id = user_id
+                warns_target = member.display_name if member else f"ID {user_id}"
+                member_warns = await db.get_warnings(guild.id, user_id)
         return render(
             request,
             "moderation.html",
             **_nav(guild, "moderation"),
             logs=logs,
             warns=warns,
+            member_warns=member_warns,
+            warns_query=warns_query,
+            warns_target=warns_target,
+            warns_user_id=warns_user_id,
+            modlog_id=await db.get_feature_channel(guild.id, "modlog"),
+            grouped=_grouped_channels(guild),
             member_name=lambda uid: _member_name(guild, uid),
             fmt_time=lambda ts: time.strftime("%Y-%m-%d %H:%M", time.localtime(float(ts or 0))),
         )
+
+    @app.get("/servers/{guild_id}/moderation", response_class=HTMLResponse)
+    async def moderation(request: Request, guild_id: int):
+        redir, guild, _user = await _guild_or_redirect(request, guild_id)
+        if redir:
+            return redir
+        assert guild
+        return await _moderation_page(request, guild, str(request.query_params.get("warns") or ""))
+
+    @app.post("/servers/{guild_id}/moderation")
+    async def moderation_post(request: Request, guild_id: int):
+        redir, guild, user = await _guild_or_redirect(request, guild_id)
+        if redir:
+            return redir
+        assert guild and user
+        form = await _form(request)
+        db = _bot(request).db
+        action = str(form.get("action") or "")
+        redirect = f"/servers/{guild_id}/moderation"
+        if action == "settings":
+            valid = {c.id for c in _text_channels(guild)}
+            await db.set_feature_channel(guild.id, "modlog", _form_channel(form, "modlog_channel", valid))
+            flash(request, "ok", "Mod-log channel updated.")
+            return RedirectResponse(redirect, status_code=303)
+        actor = guild.get_member(int(user["id"]))
+        if actor is None:
+            flash(request, "error", "I can't see you in this server, so I can't check the role list.")
+            return RedirectResponse(redirect, status_code=303)
+        if action == "clearwarns":
+            try:
+                user_id = int(form.get("user_id") or 0)
+            except ValueError:
+                user_id = 0
+            if not user_id:
+                flash(request, "error", "Missing member ID.")
+            else:
+                label = _member_name(guild, user_id)
+                summary = await perform_clearwarns(_bot(request), guild, label, user_id)
+                flash(request, "ok", summary)
+            return RedirectResponse(f"{redirect}?warns={user_id}", status_code=303)
+        if action == "act":
+            raw = str(form.get("member") or "")
+            member, user_id = _resolve_target(guild, raw)
+            reason = str(form.get("reason") or "").strip() or None
+            mod_action = str(form.get("mod_action") or "")
+            duration = str(form.get("duration") or "").strip()
+            try:
+                if mod_action == "unban":
+                    if user_id is None:
+                        raise ModerationActionError("Unban needs a numeric Discord user ID.")
+                    summary = await perform_unban(_bot(request), guild, actor, user_id)
+                else:
+                    if member is None:
+                        raise ModerationActionError("I couldn't find that member in this server. Use a user ID, mention, or a unique username.")
+                    if mod_action == "ban":
+                        cog = _bot(request).get_cog("Moderation")
+                        recent = getattr(cog, "_recent_bot_bans", None)
+                        _dm_ok, summary = await perform_ban(
+                            _bot(request), guild, actor, member, reason, recent_bot_bans=recent
+                        )
+                    elif mod_action == "kick":
+                        summary = await perform_kick(_bot(request), guild, actor, member, reason)
+                    elif mod_action == "timeout":
+                        summary = await perform_timeout(_bot(request), guild, actor, member, duration, reason)
+                    elif mod_action == "warn":
+                        summary = await perform_warn(_bot(request), guild, actor, member, reason)
+                    else:
+                        raise ModerationActionError("Choose a valid action.")
+            except ModerationActionError as err:
+                flash(request, "error", str(err))
+            except discord.HTTPException:
+                flash(request, "error", "Discord rejected that action. Check my permissions and try again.")
+            else:
+                flash(request, "ok", summary)
+            return RedirectResponse(redirect, status_code=303)
+        return RedirectResponse(redirect, status_code=303)
+
 
     @app.get("/servers/{guild_id}/customroles", response_class=HTMLResponse)
     async def customroles_get(request: Request, guild_id: int):
@@ -810,9 +1037,12 @@ def register_routes(app: FastAPI) -> None:
         for row in await db.list_custom_roles(guild.id):
             role = guild.get_role(int(row["role_id"]))
             created = float(row["created_at"] or 0)
+            holder_id = int(row["holder_id"]) if row["holder_id"] else int(row["user_id"])
             role_rows.append(
                 {
                     "user_id": int(row["user_id"]),
+                    "holder_id": holder_id,
+                    "holder_name": _member_name(guild, holder_id),
                     "role_id": int(row["role_id"]),
                     "role": role,
                     "member_name": _member_name(guild, int(row["user_id"])),
@@ -838,6 +1068,19 @@ def register_routes(app: FastAPI) -> None:
                     "at": time.strftime("%Y-%m-%d %H:%M", time.localtime(when)) if when else "—",
                 }
             )
+        give_blocks = []
+        for row in await db.list_custom_role_give_blocks(guild.id):
+            when = float(row["at"] or 0)
+            by_id = int(row["by"]) if row["by"] else None
+            give_blocks.append(
+                {
+                    "user_id": int(row["user_id"]),
+                    "member_name": _member_name(guild, int(row["user_id"])),
+                    "reason": row["reason"] or "",
+                    "by_name": _member_name(guild, by_id) if by_id else "Automatic",
+                    "at": time.strftime("%Y-%m-%d %H:%M", time.localtime(when)) if when else "—",
+                }
+            )
         anchor_id = int(settings["anchor_role_id"]) if settings["anchor_role_id"] else None
         return render(
             request,
@@ -845,10 +1088,13 @@ def register_routes(app: FastAPI) -> None:
             **_nav(guild, "customroles"),
             enabled=int(settings["enabled"] or 0),
             min_level=int(settings["min_level"] or 0),
+            give_enabled=int(settings["give_enabled"] if "give_enabled" in settings.keys() else 1),
             anchor_role_id=anchor_id,
             assignable=_roles(guild),
             roles=role_rows,
             restrictions=restrictions,
+            give_blocks=give_blocks,
+            gradients_supported=guild_has_gradients(guild),
         )
 
     @app.post("/servers/{guild_id}/customroles")
@@ -875,8 +1121,9 @@ def register_routes(app: FastAPI) -> None:
             valid_roles = {r.id for r in _roles(guild)}
             raw_anchor = str(form.get("anchor_role_id") or "").strip()
             anchor = int(raw_anchor) if raw_anchor.isdigit() and int(raw_anchor) in valid_roles else None
+            give_enabled = 1 if str(form.get("give_enabled") or "") == "1" else 0
             await db.set_customrole_settings(
-                guild.id, enabled=enabled, min_level=min_level, anchor_role_id=anchor
+                guild.id, enabled=enabled, min_level=min_level, anchor_role_id=anchor, give_enabled=give_enabled
             )
             flash(request, "ok", "Custom role settings saved.")
             return RedirectResponse(redirect, status_code=303)
@@ -884,7 +1131,7 @@ def register_routes(app: FastAPI) -> None:
         user_id = parse_user_id(raw)
         if user_id is None and raw.strip().isdigit() and len(raw.strip()) >= 15:
             user_id = int(raw.strip())
-        if action in {"remove", "restrict", "unrestrict"} and not user_id:
+        if action in {"remove", "restrict", "unrestrict", "give_block", "give_unblock"} and not user_id:
             flash(request, "error", "Enter a valid Discord user ID.")
             return RedirectResponse(redirect, status_code=303)
         if action == "remove":
@@ -914,6 +1161,59 @@ def register_routes(app: FastAPI) -> None:
                 flash(request, "ok", f"{_member_name(guild, user_id)} can create a custom role again.")
             else:
                 flash(request, "error", "That member isn't restricted.")
+            return RedirectResponse(redirect, status_code=303)
+        if action == "give_block":
+            reason = str(form.get("reason") or "").strip() or None
+            await db.block_custom_role_give(guild.id, user_id, reason=reason, by=actor_id)
+            flash(request, "ok", f"{_member_name(guild, user_id)} is blocked from .role give.")
+            return RedirectResponse(redirect, status_code=303)
+        if action == "give_unblock":
+            ok = await db.unblock_custom_role_give(guild.id, user_id)
+            if ok:
+                flash(request, "ok", f"{_member_name(guild, user_id)} can use .role give again.")
+            else:
+                flash(request, "error", "That member isn't blocked from .role give.")
+            return RedirectResponse(redirect, status_code=303)
+        if action == "colours":
+            if not user_id:
+                flash(request, "error", "Missing member for colour edit.")
+                return RedirectResponse(redirect, status_code=303)
+            row = await db.get_custom_role(guild.id, user_id)
+            if row is None:
+                flash(request, "error", "That member doesn't have a custom role.")
+                return RedirectResponse(redirect, status_code=303)
+            role = guild.get_role(int(row["role_id"]))
+            if role is None:
+                flash(request, "error", "That custom role no longer exists.")
+                return RedirectResponse(redirect, status_code=303)
+            primary = parse_hex_colour(str(form.get("colour") or ""))
+            raw2 = str(form.get("colour2") or "").strip()
+            secondary = parse_hex_colour(raw2) if raw2 else None
+            if primary is None:
+                flash(request, "error", "Enter a valid 6-digit hex colour, such as #ff0000.")
+                return RedirectResponse(redirect, status_code=303)
+            if raw2 and secondary is None:
+                flash(request, "error", "The second colour must also be a 6-digit hex, such as #0000ff, or left blank.")
+                return RedirectResponse(redirect, status_code=303)
+            try:
+                used = await edit_role_colours(
+                    role,
+                    primary=primary,
+                    secondary=secondary,
+                    reason=f"Colours edited from the dashboard by {actor_id}",
+                )
+            except Exception:
+                flash(request, "error", "Couldn't update that role's colours. Check the bot's Manage Roles permission and role order.")
+                return RedirectResponse(redirect, status_code=303)
+            await db.set_custom_role_secondary(
+                guild.id, user_id, secondary.value if used and secondary is not None else None
+            )
+            if secondary is not None and not used:
+                flash(request, "ok", f"Updated the colour of {_member_name(guild, user_id)}'s role. This server doesn't have enhanced role colours, so only the first colour was applied.")
+            elif used and secondary is not None:
+                flash(request, "ok", f"Updated the gradient on {_member_name(guild, user_id)}'s role.")
+            else:
+                flash(request, "ok", f"Updated the colour of {_member_name(guild, user_id)}'s role.")
             return RedirectResponse(redirect, status_code=303)
         return RedirectResponse(redirect, status_code=303)
 

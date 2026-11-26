@@ -116,4 +116,18 @@
     </table>
   </div>
 </div>
+<div class="card" style="margin-top:14px">
+  <h2>Contact page</h2>
+  <p class="faint">This appears on the public Contact Us page (/contact). Use a line starting with # for a heading. Leave a blank line between paragraphs. Saving replaces the current published text.</p>
+  <form method="post" style="margin-top:16px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="save_page">
+    <input type="hidden" name="page_key" value="contact">
+    <div class="field">
+      <label>Contact Us (/contact)</label>
+      <textarea class="page-textarea" name="body" maxlength="20000">{{ contact_body }}</textarea>
+    </div>
+    <button class="btn" type="submit">Save contact page</button>
+  </form>
+</div>
 {% endblock %}

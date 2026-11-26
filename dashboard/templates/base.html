@@ -3,15 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{% block title %}Fun bot dashboard{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <title>{% block title %}Meowchi Cafe dashboard{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v=emerald2">
 </head>
 <body>
+  <canvas id="space-bg" aria-hidden="true"></canvas>
   <div class="wrap">
     <header class="topbar">
       <a class="brand" href="{% if user %}/servers{% else %}/{% endif %}">
         <span class="brand-mark">🎮</span>
-        <span>Fun bot</span>
+        <span>Meowchi Cafe</span>
       </a>
       {% if guild is defined %}
         <span class="muted">/</span>
@@ -43,7 +44,7 @@
         <option value="/servers/{{ guild.id }}/selfroles" {% if active=='selfroles' %}selected{% endif %}>Self roles</option>
         <option value="/servers/{{ guild.id }}/customroles" {% if active=='customroles' %}selected{% endif %}>Custom Roles</option>
         <option value="/servers/{{ guild.id }}/alts" {% if active=='alts' %}selected{% endif %}>Alt detection</option>
-        <option value="/servers/{{ guild.id }}/welcome" {% if active=='welcome' %}selected{% endif %}>Welcome</option>
+        <option value="/servers/{{ guild.id }}/welcome" {% if active=='welcome' %}selected{% endif %}>Messages</option>
         <option value="/servers/{{ guild.id }}/games" {% if active=='games' %}selected{% endif %}>Games</option>
         <option value="/servers/{{ guild.id }}/moderation" {% if active=='moderation' %}selected{% endif %}>Moderation</option>
         <option value="/servers/{{ guild.id }}/reports" {% if active=='reports' %}selected{% endif %}>Reports</option>
@@ -64,7 +65,7 @@
           <a href="/servers/{{ guild.id }}/selfroles" class="{% if active=='selfroles' %}active{% endif %}">Self roles</a>
           <a href="/servers/{{ guild.id }}/customroles" class="{% if active=='customroles' %}active{% endif %}">Custom Roles</a>
           <a href="/servers/{{ guild.id }}/alts" class="{% if active=='alts' %}active{% endif %}">Alt detection</a>
-          <a href="/servers/{{ guild.id }}/welcome" class="{% if active=='welcome' %}active{% endif %}">Welcome</a>
+          <a href="/servers/{{ guild.id }}/welcome" class="{% if active=='welcome' %}active{% endif %}">Messages</a>
           <a href="/servers/{{ guild.id }}/games" class="{% if active=='games' %}active{% endif %}">Games</a>
           <a href="/servers/{{ guild.id }}/moderation" class="{% if active=='moderation' %}active{% endif %}">Moderation</a>
           <a href="/servers/{{ guild.id }}/reports" class="{% if active=='reports' %}active{% endif %}">Reports</a>
@@ -76,7 +77,7 @@
       {% endif %}
       <main class="content">
         {% if guild is defined and premium_required_flag and not premium_ok %}
-          <div class="flash error upgrade-banner">This server needs Fun bot Premium — <a href="{{ pricing_url }}">subscribe at the pricing page</a>.</div>
+          <div class="flash error upgrade-banner">This server needs Meowchi Cafe Premium — <a href="{{ pricing_url }}">subscribe at the pricing page</a>.</div>
         {% endif %}
         {% for item in flash %}
           <div class="flash {{ item.kind }}">{{ item.message }}</div>
@@ -85,6 +86,8 @@
       </main>
     </div>
     <footer class="site-footer">
+      <a href="/contact">Contact</a>
+      <span class="faint">|</span>
       <a href="/privacy">Privacy</a>
       <span class="faint">|</span>
       <a href="/terms">Terms</a>
@@ -92,5 +95,6 @@
       Made by Whiskey/WarRaven
     </footer>
   </div>
+  <script src="/static/space.js" defer></script>
 </body>
 </html>

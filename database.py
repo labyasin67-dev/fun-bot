@@ -15,7 +15,15 @@ CREATE TABLE IF NOT EXISTS guild_settings (
     counting_high INTEGER NOT NULL DEFAULT 0,
     levelup_channel_id INTEGER,
     jtc_channel_id INTEGER,
-    jtc_category_id INTEGER
+    jtc_category_id INTEGER,
+    ban_dm_enabled INTEGER NOT NULL DEFAULT 0,
+    ban_dm_message TEXT,
+    ban_announce_enabled INTEGER NOT NULL DEFAULT 0,
+    ban_announce_message TEXT,
+    ban_announce_channel_id INTEGER,
+    leave_enabled INTEGER NOT NULL DEFAULT 0,
+    leave_message TEXT,
+    leave_channel_id INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS members (
@@ -160,11 +168,18 @@ CREATE TABLE IF NOT EXISTS premium_grants (
 CREATE INDEX IF NOT EXISTS idx_grants_guild ON premium_grants(guild_id);
 CREATE INDEX IF NOT EXISTS idx_grants_user ON premium_grants(user_id);
 
+CREATE TABLE IF NOT EXISTS site_pages (
+    key TEXT PRIMARY KEY,
+    body TEXT NOT NULL,
+    updated_at REAL NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS customrole_settings (
     guild_id INTEGER PRIMARY KEY,
     enabled INTEGER NOT NULL DEFAULT 0,
     min_level INTEGER NOT NULL DEFAULT 10,
-    anchor_role_id INTEGER
+    anchor_role_id INTEGER,
+    give_enabled INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS custom_roles (
@@ -173,11 +188,21 @@ CREATE TABLE IF NOT EXISTS custom_roles (
     role_id INTEGER NOT NULL,
     created_at REAL NOT NULL,
     secondary_colour INTEGER,
+    holder_id INTEGER,
     PRIMARY KEY (guild_id, user_id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_custom_roles_role ON custom_roles(guild_id, role_id);
 
 CREATE TABLE IF NOT EXISTS custom_role_restrictions (
+    guild_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    reason TEXT,
+    by INTEGER,
+    at REAL NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS custom_role_give_blocks (
     guild_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     reason TEXT,
@@ -312,6 +337,7 @@ class Database:
         await self._db.executescript(SCHEMA)
         await self._migrate_feature_channels()
         await self._migrate_alt_flags()
+        await self._migrate_guild_settings_columns()
         await self._migrate_custom_roles_columns()
         await self._migrate_report_columns()
         await self._migrate_fun_slaps_columns()
@@ -675,6 +701,23 @@ class Database:
         await self.db.execute(
             "CREATE INDEX IF NOT EXISTS idx_alt_flags_guild_created ON alt_flags(guild_id, created_at DESC)"
         )
+
+    async def _migrate_guild_settings_columns(self) -> None:
+        cur = await self.db.execute("PRAGMA table_info(guild_settings)")
+        cols = {str(row[1]) for row in await cur.fetchall()}
+        additions = {
+            "ban_dm_enabled": "INTEGER NOT NULL DEFAULT 0",
+            "ban_dm_message": "TEXT",
+            "ban_announce_enabled": "INTEGER NOT NULL DEFAULT 0",
+            "ban_announce_message": "TEXT",
+            "ban_announce_channel_id": "INTEGER",
+            "leave_enabled": "INTEGER NOT NULL DEFAULT 0",
+            "leave_message": "TEXT",
+            "leave_channel_id": "INTEGER",
+        }
+        for name, typ in additions.items():
+            if name not in cols:
+                await self.db.execute(f"ALTER TABLE guild_settings ADD COLUMN {name} {typ}")
 
     async def get_feature_channels(self, guild_id: int, feature: str, *, fallback: bool = True) -> list[int]:
         cur = await self.db.execute(
@@ -1293,6 +1336,24 @@ class Database:
         )
         return await cur.fetchone() is not None
 
+    async def get_site_page(self, key: str) -> str | None:
+        cur = await self.db.execute("SELECT body FROM site_pages WHERE key = ?", (key,))
+        row = await cur.fetchone()
+        return None if row is None else str(row["body"])
+
+    async def set_site_page(self, key: str, body: str) -> None:
+        import time
+        await self.db.execute(
+            """
+            INSERT INTO site_pages (key, body, updated_at) VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at
+            """,
+            (key, body, time.time()),
+        )
+        await self.db.commit()
+
+
+
     async def _migrate_custom_roles_columns(self) -> None:
         cur = await self.db.execute("PRAGMA table_info(custom_roles)")
         cols = {str(row[1]) for row in await cur.fetchall()}
@@ -1300,6 +1361,30 @@ class Database:
             return
         if "secondary_colour" not in cols:
             await self.db.execute("ALTER TABLE custom_roles ADD COLUMN secondary_colour INTEGER")
+        if "holder_id" not in cols:
+            await self.db.execute("ALTER TABLE custom_roles ADD COLUMN holder_id INTEGER")
+        await self.db.execute(
+            "UPDATE custom_roles SET holder_id = user_id WHERE holder_id IS NULL"
+        )
+        cur = await self.db.execute("PRAGMA table_info(customrole_settings)")
+        settings_cols = {str(row[1]) for row in await cur.fetchall()}
+        if settings_cols and "give_enabled" not in settings_cols:
+            await self.db.execute(
+                "ALTER TABLE customrole_settings ADD COLUMN give_enabled INTEGER NOT NULL DEFAULT 1"
+            )
+        await self.db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS custom_role_give_blocks (
+                guild_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                reason TEXT,
+                by INTEGER,
+                at REAL NOT NULL,
+                PRIMARY KEY (guild_id, user_id)
+            )
+            """
+        )
+        await self.db.commit()
 
     # --- custom roles ---
 
@@ -1320,7 +1405,7 @@ class Database:
     async def set_customrole_settings(self, guild_id: int, **fields) -> aiosqlite.Row:
         await self.get_customrole_settings(guild_id)
         if fields:
-            allowed = {"enabled", "min_level", "anchor_role_id"}
+            allowed = {"enabled", "min_level", "anchor_role_id", "give_enabled"}
             unknown = set(fields) - allowed
             if unknown:
                 raise ValueError(f"Unknown custom role settings: {unknown}")
@@ -1360,10 +1445,10 @@ class Database:
         import time
         await self.db.execute(
             """
-            INSERT INTO custom_roles (guild_id, user_id, role_id, created_at, secondary_colour)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO custom_roles (guild_id, user_id, role_id, created_at, secondary_colour, holder_id)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (guild_id, user_id, role_id, time.time(), secondary_colour),
+            (guild_id, user_id, role_id, time.time(), secondary_colour, user_id),
         )
         await self.db.commit()
 
@@ -1373,6 +1458,21 @@ class Database:
             (secondary_colour, guild_id, user_id),
         )
         await self.db.commit()
+
+    async def get_custom_role_held(self, guild_id: int, user_id: int) -> aiosqlite.Row | None:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_roles WHERE guild_id = ? AND COALESCE(holder_id, user_id) = ?",
+            (guild_id, user_id),
+        )
+        return await cur.fetchone()
+
+    async def set_custom_role_holder(self, guild_id: int, owner_id: int, holder_id: int) -> None:
+        await self.db.execute(
+            "UPDATE custom_roles SET holder_id = ? WHERE guild_id = ? AND user_id = ?",
+            (holder_id, guild_id, owner_id),
+        )
+        await self.db.commit()
+
 
     async def delete_custom_role(self, guild_id: int, user_id: int) -> aiosqlite.Row | None:
         row = await self.get_custom_role(guild_id, user_id)
@@ -1441,6 +1541,41 @@ class Database:
             (guild_id,),
         )
         return await cur.fetchall()
+
+    async def is_custom_role_give_blocked(self, guild_id: int, user_id: int) -> bool:
+        cur = await self.db.execute(
+            "SELECT 1 FROM custom_role_give_blocks WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        return await cur.fetchone() is not None
+
+    async def block_custom_role_give(self, guild_id: int, user_id: int, *, reason: str | None, by: int | None) -> None:
+        import time
+        await self.db.execute(
+            """
+            INSERT INTO custom_role_give_blocks (guild_id, user_id, reason, by, at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(guild_id, user_id) DO UPDATE SET reason = excluded.reason, by = excluded.by, at = excluded.at
+            """,
+            (guild_id, user_id, reason, by, time.time()),
+        )
+        await self.db.commit()
+
+    async def unblock_custom_role_give(self, guild_id: int, user_id: int) -> bool:
+        cur = await self.db.execute(
+            "DELETE FROM custom_role_give_blocks WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        await self.db.commit()
+        return cur.rowcount > 0
+
+    async def list_custom_role_give_blocks(self, guild_id: int) -> list[aiosqlite.Row]:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_role_give_blocks WHERE guild_id = ? ORDER BY at DESC",
+            (guild_id,),
+        )
+        return await cur.fetchall()
+
 
     async def alt_flag_created_times(self, guild_id: int) -> list[aiosqlite.Row]:
         cur = await self.db.execute(

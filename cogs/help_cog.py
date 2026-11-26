@@ -37,6 +37,7 @@ HELP_SECTIONS = [
         "• `.ban @user [reason]` / `.unban <user_id>`\n"
         "• `.kick @user [reason]`\n"
         "• `.timeout @user 10m|1h|1d [reason]` / `.untimeout @user`\n"
+        "• `.mute @user 10m|1h|1d [reason]` / `.unmute @user` — same as `.timeout` / `.untimeout`\n"
         "• `.warn @user [reason]` / `.warnings @user` / `.clearwarns @user`\n"
         "• `.purge N` — delete recent messages\n"
         "• `.slowmode <seconds>` — 0 turns it off\n"
@@ -80,8 +81,11 @@ HELP_SECTIONS = [
         "• `.role create` — open a form for the name and colours\n"
         "• `.role name <new>` / `.role colour <hex>` / `.role gradient #hex1 #hex2` / `.role delete` / `.role info`\n"
         "• `.role toggle on|off` / `.role minlevel <n>` / `.role list` — (manage roles)\n"
+        "• `.role give @user @role` — hand your custom role to another member, even if they already own one; staff can give any custom role\n"
+        "• `.role take @user` — take your custom role back\n"
         "• `.role restrict @user [reason]` / `.role unrestrict @user`\n"
-        "• `.role remove @user` — take away their custom role; add `@role` to remove a normal role\n"
+        "• `.role remove` — delete your own custom role (and take it off anyone you gave it to)\n"
+        "• `.role remove @user` — (manage roles) take away their custom role; add `@role` for a normal role\n"
         "• `.role add @user @role` — (manage roles)\n"
         "• `.selfrole add/remove/list/panel` — button panel so members can pick roles\n"
         "• `.setwelcome #channel [message]` — greet new members\n"
@@ -101,7 +105,7 @@ HELP_SECTIONS = [
     ),
     (
         "Premium",
-        "Fun bot Premium is billed per server.\n"
+        "Meowchi Cafe Premium is billed per server.\n"
         "• `.premium status` — whether this server is subscribed or granted\n"
         "The bot owner can also use `.premium grant`, `.premium revoke`, and `.premium list`.",
     ),
