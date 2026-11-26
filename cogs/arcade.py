@@ -213,6 +213,7 @@ class ChatGuessGame(ChannelGame):
         reveal: str,
         hint: str | None = None,
         image_url: str | None = None,
+        file: discord.File | None = None,
         timeout: int = 120,
         hint_at: int | None = 15,
         xp: int = DEFAULT_WIN_XP,
@@ -225,6 +226,7 @@ class ChatGuessGame(ChannelGame):
         self.reveal = reveal
         self.hint = hint
         self.image_url = image_url
+        self.file = file
         self.timeout = timeout
         self.hint_at = hint_at
         self.xp = xp
@@ -300,7 +302,7 @@ class ChatGuessGame(ChannelGame):
     async def begin(self, dest: commands.Context | discord.Interaction) -> None:
         self.host_name, self.host_avatar = host_details(dest, self.host_id)
         self.end_ts, _ = countdown_field(self.timeout)
-        self.message = await send_dest(dest, embed=self._embed(phase="play"))
+        self.message = await send_dest(dest, embed=self._embed(phase="play"), file=self.file)
         self.task = asyncio.create_task(self._timer())
 
     async def _timer(self) -> None:
@@ -1869,6 +1871,8 @@ class Arcade(commands.Cog):
     async def _start_flag(self, dest) -> None:
         item = random.choice(banks.flags())
         answers = [item["name"], *item.get("aliases", [])]
+        code = item["code"]
+        file = discord.File(f"data/flags/{code}.png", filename=f"{code}.png")
         def factory(bot, channel, host_id):
             return ChatGuessGame(
                 bot, channel, host_id,
@@ -1877,7 +1881,8 @@ class Arcade(commands.Cog):
                 answers=answers,
                 reveal=item["name"],
                 hint=f"The name starts with **{item['name'][0].upper()}**.",
-                image_url=item["url"],
+                image_url=f"attachment://{code}.png",
+                file=file,
             )
         await self._launch(dest, factory)
 
