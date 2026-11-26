@@ -2,8 +2,8 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Self roles · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Self roles</h1>
-<p class="lede">Members can tap a button to add or remove these roles. Post or refresh the panel into a channel below.</p>
+<div class="page-head">{{ ui.cat_icon('selfroles') }}<div><h1 class="page-title">Self roles</h1>
+<p class="lede">Members can tap a button to add or remove these roles. Post or refresh the panel into a channel below.</p></div></div>
 
 <div class="uk-card card">
   <h2>Add a role</h2>

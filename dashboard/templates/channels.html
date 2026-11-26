@@ -2,8 +2,8 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Channels · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Channels</h1>
-<p class="lede">Point each feature at a channel. Games can use more than one. Changes apply immediately, without a restart.</p>
+<div class="page-head">{{ ui.cat_icon('channels') }}<div><h1 class="page-title">Channels</h1>
+<p class="lede">Point each feature at a channel. Games can use more than one. Changes apply immediately, without a restart.</p></div></div>
 <form method="post" class="uk-card card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   {% for key, label in features.items() %}

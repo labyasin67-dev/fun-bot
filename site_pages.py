@@ -22,7 +22,7 @@ DEFAULT_TERMS = """# Terms & Conditions
 
 Last updated: 26 November 2026
 
-These terms explain how you may use Discord All In One Bot (also called Fun bot) and its website dashboard at discordallinonebot.online (together, the "Service"). The Service is operated by an individual sole operator in Victoria, Australia, known as Whiskey/WarRaven (the "Operator"). The Operator is not a company and does not have an Australian Business Number (ABN).
+These terms explain how you may use Meowchi Bot and its website dashboard at https://www.meowchibot.com (together, the "Service"). The Service is operated by an individual sole operator in Victoria, Australia, known as Whiskey/WarRaven (the "Operator"). The Operator is not a company and does not have an Australian Business Number (ABN).
 
 These terms have not been reviewed by a lawyer. They are written in plain English to describe the Service and to set out a reasonable allocation of risk. They are not legal advice.
 
@@ -128,7 +128,7 @@ The Service depends on third parties, including Discord, Stripe, and Railway (ho
 
 The bot, dashboard, design, documentation, and related materials are owned by the Operator or its licensors. You may not copy, modify, distribute, or create derivative works from them except as allowed by these terms or by law (for example, any non-excludable rights).
 
-"Fun bot", "Discord All In One Bot", and related branding are used to identify the Service and remain with the Operator.
+"Meowchi Bot" and related branding are used to identify the Service and remain with the Operator.
 
 # 16. Changes to these terms
 
@@ -151,7 +151,7 @@ DEFAULT_PRIVACY = """# Privacy Policy
 
 Last updated: 26 November 2026
 
-This Privacy Policy explains how the Operator (an individual sole operator in Victoria, Australia, known as Whiskey/WarRaven) handles information when you use Discord All In One Bot / Fun bot and the dashboard at discordallinonebot.online. It should be read together with the Terms & Conditions. It has not been reviewed by a lawyer. It is not legal advice.
+This Privacy Policy explains how the Operator (an individual sole operator in Victoria, Australia, known as Whiskey/WarRaven) handles information when you use Meowchi Bot and the dashboard at https://www.meowchibot.com. It should be read together with the Terms & Conditions. It has not been reviewed by a lawyer. It is not legal advice.
 
 # What we collect and store
 

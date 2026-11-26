@@ -2,8 +2,8 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Moderation · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Moderation</h1>
-<p class="lede">Review cases, take action, and manage warnings. Actions use the same rules as the bot commands, including the role hierarchy.</p>
+<div class="page-head">{{ ui.cat_icon('moderation') }}<div><h1 class="page-title">Moderation</h1>
+<p class="lede">Review cases, take action, and manage warnings. Actions use the same rules as the bot commands, including the role hierarchy.</p></div></div>
 
 <div class="uk-card card">
   <h2>Settings</h2>

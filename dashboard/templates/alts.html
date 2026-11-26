@@ -2,8 +2,8 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Alt detection · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Alt detection</h1>
-<p class="lede">Score new accounts on join, review the log, and take action without leaving this page.</p>
+<div class="page-head">{{ ui.cat_icon('alts') }}<div><h1 class="page-title">Alt detection</h1>
+<p class="lede">Score new accounts on join, review the log, and take action without leaving this page.</p></div></div>
 
 <form method="post" class="uk-card card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

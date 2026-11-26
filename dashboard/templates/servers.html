@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Your servers{% endblock %}
 {% block body %}
-<h1>Your servers</h1>
-<p class="lede">Servers where you have Manage Server. Invite the bot if it is not there yet.</p>
+<div class="page-head">{{ ui.cat_icon('server') }}<div><h1 class="page-title">Your servers</h1>
+<p class="lede">Servers where you have Manage Server. Invite the bot if it is not there yet.</p></div></div>
 {% if not bot_ready %}
   <p class="muted">The bot is still starting, so membership may be incomplete for a moment.</p>
 {% endif %}

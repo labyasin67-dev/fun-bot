@@ -2,8 +2,8 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Audit Logs · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Audit Logs</h1>
-<p class="lede">Pick a channel and choose exactly which server events are logged. Nothing is logged until a channel is set and an event is ticked.</p>
+<div class="page-head">{{ ui.cat_icon('auditlogs') }}<div><h1 class="page-title">Audit Logs</h1>
+<p class="lede">Pick a channel and choose exactly which server events are logged. Nothing is logged until a channel is set and an event is ticked.</p></div></div>
 
 {% if not audit_ready %}
 <div class="uk-card card"><p class="muted">Audit logs are still starting. Refresh in a moment.</p></div>

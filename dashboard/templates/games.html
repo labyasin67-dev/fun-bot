@@ -2,8 +2,8 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Games · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Games</h1>
-<p class="lede">Turn individual drop-in games on or off, and optionally limit them to specific channels.</p>
+<div class="page-head">{{ ui.cat_icon('games') }}<div><h1 class="page-title">Games</h1>
+<p class="lede">Turn individual drop-in games on or off, and optionally limit them to specific channels.</p></div></div>
 <form method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <div class="uk-card card">

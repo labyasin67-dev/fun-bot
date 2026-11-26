@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Creator Integration · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Creator Integration</h1>
-<p class="lede">Post new YouTube uploads in a channel, with an optional @everyone, @here or role ping. Schedule videos and play them as embeds.</p>
+<div class="page-head">{{ ui.cat_icon('youtube') }}<div><h1 class="page-title">Creator Integration</h1>
+<p class="lede">Post new YouTube uploads in a channel, with an optional @everyone, @here or role ping. Schedule videos and play them as embeds.</p></div></div>
 
 {% include "creator_panel.html" %}
 

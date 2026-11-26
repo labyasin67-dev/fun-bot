@@ -2,8 +2,8 @@
 {% block title %}Custom roles · {{ guild.name }}{% endblock %}
 
 {% block body %}
-<h1>Custom Roles</h1>
-<p class="lede">Members at or above the minimum level can create one custom role. You can turn the feature off, set the level, control whether members can give their role to someone else, and restrict anyone who abuses it. Staff can also set or edit a role's colours and gradients below.</p>
+<div class="page-head">{{ ui.cat_icon('customroles') }}<div><h1 class="page-title">Custom Roles</h1>
+<p class="lede">Members at or above the minimum level can create one custom role. You can turn the feature off, set the level, control whether members can give their role to someone else, and restrict anyone who abuses it. Staff can also set or edit a role's colours and gradients below.</p></div></div>
 {% if not gradients_supported %}
 <p class="faint">This server doesn't have enhanced role colours (extra boosts), so Discord will only use the first colour. A second hex is still saved here and will apply if the server later gets gradients.</p>
 {% endif %}

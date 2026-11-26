@@ -2,8 +2,8 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Reports · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Reports</h1>
-<p class="lede">Members can report a message or a person with <code>.report</code> or the <strong>Report Message</strong> right-click menu. By default, reports are posted as an embed in your tickets channel. A private ticket channel is optional.</p>
+<div class="page-head">{{ ui.cat_icon('reports') }}<div><h1 class="page-title">Reports</h1>
+<p class="lede">Members can report a message or a person with <code>.report</code> or the <strong>Report Message</strong> right-click menu. By default, reports are posted as an embed in your tickets channel. A private ticket channel is optional.</p></div></div>
 
 <div class="uk-card card">
   <h2>Settings</h2>

@@ -2,8 +2,8 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Welcome · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Welcome, leave and ban messages</h1>
-<p class="lede">Greet new members, announce departures, and control what people see when someone is banned. Leave and ban messages stay off until you enable them.</p>
+<div class="page-head">{{ ui.cat_icon('welcome') }}<div><h1 class="page-title">Welcome, leave and ban messages</h1>
+<p class="lede">Greet new members, announce departures, and control what people see when someone is banned. Leave and ban messages stay off until you enable them.</p></div></div>
 
 <form method="post" class="uk-card card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

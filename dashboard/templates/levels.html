@@ -2,8 +2,8 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Levels · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Levels</h1>
-<p class="lede">Automatic roles, where level-ups are announced, the current leaderboard, and tools to add or remove XP.</p>
+<div class="page-head">{{ ui.cat_icon('levels') }}<div><h1 class="page-title">Levels</h1>
+<p class="lede">Automatic roles, where level-ups are announced, the current leaderboard, and tools to add or remove XP.</p></div></div>
 
 {% if levels_switch_ready %}
 <div class="uk-card card levels-switch {% if levels_on %}is-on{% else %}is-off{% endif %}">
