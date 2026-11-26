@@ -336,25 +336,6 @@ ACTION_VERB_SUBTEXT_EXCEPTIONS: dict[str, str] = {
 }
 
 
-def _verb_past_subtext(action: str) -> str:
-    """Return simple past tense for subtext."""
-    return ACTION_VERB_PAST_SUBTEXT.get(action, action)
-
-
-def _verb_past_with_author(action: str, author_mention: str) -> str:
-    """Return past-tense phrase with author — direct object for preposition verbs,
-    'by @author' for transitive verbs."""
-    past = ACTION_VERB_PAST_SUBTEXT.get(action, action)
-    if action in ACTION_VERB_USES_BY:
-        return f"{past} by {author_mention}"
-    return f"{past} {author_mention}"
-
-
-def _verb_past_footer(action: str) -> str:
-    """Return past participle for footer: '<name> got <verb> {count} time'."""
-    return ACTION_VERB_PAST_FOOTER.get(action, action)
-
-
 def ordinal(n: int) -> str:
     if 10 <= n % 100 <= 20:
         suffix = "th"
