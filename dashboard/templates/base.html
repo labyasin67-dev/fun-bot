@@ -4,10 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}Meowchi Cafe dashboard{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=ocean1">
+  <link rel="stylesheet" href="/static/style.css?v=ocean2">
 </head>
 <body>
   <canvas id="space-bg" aria-hidden="true"></canvas>
+{% if guild is defined %}
+{# One list drives the desktop sidebar and the phone menu, so they never drift apart. #}
+{% set nav_groups = [
+  ("Overview", [("overview", "Overview", "")]),
+  ("Moderation & Safety", [("moderation", "Moderation", "/moderation"), ("alts", "Alt detection", "/alts"), ("reports", "Reports", "/reports")]),
+  ("Roles", [("customroles", "Custom Roles", "/customroles"), ("selfroles", "Self roles", "/selfroles")]),
+  ("Community", [("levels", "Levels", "/levels"), ("welcome", "Messages", "/welcome"), ("games", "Games", "/games"), ("channels", "Channels", "/channels")]),
+  ("Creator Integration", [("youtube", "Creator Integration", "/youtube")]),
+  ("Premium & Billing", [("billing", "Billing", "/billing")]),
+] %}
+{% set active_label = namespace(text="Menu") %}
+{% for gname, items in nav_groups %}{% for key, label, path in items %}{% if active == key %}{% set active_label.text = label %}{% endif %}{% endfor %}{% endfor %}
+{% endif %}
   <div class="wrap">
     <header class="topbar">
       <a class="brand" href="{% if user %}/servers{% else %}/{% endif %}">
@@ -36,42 +49,54 @@
     </header>
     {% if guild is defined %}
     <div class="mobile-nav">
-      <label class="faint" for="panel-jump">Panel</label>
-      <select id="panel-jump" onchange="if(this.value) location.href=this.value">
-        <option value="/servers/{{ guild.id }}" {% if active=='overview' %}selected{% endif %}>Overview</option>
-        <option value="/servers/{{ guild.id }}/channels" {% if active=='channels' %}selected{% endif %}>Channels</option>
-        <option value="/servers/{{ guild.id }}/levels" {% if active=='levels' %}selected{% endif %}>Levels</option>
-        <option value="/servers/{{ guild.id }}/selfroles" {% if active=='selfroles' %}selected{% endif %}>Self roles</option>
-        <option value="/servers/{{ guild.id }}/customroles" {% if active=='customroles' %}selected{% endif %}>Custom Roles</option>
-        <option value="/servers/{{ guild.id }}/alts" {% if active=='alts' %}selected{% endif %}>Alt detection</option>
-        <option value="/servers/{{ guild.id }}/welcome" {% if active=='welcome' %}selected{% endif %}>Messages</option>
-        <option value="/servers/{{ guild.id }}/games" {% if active=='games' %}selected{% endif %}>Games</option>
-        <option value="/servers/{{ guild.id }}/moderation" {% if active=='moderation' %}selected{% endif %}>Moderation</option>
-        <option value="/servers/{{ guild.id }}/reports" {% if active=='reports' %}selected{% endif %}>Reports</option>
-        <option value="/servers/{{ guild.id }}/youtube" {% if active=='youtube' %}selected{% endif %}>Creator Integration</option>
-        <option value="/servers/{{ guild.id }}/billing" {% if active=='billing' %}selected{% endif %}>Billing</option>
-        <option value="/servers">All servers</option>
-      </select>
+      <details class="mnav" id="panel-menu">
+        <summary><span class="mnav-label">Menu</span><span class="mnav-current">{{ active_label.text }}</span></summary>
+        <nav class="mnav-body" aria-label="Server panels">
+          {% for gname, items in nav_groups %}
+          <div class="mnav-group{% for key, label, path in items %}{% if active == key %} has-active{% endif %}{% endfor %}">
+            <div class="mnav-title">{{ gname }}</div>
+            {% for key, label, path in items %}
+            <a href="/servers/{{ guild.id }}{{ path }}" class="{% if active == key %}active{% endif %}">{{ label }}</a>
+            {% endfor %}
+          </div>
+          {% endfor %}
+          {% if is_admin %}
+          <div class="mnav-group">
+            <div class="mnav-title">Admin</div>
+            <a href="/admin">Admin</a>
+          </div>
+          {% endif %}
+          <div class="mnav-group">
+            <div class="mnav-title">Servers</div>
+            <a href="/servers">All servers</a>
+          </div>
+        </nav>
+      </details>
     </div>
     {% endif %}
     <div class="layout">
       {% if guild is defined %}
       <aside class="sidebar">
         <h2>{{ guild.name }}</h2>
-        <nav class="nav">
-          <a href="/servers/{{ guild.id }}" class="{% if active=='overview' %}active{% endif %}">Overview</a>
-          <a href="/servers/{{ guild.id }}/channels" class="{% if active=='channels' %}active{% endif %}">Channels</a>
-          <a href="/servers/{{ guild.id }}/levels" class="{% if active=='levels' %}active{% endif %}">Levels</a>
-          <a href="/servers/{{ guild.id }}/selfroles" class="{% if active=='selfroles' %}active{% endif %}">Self roles</a>
-          <a href="/servers/{{ guild.id }}/customroles" class="{% if active=='customroles' %}active{% endif %}">Custom Roles</a>
-          <a href="/servers/{{ guild.id }}/alts" class="{% if active=='alts' %}active{% endif %}">Alt detection</a>
-          <a href="/servers/{{ guild.id }}/welcome" class="{% if active=='welcome' %}active{% endif %}">Messages</a>
-          <a href="/servers/{{ guild.id }}/games" class="{% if active=='games' %}active{% endif %}">Games</a>
-          <a href="/servers/{{ guild.id }}/moderation" class="{% if active=='moderation' %}active{% endif %}">Moderation</a>
-          <a href="/servers/{{ guild.id }}/reports" class="{% if active=='reports' %}active{% endif %}">Reports</a>
-          <a href="/servers/{{ guild.id }}/youtube" class="{% if active=='youtube' %}active{% endif %}">Creator Integration</a>
-          <a href="/servers/{{ guild.id }}/billing" class="{% if active=='billing' %}active{% endif %}">Billing</a>
-          <a href="/servers">← All servers</a>
+        <nav class="nav" aria-label="Server panels">
+          {% for gname, items in nav_groups %}
+          <div class="nav-group">
+            <div class="nav-title">{{ gname }}</div>
+            {% for key, label, path in items %}
+            <a href="/servers/{{ guild.id }}{{ path }}" class="{% if active == key %}active{% endif %}">{{ label }}</a>
+            {% endfor %}
+          </div>
+          {% endfor %}
+          {% if is_admin %}
+          <div class="nav-group">
+            <div class="nav-title">Admin</div>
+            <a href="/admin">Admin</a>
+          </div>
+          {% endif %}
+          <div class="nav-group">
+            <div class="nav-title">Servers</div>
+            <a href="/servers">← All servers</a>
+          </div>
         </nav>
       </aside>
       {% endif %}
@@ -86,13 +111,20 @@
       </main>
     </div>
     <footer class="site-footer">
-      <a href="/contact">Contact</a>
-      <span class="faint">|</span>
-      <a href="/privacy">Privacy</a>
-      <span class="faint">|</span>
-      <a href="/terms">Terms</a>
-      <span class="faint">|</span>
-      Made by Whiskey/WarRaven
+      <nav class="footer-groups" aria-label="Site">
+        <div class="footer-col">
+          <div class="footer-title">Product</div>
+          <a href="/pricing">Pricing</a>
+          <a href="/servers">Your servers</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-title">Legal &amp; contact</div>
+          <a href="/contact">Contact</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </div>
+      </nav>
+      <div class="footer-credit">Made by Whiskey/WarRaven</div>
     </footer>
   </div>
   <script src="/static/space.js" defer></script>
