@@ -5,29 +5,29 @@
 <h1>Moderation</h1>
 <p class="lede">Review cases, take action, and manage warnings. Actions use the same rules as the bot commands, including the role hierarchy.</p>
 
-<div class="card">
+<div class="uk-card card">
   <h2>Settings</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="settings">
     <div class="field">
-      <label>Mod-log channel</label>
+      <label class="uk-form-label">Mod-log channel</label>
       {{ chansel('modlog_channel', grouped, selected=modlog_id) }}
     </div>
-    <button class="btn" type="submit">Save</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Save</button>
   </form>
   <p class="faint">Ban, kick, mute, warn and purge are written here and to this channel when one is set. Alt detection has its own log under Alt detection.</p>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Take action</h2>
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="act">
     <div class="row">
       <div class="field" style="flex:0 0 160px">
-        <label>Action</label>
-        <select name="mod_action" required>
+        <label class="uk-form-label">Action</label>
+        <select class="uk-select" name="mod_action" required>
           <option value="ban">Ban</option>
           <option value="unban">Unban</option>
           <option value="kick">Kick</option>
@@ -36,36 +36,36 @@
         </select>
       </div>
       <div class="field">
-        <label>Member</label>
-        <input type="text" name="member" placeholder="User ID, @mention, or username" required value="{{ looked_up_id or '' }}">
+        <label class="uk-form-label">Member</label>
+        <input class="uk-input" type="text" name="member" placeholder="User ID, @mention, or username" required value="{{ looked_up_id or '' }}">
       </div>
       <div class="field" style="flex:0 0 140px">
-        <label>Duration</label>
-        <input type="text" name="duration" placeholder="10m, 1h, 1d" value="">
+        <label class="uk-form-label">Duration</label>
+        <input class="uk-input" type="text" name="duration" placeholder="10m, 1h, 1d" value="">
       </div>
     </div>
     <div class="field">
-      <label>Reason</label>
-      <input type="text" name="reason" maxlength="500" placeholder="Optional reason">
+      <label class="uk-form-label">Reason</label>
+      <input class="uk-input" type="text" name="reason" maxlength="500" placeholder="Optional reason">
     </div>
-    <button class="btn" type="submit">Apply</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Apply</button>
   </form>
   <p class="faint">Mutes need a duration such as 10m, 1h or 1d (max 28 days). Unban works with a user ID even if they already left. Bans send the custom ban DM if you enabled it.</p>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Warnings for a member</h2>
   <form method="get" class="row">
     <div class="field">
-      <label>Member</label>
-      <input type="text" name="warns" placeholder="User ID, @mention, or username" value="{{ warns_query or '' }}">
+      <label class="uk-form-label">Member</label>
+      <input class="uk-input" type="text" name="warns" placeholder="User ID, @mention, or username" value="{{ warns_query or '' }}">
     </div>
-    <button class="btn" type="submit">View warnings</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">View warnings</button>
   </form>
   {% if warns_target %}
     <p style="margin-top:12px">Showing warnings for <strong>{{ warns_target }}</strong> ({{ warns_user_id }}).</p>
     {% if member_warns %}
-    <table class="table">
+    <table class="uk-table uk-table-divider uk-table-hover table">
       <tr><th>When</th><th>By</th><th>Reason</th></tr>
       {% for row in member_warns %}
         <tr>
@@ -79,7 +79,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="action" value="clearwarns">
       <input type="hidden" name="user_id" value="{{ warns_user_id }}">
-      <button class="btn danger" type="submit">Clear all warnings</button>
+      <button class="uk-btn uk-btn-destructive btn danger" type="submit">Clear all warnings</button>
     </form>
     {% else %}
       <p class="muted">This member has no warnings.</p>
@@ -87,11 +87,11 @@
   {% endif %}
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Moderation log</h2>
   {% if logs %}
   <div class="table-wrap">
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>When</th><th>Action</th><th>Member</th><th>Staff</th><th>Detail</th></tr>
     {% for row in logs %}
       <tr>
@@ -109,11 +109,11 @@
   {% endif %}
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Recent warnings</h2>
   {% if warns %}
   <div class="table-wrap">
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>When</th><th>User</th><th>By</th><th>Reason</th></tr>
     {% for row in warns %}
       <tr>

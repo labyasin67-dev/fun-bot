@@ -1,5 +1,5 @@
 {% macro chansel(name, grouped, selected=None, allow_none=True, multiple=False, empty_label='Not set') -%}
-<select name="{{ name }}" {% if multiple %}multiple size="8"{% endif %}>
+<select class="uk-select" name="{{ name }}" {% if multiple %}multiple size="8"{% endif %}>
   {% if allow_none and not multiple %}<option value="">{{ empty_label }}</option>{% endif %}
   {% for label, channels in grouped %}
     <optgroup label="{{ label }}">

@@ -1,22 +1,22 @@
 {% from "_macros.html" import chansel %}
 {% if creator_ready %}
-<div class="card creator-add">
+<div class="uk-card card creator-add">
   <h2>YouTube upload alerts</h2>
   <p class="faint">Paste a channel link, @handle or channel ID. No YouTube login is needed. New uploads are checked about every 5 minutes, and videos that already exist are never posted.</p>
   <form method="post" action="/servers/{{ guild.id }}/creator" class="creator-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="add">
     <div class="field">
-      <label>YouTube channel</label>
-      <input type="text" name="link" placeholder="https://youtube.com/@name, @name or UC… channel ID" required maxlength="300">
+      <label class="uk-form-label">YouTube channel</label>
+      <input class="uk-input" type="text" name="link" placeholder="https://youtube.com/@name, @name or UC… channel ID" required maxlength="300">
     </div>
     <div class="field">
-      <label>Post in</label>
+      <label class="uk-form-label">Post in</label>
       {{ chansel('discord_channel', creator_grouped, allow_none=True, empty_label='Choose a channel') }}
     </div>
     <div class="field">
-      <label>Ping</label>
-      <select name="ping_type">
+      <label class="uk-form-label">Ping</label>
+      <select class="uk-select" name="ping_type">
         <option value="none" selected>None</option>
         <option value="everyone">@everyone</option>
         <option value="here">@here</option>
@@ -24,27 +24,27 @@
       </select>
     </div>
     <div class="field">
-      <label>Role (only if “A role…”)</label>
-      <select name="ping_role">
+      <label class="uk-form-label">Role (only if “A role…”)</label>
+      <select class="uk-select" name="ping_role">
         <option value="">—</option>
         {% for r in creator_roles %}<option value="{{ r.id }}">@{{ r.name }}</option>{% endfor %}
       </select>
     </div>
     <div class="field creator-wide">
-      <label>Message (optional)</label>
-      <textarea name="message" maxlength="1500" rows="3" placeholder="{{ creator_default_message }}"></textarea>
+      <label class="uk-form-label">Message (optional)</label>
+      <textarea class="uk-textarea" name="message" maxlength="1500" rows="3" placeholder="{{ creator_default_message }}"></textarea>
       <span class="faint">Placeholders: {{ creator_placeholders }}. Leave blank for the default. The video link is always included.</span>
     </div>
-    <button class="btn" type="submit">Add alert</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Add alert</button>
   </form>
 </div>
 
 <div class="creator-list">
   {% if not creator_cards %}
-  <div class="card" style="margin-top:14px"><p class="muted">No alerts yet. Add a channel above.</p></div>
+  <div class="uk-card card" style="margin-top:14px"><p class="muted">No alerts yet. Add a channel above.</p></div>
   {% endif %}
   {% for a in creator_cards %}
-  <div class="card creator-card {% if not a.enabled %}is-off{% endif %}" style="margin-top:14px">
+  <div class="uk-card card creator-card {% if not a.enabled %}is-off{% endif %}" style="margin-top:14px">
     <div class="creator-head">
       <div class="creator-title">
         <strong>{{ a.name }}</strong>
@@ -63,17 +63,17 @@
       <form method="post" action="/servers/{{ guild.id }}/creator">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="toggle"><input type="hidden" name="num" value="{{ a.num }}">
-        <button class="btn secondary" type="submit">{% if a.enabled %}Turn off{% else %}Turn on{% endif %}</button>
+        <button class="uk-btn uk-btn-secondary btn secondary" type="submit">{% if a.enabled %}Turn off{% else %}Turn on{% endif %}</button>
       </form>
       <form method="post" action="/servers/{{ guild.id }}/creator">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="test"><input type="hidden" name="num" value="{{ a.num }}">
-        <button class="btn secondary" type="submit">Send test</button>
+        <button class="uk-btn uk-btn-secondary btn secondary" type="submit">Send test</button>
       </form>
       <form method="post" action="/servers/{{ guild.id }}/creator" onsubmit="return confirm('Remove this alert?');">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="remove"><input type="hidden" name="num" value="{{ a.num }}">
-        <button class="btn danger" type="submit">Remove</button>
+        <button class="uk-btn uk-btn-destructive btn danger" type="submit">Remove</button>
       </form>
     </div>
     <details class="creator-edit">
@@ -82,30 +82,30 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="edit"><input type="hidden" name="num" value="{{ a.num }}">
         <div class="field">
-          <label>Post in</label>
+          <label class="uk-form-label">Post in</label>
           {{ chansel('discord_channel', creator_grouped, selected=a.channel_id, allow_none=False) }}
         </div>
         <div class="field">
-          <label>Ping</label>
-          <select name="ping_type">
+          <label class="uk-form-label">Ping</label>
+          <select class="uk-select" name="ping_type">
             {% for v, l in [('none','None'),('everyone','@everyone'),('here','@here'),('role','A role…')] %}
             <option value="{{ v }}" {% if a.ping_type == v %}selected{% endif %}>{{ l }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="field">
-          <label>Role</label>
-          <select name="ping_role">
+          <label class="uk-form-label">Role</label>
+          <select class="uk-select" name="ping_role">
             <option value="">—</option>
             {% for r in creator_roles %}<option value="{{ r.id }}" {% if a.role_id == r.id %}selected{% endif %}>@{{ r.name }}</option>{% endfor %}
           </select>
         </div>
         <div class="field creator-wide">
-          <label>Message</label>
-          <textarea name="message" maxlength="1500" rows="3" placeholder="{{ creator_default_message }}">{{ a.message }}</textarea>
+          <label class="uk-form-label">Message</label>
+          <textarea class="uk-textarea" name="message" maxlength="1500" rows="3" placeholder="{{ creator_default_message }}">{{ a.message }}</textarea>
           <span class="faint">{{ creator_placeholders }}. Clear it to use the default.</span>
         </div>
-        <button class="btn" type="submit">Save</button>
+        <button class="uk-btn uk-btn-primary btn" type="submit">Save</button>
       </form>
     </details>
   </div>

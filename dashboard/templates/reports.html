@@ -5,36 +5,36 @@
 <h1>Reports</h1>
 <p class="lede">Members can report a message or a person with <code>.report</code> or the <strong>Report Message</strong> right-click menu. By default, reports are posted as an embed in your tickets channel. A private ticket channel is optional.</p>
 
-<div class="card">
+<div class="uk-card card">
   <h2>Settings</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="settings">
     <div class="field" style="flex:0 0 140px">
-      <label>Feature</label>
-      <select name="enabled">
+      <label class="uk-form-label">Feature</label>
+      <select class="uk-select" name="enabled">
         <option value="1" {% if enabled %}selected{% endif %}>On</option>
         <option value="0" {% if not enabled %}selected{% endif %}>Off</option>
       </select>
     </div>
     <div class="field">
-      <label>Delivery</label>
-      <select name="mode">
+      <label class="uk-form-label">Delivery</label>
+      <select class="uk-select" name="mode">
         <option value="channel" {% if mode != 'ticket' %}selected{% endif %}>Tickets channel (default)</option>
         <option value="ticket" {% if mode == 'ticket' %}selected{% endif %}>Private ticket channel</option>
       </select>
     </div>
     <div class="field">
-      <label>Tickets channel</label>
+      <label class="uk-form-label">Tickets channel</label>
       {{ chansel('alert_channel_id', grouped, selected=alert_channel_id, empty_label='Not set') }}
     </div>
     <div class="field">
-      <label>Closed tickets channel</label>
+      <label class="uk-form-label">Closed tickets channel</label>
       {{ chansel('closed_channel_id', grouped, selected=closed_channel_id, empty_label='Not set') }}
     </div>
     <div class="field">
-      <label>Ticket category (optional)</label>
-      <select name="category_id">
+      <label class="uk-form-label">Ticket category (optional)</label>
+      <select class="uk-select" name="category_id">
         <option value="">No category</option>
         {% for cat in categories %}
           <option value="{{ cat.id }}" {% if category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
@@ -42,15 +42,15 @@
       </select>
     </div>
     <div class="field">
-      <label>Staff role</label>
-      <select name="staff_role_id">
+      <label class="uk-form-label">Staff role</label>
+      <select class="uk-select" name="staff_role_id">
         <option value="">Don't ping a role</option>
         {% for role in assignable %}
           <option value="{{ role.id }}" {% if staff_role_id == role.id %}selected{% endif %}>@{{ role.name }}</option>
         {% endfor %}
       </select>
     </div>
-    <button class="btn" type="submit">Save</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Save</button>
   </form>
   <p class="faint">When this is off, <code>.report</code> tells members that reports are disabled. New reports go to the tickets channel (or a ticket under the category, in ticket mode). When a report is approved, denied or closed, a summary is posted to the closed tickets channel and the original is removed. Only the staff role is pinged for new reports. Decision reasons are sent to the reporter by DM.</p>
 </div>
@@ -77,10 +77,10 @@
 {%- endmacro %}
 
 {% macro report_section(title, status, items, count, page, pages, page_key) %}
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>{{ title }} <span class="pill">{{ count }}</span></h2>
   {% if items %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr>
       <th>#</th>
       <th>Reporter</th>
@@ -114,15 +114,15 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="approve">
             <input type="hidden" name="ticket_id" value="{{ item.id }}">
-            <input type="text" name="reason" maxlength="500" placeholder="Reason (optional)" style="width:140px">
-            <button class="btn green small" type="submit">Approve</button>
+            <input class="uk-input" type="text" name="reason" maxlength="500" placeholder="Reason (optional)" style="width:140px">
+            <button class="uk-btn uk-btn-primary uk-btn-sm btn green small" type="submit">Approve</button>
           </form>
           <form method="post" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="deny">
             <input type="hidden" name="ticket_id" value="{{ item.id }}">
-            <input type="text" name="reason" maxlength="500" placeholder="Reason (optional)" style="width:140px">
-            <button class="btn danger small" type="submit">Deny</button>
+            <input class="uk-input" type="text" name="reason" maxlength="500" placeholder="Reason (optional)" style="width:140px">
+            <button class="uk-btn uk-btn-destructive uk-btn-sm btn danger small" type="submit">Deny</button>
           </form>
         </td>
         {% endif %}
@@ -149,9 +149,9 @@
             <input type="hidden" name="action" value="note">
             <input type="hidden" name="ticket_id" value="{{ item.id }}">
             <div class="field" style="flex:1">
-              <input type="text" name="body" maxlength="2000" placeholder="Add a private comment (only you can see this)" required>
+              <input class="uk-input" type="text" name="body" maxlength="2000" placeholder="Add a private comment (only you can see this)" required>
             </div>
-            <button class="btn secondary" type="submit">Add comment</button>
+            <button class="uk-btn uk-btn-secondary btn secondary" type="submit">Add comment</button>
           </form>
         </td>
       </tr>
@@ -172,23 +172,23 @@
 {{ report_section("Closed", "closed", closed_items, closed_count, closed_page, closed_pages, "closed") }}
 {% endif %}
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Blocked reporters</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="block">
     <div class="field">
-      <label>Discord user ID</label>
-      <input type="text" name="user_id" placeholder="User ID or @mention" required>
+      <label class="uk-form-label">Discord user ID</label>
+      <input class="uk-input" type="text" name="user_id" placeholder="User ID or @mention" required>
     </div>
     <div class="field">
-      <label>Reason (optional)</label>
-      <input type="text" name="reason" maxlength="200">
+      <label class="uk-form-label">Reason (optional)</label>
+      <input class="uk-input" type="text" name="reason" maxlength="200">
     </div>
-    <button class="btn danger" type="submit">Block</button>
+    <button class="uk-btn uk-btn-destructive btn danger" type="submit">Block</button>
   </form>
   {% if blocks %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>Member</th><th>Reason</th><th></th></tr>
     {% for item in blocks %}
       <tr>
@@ -199,7 +199,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="unblock">
             <input type="hidden" name="user_id" value="{{ item.user_id }}">
-            <button class="btn" type="submit">Unblock</button>
+            <button class="uk-btn uk-btn-primary btn" type="submit">Unblock</button>
           </form>
         </td>
       </tr>

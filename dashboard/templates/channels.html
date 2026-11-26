@@ -4,7 +4,7 @@
 {% block body %}
 <h1>Channels</h1>
 <p class="lede">Point each feature at a channel. Games can use more than one. Changes apply immediately, without a restart.</p>
-<form method="post" class="card">
+<form method="post" class="uk-card card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   {% for key, label in features.items() %}
     <div class="field">
@@ -17,6 +17,6 @@
       {% endif %}
     </div>
   {% endfor %}
-  <button class="btn" type="submit">Save assignments</button>
+  <button class="uk-btn uk-btn-primary btn" type="submit">Save assignments</button>
 </form>
 {% endblock %}

@@ -46,6 +46,8 @@ from dashboard.auth import (
 )
 
 TEMPLATES = Jinja2Templates(directory=str(ROOT / "templates"))
+from dashboard.ui import install as _install_ui  # FastHTML/MonsterUI site shell
+_install_ui(TEMPLATES.env)
 ALT_ACTIONS = ("none", "log", "timeout", "kick", "quarantine")
 
 

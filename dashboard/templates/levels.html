@@ -6,77 +6,77 @@
 <p class="lede">Automatic roles, where level-ups are announced, the current leaderboard, and tools to add or remove XP.</p>
 
 {% if levels_switch_ready %}
-<div class="card levels-switch {% if levels_on %}is-on{% else %}is-off{% endif %}">
+<div class="uk-card card levels-switch {% if levels_on %}is-on{% else %}is-off{% endif %}">
   <h2>Levelling <span class="pill {% if levels_on %}pill-on{% else %}pill-off{% endif %}">{% if levels_on %}On{% else %}Off{% endif %}</span></h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="levels_switch">
     <input type="hidden" name="levels_state" value="{% if levels_on %}off{% else %}on{% endif %}">
     {% if levels_on %}
-    <button class="btn danger" type="submit">Turn levelling off</button>
+    <button class="uk-btn uk-btn-destructive btn danger" type="submit">Turn levelling off</button>
     {% else %}
-    <button class="btn" type="submit">Turn levelling on</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Turn levelling on</button>
     {% endif %}
   </form>
   <p class="faint">{% if levels_on %}Members earn XP from chat and voice. Turn this off to stop all XP, level-up messages and level roles, and to avoid clashing with another levelling bot. Existing XP is kept.{% else %}No XP is earned, no level-up messages are sent, and rank and leaderboard commands say levelling is off. Existing XP and settings below are kept for when you turn it back on.{% endif %}</p>
 </div>
 
 {% endif %}
-<div class="card"{% if levels_switch_ready %} style="margin-top:14px"{% endif %}>
+<div class="uk-card card"{% if levels_switch_ready %} style="margin-top:14px"{% endif %}>
   <h2>Level-up channel</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="channel">
     <div class="field">
-      <label>Announce level-ups in</label>
+      <label class="uk-form-label">Announce level-ups in</label>
       {{ chansel('levelup_channel', grouped, selected=levelup_id) }}
     </div>
-    <button class="btn" type="submit">Save</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Save</button>
   </form>
   <p class="faint">If not set, chat level-ups are posted in the channel where they happened.</p>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Add or remove XP</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="xp">
     <div class="field">
-      <label>Member</label>
-      <input type="text" name="member" placeholder="User ID, @mention, or username" required>
+      <label class="uk-form-label">Member</label>
+      <input class="uk-input" type="text" name="member" placeholder="User ID, @mention, or username" required>
     </div>
     <div class="field" style="flex:0 0 140px">
-      <label>Amount</label>
-      <input type="number" name="amount" min="1" max="1000000" required>
+      <label class="uk-form-label">Amount</label>
+      <input class="uk-input" type="number" name="amount" min="1" max="1000000" required>
     </div>
-    <button class="btn" type="submit" name="xp_op" value="add">Add XP</button>
-    <button class="btn danger" type="submit" name="xp_op" value="remove">Remove XP</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit" name="xp_op" value="add">Add XP</button>
+    <button class="uk-btn uk-btn-destructive btn danger" type="submit" name="xp_op" value="remove">Remove XP</button>
   </form>
   <p class="faint">Works like <code>.addxp</code> and <code>.removexp</code>: 1 to 1,000,000 XP, and XP never goes below 0.</p>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Level roles</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="add">
     <div class="field" style="flex:0 0 120px">
-      <label>Level</label>
-      <input type="number" name="level" min="1" max="1000" required>
+      <label class="uk-form-label">Level</label>
+      <input class="uk-input" type="number" name="level" min="1" max="1000" required>
     </div>
     <div class="field">
-      <label>Role</label>
-      <select name="role_id" required>
+      <label class="uk-form-label">Role</label>
+      <select class="uk-select" name="role_id" required>
         <option value="">Select a role</option>
         {% for role in assignable %}
           <option value="{{ role.id }}">@{{ role.name }}</option>
         {% endfor %}
       </select>
     </div>
-    <button class="btn" type="submit">Add</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Add</button>
   </form>
   {% if role_rows %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>Level</th><th>Role</th><th></th></tr>
     {% for item in role_rows %}
       <tr>
@@ -87,7 +87,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="remove">
             <input type="hidden" name="level" value="{{ item.level }}">
-            <button class="btn danger" type="submit">Remove</button>
+            <button class="uk-btn uk-btn-destructive btn danger" type="submit">Remove</button>
           </form>
         </td>
       </tr>
@@ -98,10 +98,10 @@
   {% endif %}
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Leaderboard</h2>
   {% if board %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>#</th><th>Member</th><th>Level</th><th>XP</th></tr>
     {% for row in board %}
       <tr><td data-label="#">{{ row.rank }}</td><td data-label="Member">{{ row.name }}</td><td data-label="Level">{{ row.level }}</td><td data-label="XP">{{ row.xp }}</td></tr>

@@ -8,17 +8,17 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="plan" value="{{ plan }}">
     <div class="field">
-      <label>Server</label>
-      <select name="guild_id" required>
+      <label class="uk-form-label">Server</label>
+      <select class="uk-select" name="guild_id" required>
         {% for s in servers %}
           <option value="{{ s.id }}">{{ s.name }} ({{ s.id }})</option>
         {% endfor %}
       </select>
     </div>
-    <button class="btn" type="submit">Continue to Stripe</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Continue to Stripe</button>
   </form>
 {% else %}
   <p class="muted">I don't see any servers where you have Manage Server and the bot is already a member. Invite the bot first, then come back.</p>
-  <a class="btn" href="{{ invite_url }}">Invite Meowchi Cafe</a>
+  <a class="uk-btn uk-btn-primary btn" href="{{ invite_url }}">Invite Meowchi Cafe</a>
 {% endif %}
 {% endblock %}

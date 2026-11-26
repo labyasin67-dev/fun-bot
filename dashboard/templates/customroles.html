@@ -8,47 +8,47 @@
 <p class="faint">This server doesn't have enhanced role colours (extra boosts), so Discord will only use the first colour. A second hex is still saved here and will apply if the server later gets gradients.</p>
 {% endif %}
 
-<div class="card">
+<div class="uk-card card">
   <h2>Settings</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="settings">
     <div class="field" style="flex:0 0 140px">
-      <label>Feature</label>
-      <select name="enabled">
+      <label class="uk-form-label">Feature</label>
+      <select class="uk-select" name="enabled">
         <option value="1" {% if enabled %}selected{% endif %}>On</option>
         <option value="0" {% if not enabled %}selected{% endif %}>Off</option>
       </select>
     </div>
     <div class="field" style="flex:0 0 140px">
-      <label>Minimum level</label>
-      <input type="number" name="min_level" min="0" max="1000" value="{{ min_level }}" required>
+      <label class="uk-form-label">Minimum level</label>
+      <input class="uk-input" type="number" name="min_level" min="0" max="1000" value="{{ min_level }}" required>
     </div>
     <div class="field" style="flex:0 0 160px">
-      <label>.role give</label>
-      <select name="give_enabled">
+      <label class="uk-form-label">.role give</label>
+      <select class="uk-select" name="give_enabled">
         <option value="1" {% if give_enabled %}selected{% endif %}>On</option>
         <option value="0" {% if not give_enabled %}selected{% endif %}>Off</option>
       </select>
     </div>
     <div class="field">
-      <label>Anchor role (optional)</label>
-      <select name="anchor_role_id">
+      <label class="uk-form-label">Anchor role (optional)</label>
+      <select class="uk-select" name="anchor_role_id">
         <option value="">Just below the bot's highest role</option>
         {% for role in assignable %}
           <option value="{{ role.id }}" {% if anchor_role_id == role.id %}selected{% endif %}>@{{ role.name }}</option>
         {% endfor %}
       </select>
     </div>
-    <button class="btn" type="submit">Save</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Save</button>
   </form>
   <p class="faint">New custom roles are placed just below the bot's highest role, or just below the anchor role if you pick one. They have no permissions and never ping. When .role give is on, a member can hand their custom role to someone else, including members who already own a custom role. A member can hold their own role plus roles given to them. The same role can't be given twice. The owner can take it back with .role take. Staff with Manage Roles can give any custom role, even if this toggle is off.</p>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Current custom roles</h2>
   {% if roles %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>Owner</th><th>Held by</th><th>Role</th><th colspan="2">Colours / gradient</th><th></th></tr>
     {% for item in roles %}
       <tr>
@@ -63,20 +63,20 @@
             <div class="grad-preview" data-preview style="height:22px;border-radius:6px;margin-bottom:8px;border:1px solid var(--border);background:{% if item.colour2 %}linear-gradient(90deg, {{ item.colour }}, {{ item.colour2 }}){% elif item.colour %}{{ item.colour }}{% else %}#808080{% endif %}"></div>
             <div class="row" style="gap:8px;align-items:flex-end;margin:0">
               <div class="field" style="flex:1;min-width:120px">
-                <label>Colour 1</label>
+                <label class="uk-form-label">Colour 1</label>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <input type="color" data-picker="1" value="{{ item.colour or '#5865f2' }}" aria-label="Colour 1 picker">
-                  <input type="text" name="colour" data-hex="1" value="{{ item.colour or '' }}" placeholder="#ff0000" maxlength="8" style="flex:1">
+                  <input class="uk-input" type="color" data-picker="1" value="{{ item.colour or '#5865f2' }}" aria-label="Colour 1 picker">
+                  <input class="uk-input" type="text" name="colour" data-hex="1" value="{{ item.colour or '' }}" placeholder="#ff0000" maxlength="8" style="flex:1">
                 </div>
               </div>
               <div class="field" style="flex:1;min-width:120px">
-                <label>Colour 2 (gradient)</label>
+                <label class="uk-form-label">Colour 2 (gradient)</label>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <input type="color" data-picker="2" value="{{ item.colour2 or item.colour or '#0000ff' }}" aria-label="Colour 2 picker">
-                  <input type="text" name="colour2" data-hex="2" value="{{ item.colour2 or '' }}" placeholder="#0000ff" maxlength="8" style="flex:1">
+                  <input class="uk-input" type="color" data-picker="2" value="{{ item.colour2 or item.colour or '#0000ff' }}" aria-label="Colour 2 picker">
+                  <input class="uk-input" type="text" name="colour2" data-hex="2" value="{{ item.colour2 or '' }}" placeholder="#0000ff" maxlength="8" style="flex:1">
                 </div>
               </div>
-              <button class="btn" type="submit">Save colours</button>
+              <button class="uk-btn uk-btn-primary btn" type="submit">Save colours</button>
             </div>
           </form>
           <div class="muted" style="margin-top:4px">Created {{ item.created }}</div>
@@ -86,13 +86,13 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="remove">
             <input type="hidden" name="user_id" value="{{ item.user_id }}">
-            <button class="btn danger" type="submit">Remove</button>
+            <button class="uk-btn uk-btn-destructive btn danger" type="submit">Remove</button>
           </form>
           <form method="post" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="restrict">
             <input type="hidden" name="user_id" value="{{ item.user_id }}">
-            <button class="btn danger" type="submit">Restrict</button>
+            <button class="uk-btn uk-btn-destructive btn danger" type="submit">Restrict</button>
           </form>
         </td>
       </tr>
@@ -103,28 +103,28 @@
   {% endif %}
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Restrict a member</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="restrict">
     <div class="field">
-      <label>Discord user ID</label>
-      <input type="text" name="user_id" placeholder="User ID or @mention" required>
+      <label class="uk-form-label">Discord user ID</label>
+      <input class="uk-input" type="text" name="user_id" placeholder="User ID or @mention" required>
     </div>
     <div class="field">
-      <label>Reason (optional)</label>
-      <input type="text" name="reason" maxlength="200" placeholder="Why they're being restricted">
+      <label class="uk-form-label">Reason (optional)</label>
+      <input class="uk-input" type="text" name="reason" maxlength="200" placeholder="Why they're being restricted">
     </div>
-    <button class="btn danger" type="submit">Restrict</button>
+    <button class="uk-btn uk-btn-destructive btn danger" type="submit">Restrict</button>
   </form>
   <p class="faint">This deletes their custom role if they have one, and stops them creating another.</p>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Restricted members</h2>
   {% if restrictions %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>Member</th><th>Reason</th><th>By</th><th>When</th><th></th></tr>
     {% for item in restrictions %}
       <tr>
@@ -137,7 +137,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="unrestrict">
             <input type="hidden" name="user_id" value="{{ item.user_id }}">
-            <button class="btn" type="submit">Unrestrict</button>
+            <button class="uk-btn uk-btn-primary btn" type="submit">Unrestrict</button>
           </form>
         </td>
       </tr>
@@ -148,24 +148,24 @@
   {% endif %}
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Block from .role give</h2>
   <p class="faint">This only stops a member from giving their custom role away. It is separate from a full restriction, which also blocks creating or receiving a custom role.</p>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="give_block">
     <div class="field">
-      <label>Discord user ID</label>
-      <input type="text" name="user_id" placeholder="User ID or @mention" required>
+      <label class="uk-form-label">Discord user ID</label>
+      <input class="uk-input" type="text" name="user_id" placeholder="User ID or @mention" required>
     </div>
     <div class="field">
-      <label>Reason (optional)</label>
-      <input type="text" name="reason" maxlength="200" placeholder="Why they're blocked from giving">
+      <label class="uk-form-label">Reason (optional)</label>
+      <input class="uk-input" type="text" name="reason" maxlength="200" placeholder="Why they're blocked from giving">
     </div>
-    <button class="btn danger" type="submit">Block give</button>
+    <button class="uk-btn uk-btn-destructive btn danger" type="submit">Block give</button>
   </form>
   {% if give_blocks %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>Member</th><th>Reason</th><th>By</th><th>When</th><th></th></tr>
     {% for item in give_blocks %}
       <tr>
@@ -178,7 +178,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="give_unblock">
             <input type="hidden" name="user_id" value="{{ item.user_id }}">
-            <button class="btn" type="submit">Allow give</button>
+            <button class="uk-btn uk-btn-primary btn" type="submit">Allow give</button>
           </form>
         </td>
       </tr>

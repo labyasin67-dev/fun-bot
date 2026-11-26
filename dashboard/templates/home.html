@@ -2,13 +2,13 @@
 {% block title %}Meowchi Cafe dashboard{% endblock %}
 {% block body %}
 <div class="hero">
-  <div class="card">
+  <div class="uk-card card">
     <h1>Manage your servers from one place</h1>
     <p class="lede">Assign channels, tweak levels and welcome messages, control games, and review alt-detection — all without digging through slash commands. Built for phones as well as desktops.</p>
     {% if login_disabled or not oauth_ready %}
       <p class="muted">Login is not configured on this instance yet. Set <code>DISCORD_CLIENT_SECRET</code>, <code>DASHBOARD_URL</code>, and <code>SESSION_SECRET</code>, and add the redirect URL in the Discord Developer Portal under OAuth2 → Redirects.</p>
     {% else %}
-      <a class="btn" href="/login">Log in with Discord</a>
+      <a class="uk-btn uk-btn-primary btn" href="/login">Log in with Discord</a>
     {% endif %}
   </div>
 </div>

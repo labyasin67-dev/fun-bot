@@ -4,10 +4,10 @@
 <h1>Owner admin</h1>
 <p class="lede">Servers the bot is in, Stripe subscriptions, and manual Premium grants.</p>
 
-<div class="card">
+<div class="uk-card card">
   <h2>Servers</h2>
   <div class="table-wrap">
-    <table class="table">
+    <table class="uk-table uk-table-divider uk-table-hover table">
       <tr><th>Server</th><th>ID</th><th>Status</th><th>Renewal</th></tr>
       {% for row in servers %}
         <tr>
@@ -24,53 +24,53 @@
   </div>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Grant Premium to a server</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="grant_guild">
     <div class="field">
-      <label>Guild ID</label>
-      <input type="text" name="guild_id" inputmode="numeric" required>
+      <label class="uk-form-label">Guild ID</label>
+      <input class="uk-input" type="text" name="guild_id" inputmode="numeric" required>
     </div>
     <div class="field">
-      <label>Until (leave blank for lifetime)</label>
-      <input type="date" name="until">
+      <label class="uk-form-label">Until (leave blank for lifetime)</label>
+      <input class="uk-input" type="date" name="until">
     </div>
     <div class="field">
-      <label>Note</label>
-      <input type="text" name="note" placeholder="optional">
+      <label class="uk-form-label">Note</label>
+      <input class="uk-input" type="text" name="note" placeholder="optional">
     </div>
-    <button class="btn" type="submit">Grant</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Grant</button>
   </form>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Grant Premium by user (owned servers)</h2>
   <p class="faint">Any server where this Discord user is the <strong>server owner</strong> is treated as Premium.</p>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="grant_user">
     <div class="field">
-      <label>Discord user ID</label>
-      <input type="text" name="user_id" inputmode="numeric" required>
+      <label class="uk-form-label">Discord user ID</label>
+      <input class="uk-input" type="text" name="user_id" inputmode="numeric" required>
     </div>
     <div class="field">
-      <label>Until (leave blank for lifetime)</label>
-      <input type="date" name="until">
+      <label class="uk-form-label">Until (leave blank for lifetime)</label>
+      <input class="uk-input" type="date" name="until">
     </div>
     <div class="field">
-      <label>Note</label>
-      <input type="text" name="note" placeholder="optional">
+      <label class="uk-form-label">Note</label>
+      <input class="uk-input" type="text" name="note" placeholder="optional">
     </div>
-    <button class="btn" type="submit">Grant user</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Grant user</button>
   </form>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Active Stripe subscriptions</h2>
   <div class="table-wrap">
-    <table class="table">
+    <table class="uk-table uk-table-divider uk-table-hover table">
       <tr><th>Guild</th><th>Plan</th><th>Status</th><th>Renewal</th><th>Customer</th></tr>
       {% for s in stripe_subs %}
         <tr>
@@ -88,10 +88,10 @@
   </div>
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Manual grants</h2>
   <div class="table-wrap">
-    <table class="table">
+    <table class="uk-table uk-table-divider uk-table-hover table">
       <tr><th>ID</th><th>Type</th><th>Target</th><th>Until</th><th>Note</th><th></th></tr>
       {% for g in grants %}
         <tr>
@@ -105,7 +105,7 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="action" value="revoke">
               <input type="hidden" name="grant_id" value="{{ g['id'] }}">
-              <button class="btn danger small" type="submit">Revoke</button>
+              <button class="uk-btn uk-btn-destructive uk-btn-sm btn danger small" type="submit">Revoke</button>
             </form>
           </td>
         </tr>
@@ -116,7 +116,7 @@
     </table>
   </div>
 </div>
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Contact page</h2>
   <p class="faint">This appears on the public Contact Us page (/contact). Use a line starting with # for a heading. Leave a blank line between paragraphs. Saving replaces the current published text.</p>
   <form method="post" style="margin-top:16px">
@@ -124,10 +124,10 @@
     <input type="hidden" name="action" value="save_page">
     <input type="hidden" name="page_key" value="contact">
     <div class="field">
-      <label>Contact Us (/contact)</label>
-      <textarea class="page-textarea" name="body" maxlength="20000">{{ contact_body }}</textarea>
+      <label class="uk-form-label">Contact Us (/contact)</label>
+      <textarea class="uk-textarea page-textarea" name="body" maxlength="20000">{{ contact_body }}</textarea>
     </div>
-    <button class="btn" type="submit">Save contact page</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Save contact page</button>
   </form>
 </div>
 {% endblock %}

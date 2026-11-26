@@ -5,25 +5,25 @@
   <h1>Meowchi Cafe Premium</h1>
   <p class="lede">Subscribe per server. One plan covers every command, the dashboard, and alt detection for that community.</p>
   <div class="plan-grid">
-    <div class="card plan-card">
+    <div class="uk-card card plan-card">
       <h2>Monthly</h2>
       <p class="price">$10 <span class="faint">USD / month</span></p>
       <p class="muted">Flexible. Cancel any time from the billing portal.</p>
       {% if payments_ready %}
-        <a class="btn wide" href="{{ '/subscribe?plan=monthly' if user else '/login?next=/subscribe?plan=monthly' }}">Subscribe</a>
+        <a class="uk-btn uk-btn-primary btn wide" href="{{ '/subscribe?plan=monthly' if user else '/login?next=/subscribe?plan=monthly' }}">Subscribe</a>
       {% else %}
-        <button class="btn wide" type="button" disabled>Payments coming soon</button>
+        <button class="uk-btn uk-btn-primary btn wide" type="button" disabled>Payments coming soon</button>
       {% endif %}
     </div>
-    <div class="card plan-card featured">
+    <div class="uk-card card plan-card featured">
       <div class="save-pill">Save ~17%</div>
       <h2>Yearly</h2>
       <p class="price">$100 <span class="faint">USD / year</span></p>
       <p class="muted">Two months free compared with paying monthly.</p>
       {% if payments_ready %}
-        <a class="btn wide" href="{{ '/subscribe?plan=yearly' if user else '/login?next=/subscribe?plan=yearly' }}">Subscribe</a>
+        <a class="uk-btn uk-btn-primary btn wide" href="{{ '/subscribe?plan=yearly' if user else '/login?next=/subscribe?plan=yearly' }}">Subscribe</a>
       {% else %}
-        <button class="btn wide" type="button" disabled>Payments coming soon</button>
+        <button class="uk-btn uk-btn-primary btn wide" type="button" disabled>Payments coming soon</button>
       {% endif %}
     </div>
   </div>
