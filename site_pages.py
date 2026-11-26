@@ -265,6 +265,14 @@ async def load_site_page(db, key: str) -> str:
             # One-off clean-up of saved Contact text: only the two placeholder lines are removed.
             await db.set_site_page(key, cleaned)
             stored = cleaned
+        old_op = (
+            "The Discord All In One Bot (also called Meowchi Cafe) and this website "
+            "are operated by an individual known as Whiskey/WarRaven."
+        )
+        new_op = "Meowchi Cafe and this website are operated by Whiskey/WarRaven."
+        if old_op in stored:
+            stored = stored.replace(old_op, new_op, 1)
+            await db.set_site_page(key, stored)
     return stored
 
 
