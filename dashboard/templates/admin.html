@@ -11,10 +11,10 @@
       <tr><th>Server</th><th>ID</th><th>Status</th><th>Renewal</th></tr>
       {% for row in servers %}
         <tr>
-          <td>{{ row.name }}</td>
-          <td class="faint">{{ row.id }}</td>
-          <td><span class="pill {% if row.access.allowed %}on{% endif %}">{{ row.status }}</span></td>
-          <td>{{ row.renewal }}</td>
+          <td data-label="Server">{{ row.name }}</td>
+          <td class="faint" data-label="ID">{{ row.id }}</td>
+          <td data-label="Status"><span class="pill {% if row.access.allowed %}on{% endif %}">{{ row.status }}</span></td>
+          <td data-label="Renewal">{{ row.renewal }}</td>
         </tr>
       {% endfor %}
       {% if not servers %}
@@ -74,11 +74,11 @@
       <tr><th>Guild</th><th>Plan</th><th>Status</th><th>Renewal</th><th>Customer</th></tr>
       {% for s in stripe_subs %}
         <tr>
-          <td>{{ s['guild_id'] }}</td>
-          <td>{{ s['plan'] or '—' }}</td>
-          <td>{{ s['status'] }}</td>
-          <td>{{ format_renewal(s['current_period_end']) }}</td>
-          <td class="faint">{{ s['stripe_customer_id'] or '—' }}</td>
+          <td data-label="Guild">{{ s['guild_id'] }}</td>
+          <td data-label="Plan">{{ s['plan'] or '—' }}</td>
+          <td data-label="Status">{{ s['status'] }}</td>
+          <td data-label="Renewal">{{ format_renewal(s['current_period_end']) }}</td>
+          <td class="faint" data-label="Customer">{{ s['stripe_customer_id'] or '—' }}</td>
         </tr>
       {% endfor %}
       {% if not stripe_subs %}
@@ -95,12 +95,12 @@
       <tr><th>ID</th><th>Type</th><th>Target</th><th>Until</th><th>Note</th><th></th></tr>
       {% for g in grants %}
         <tr>
-          <td>{{ g['id'] }}</td>
-          <td>{{ g['grant_type'] }}</td>
-          <td>{% if g['grant_type']=='guild' %}guild {{ g['guild_id'] }}{% else %}user {{ g['user_id'] }}{% endif %}</td>
-          <td>{{ format_renewal(g['expires_at']) }}</td>
-          <td>{{ g['note'] or '—' }}</td>
-          <td>
+          <td data-label="ID">{{ g['id'] }}</td>
+          <td data-label="Type">{{ g['grant_type'] }}</td>
+          <td data-label="Target">{% if g['grant_type']=='guild' %}guild {{ g['guild_id'] }}{% else %}user {{ g['user_id'] }}{% endif %}</td>
+          <td data-label="Until">{{ format_renewal(g['expires_at']) }}</td>
+          <td data-label="Note">{{ g['note'] or '—' }}</td>
+          <td data-label="">
             <form method="post">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="action" value="revoke">

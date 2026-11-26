@@ -52,10 +52,10 @@
     <tr><th>Owner</th><th>Held by</th><th>Role</th><th colspan="2">Colours / gradient</th><th></th></tr>
     {% for item in roles %}
       <tr>
-        <td>{{ item.member_name }}<br><span class="muted">{{ item.user_id }}</span></td>
-        <td>{% if item.holder_id and item.holder_id != item.user_id %}{{ item.holder_name }}<br><span class="muted">{{ item.holder_id }}</span>{% else %}—{% endif %}</td>
-        <td>{% if item.role %}@{{ item.role.name }}{% else %}<span class="muted">deleted ({{ item.role_id }})</span>{% endif %}</td>
-        <td colspan="2">
+        <td data-label="Owner">{{ item.member_name }}<br><span class="muted">{{ item.user_id }}</span></td>
+        <td data-label="Held by">{% if item.holder_id and item.holder_id != item.user_id %}{{ item.holder_name }}<br><span class="muted">{{ item.holder_id }}</span>{% else %}—{% endif %}</td>
+        <td data-label="Role">{% if item.role %}@{{ item.role.name }}{% else %}<span class="muted">deleted ({{ item.role_id }})</span>{% endif %}</td>
+        <td colspan="2" data-label="Colours / gradient">
           <form method="post" class="colour-edit" data-colour-form>
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="colours">
@@ -81,7 +81,7 @@
           </form>
           <div class="muted" style="margin-top:4px">Created {{ item.created }}</div>
         </td>
-        <td>
+        <td data-label="">
           <form method="post" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="remove">
@@ -128,11 +128,11 @@
     <tr><th>Member</th><th>Reason</th><th>By</th><th>When</th><th></th></tr>
     {% for item in restrictions %}
       <tr>
-        <td>{{ item.member_name }}<br><span class="muted">{{ item.user_id }}</span></td>
-        <td>{{ item.reason or "—" }}</td>
-        <td>{{ item.by_name }}</td>
-        <td>{{ item.at }}</td>
-        <td>
+        <td data-label="Member">{{ item.member_name }}<br><span class="muted">{{ item.user_id }}</span></td>
+        <td data-label="Reason">{{ item.reason or "—" }}</td>
+        <td data-label="By">{{ item.by_name }}</td>
+        <td data-label="When">{{ item.at }}</td>
+        <td data-label="">
           <form method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="unrestrict">
@@ -169,11 +169,11 @@
     <tr><th>Member</th><th>Reason</th><th>By</th><th>When</th><th></th></tr>
     {% for item in give_blocks %}
       <tr>
-        <td>{{ item.member_name }}<br><span class="muted">{{ item.user_id }}</span></td>
-        <td>{{ item.reason or "—" }}</td>
-        <td>{{ item.by_name }}</td>
-        <td>{{ item.at }}</td>
-        <td>
+        <td data-label="Member">{{ item.member_name }}<br><span class="muted">{{ item.user_id }}</span></td>
+        <td data-label="Reason">{{ item.reason or "—" }}</td>
+        <td data-label="By">{{ item.by_name }}</td>
+        <td data-label="When">{{ item.at }}</td>
+        <td data-label="">
           <form method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="give_unblock">

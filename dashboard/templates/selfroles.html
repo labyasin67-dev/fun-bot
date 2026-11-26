@@ -38,9 +38,9 @@
     <tr><th>Role</th><th>Label</th><th></th></tr>
     {% for item in items %}
       <tr>
-        <td>{% if item.role %}@{{ item.role.name }}{% else %}deleted ({{ item.role_id }}){% endif %}</td>
-        <td>{{ item.row.emoji or '' }} {{ item.row.label }}</td>
-        <td>
+        <td data-label="Role">{% if item.role %}@{{ item.role.name }}{% else %}deleted ({{ item.role_id }}){% endif %}</td>
+        <td data-label="Label">{{ item.row.emoji or '' }} {{ item.row.label }}</td>
+        <td data-label="">
           <form method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="remove">

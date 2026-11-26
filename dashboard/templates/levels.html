@@ -63,9 +63,9 @@
     <tr><th>Level</th><th>Role</th><th></th></tr>
     {% for item in role_rows %}
       <tr>
-        <td>{{ item.level }}</td>
-        <td>{% if item.role %}@{{ item.role.name }}{% else %}<span class="muted">deleted ({{ item.role_id }})</span>{% endif %}</td>
-        <td>
+        <td data-label="Level">{{ item.level }}</td>
+        <td data-label="Role">{% if item.role %}@{{ item.role.name }}{% else %}<span class="muted">deleted ({{ item.role_id }})</span>{% endif %}</td>
+        <td data-label="">
           <form method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="remove">
@@ -87,7 +87,7 @@
   <table class="table">
     <tr><th>#</th><th>Member</th><th>Level</th><th>XP</th></tr>
     {% for row in board %}
-      <tr><td>{{ row.rank }}</td><td>{{ row.name }}</td><td>{{ row.level }}</td><td>{{ row.xp }}</td></tr>
+      <tr><td data-label="#">{{ row.rank }}</td><td data-label="Member">{{ row.name }}</td><td data-label="Level">{{ row.level }}</td><td data-label="XP">{{ row.xp }}</td></tr>
     {% endfor %}
   </table>
   {% else %}

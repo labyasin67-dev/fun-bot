@@ -93,13 +93,13 @@
     </tr>
     {% for item in items %}
       <tr>
-        <td>{{ item.id }}</td>
-        <td>{{ person(item.reporter) }}</td>
-        <td>{{ person(item.reported) }}</td>
-        <td>{{ item.reason or "—" }}</td>
-        <td>{% if item.message_link %}<a href="{{ item.message_link }}" target="_blank" rel="noopener">Open</a>{% else %}—{% endif %}</td>
-        <td>{{ person(item.claimed) }}{% if item.claimed_at %}<br><span class="muted">{{ item.claimed_at }}</span>{% endif %}</td>
-        <td>
+        <td data-label="#">{{ item.id }}</td>
+        <td data-label="Reporter">{{ person(item.reporter) }}</td>
+        <td data-label="Reported">{{ person(item.reported) }}</td>
+        <td data-label="Reason">{{ item.reason or "—" }}</td>
+        <td data-label="Message">{% if item.message_link %}<a href="{{ item.message_link }}" target="_blank" rel="noopener">Open</a>{% else %}—{% endif %}</td>
+        <td data-label="Claimed by">{{ person(item.claimed) }}{% if item.claimed_at %}<br><span class="muted">{{ item.claimed_at }}</span>{% endif %}</td>
+        <td data-label="{{ 'Opened' if status == 'open' else 'Decision' }}">
           {% if status == 'open' %}
             {{ item.created }}
           {% else %}
@@ -109,7 +109,7 @@
           {% endif %}
         </td>
         {% if status == 'open' %}
-        <td>
+        <td data-label="">
           <form method="post" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="approve">
@@ -192,9 +192,9 @@
     <tr><th>Member</th><th>Reason</th><th></th></tr>
     {% for item in blocks %}
       <tr>
-        <td>{{ item.name }}<br><span class="muted">{{ item.user_id }}</span></td>
-        <td>{{ item.reason or "—" }}</td>
-        <td>
+        <td data-label="Member">{{ item.name }}<br><span class="muted">{{ item.user_id }}</span></td>
+        <td data-label="Reason">{{ item.reason or "—" }}</td>
+        <td data-label="">
           <form method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="unblock">
