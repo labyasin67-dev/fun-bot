@@ -173,78 +173,77 @@ ACTION_VERBS: dict[str, str] = {
 }
 
 # Past-tense verb forms for subtexts and footers
-# Each action needs two forms:
-#   - subtext_past: simple past for "-# @target <verb> @author"
-#   - footer_past: past participle for "<name> got <verb> {count} time"
-#   - uses_by: whether transitive ("by @author") or preposition ("@author")
+# Each action has explicit subtext and footer text for perfect grammar:
+#   - subtext: "-# @target <verb> @author" (simple past)
+#   - footer: "<name> got <verb> {count} time" (past participle)
 #
 # Transitive: "-# @target got slapped by @author" / "<name> got slapped 4th time"
 # Preposition: "-# @target ate @author" / "<name> got eaten 4th time"
-ACTION_VERB_PAST_SUBTEXT: dict[str, str] = {
-    # Original commands
-    "slap":   "slapped",
-    "kiss":   "kissed",
-    "laugh":  "laughed at",
-    "boot":   "kicked",
-    "yeet":   "yeeted",
-    "tickle": "tickled",
-    "hug":    "hugged",
-    "dap":    "dapped",
-    "bonk":   "bonked",
-    "cuddle": "cuddled",
-    "flirt":  "flirted with",
-    "poke":   "poked",
-    # New commands
-    "airkiss": "air kissed",
-    "angrystare": "angrily stared at",
-    "bite": "bitten",
-    "bleh": "made a bleh face at",
-    "celebrate": "celebrated with",
-    "cheers": "cheered with",
-    "clap": "clapped for",
-    "confused": "looked confused at",
-    "cool": "looked cool with",
-    "cry": "cried at",
-    "dance": "danced with",
-    "drool": "drooled at",
-    "evillaugh": "evilly laughed at",
-    "facepalm": "facepalmed",
-    "handhold": "held hands with",
-    "headbang": "headbanged with",
-    "lick": "licked",
-    "mad": "made mad at",
-    "nervous": "made nervous around",
-    "eat": "ate",
-    "boop": "booped",
-    "nyah": "nyah'd at",
-    "pat": "patted",
-    "peek": "peeked at",
-    "pinch": "pinched",
-    "pout": "pouted at",
-    "sad": "made sad at",
-    "scared": "scared",
-    "shout": "shouted at",
-    "shrug": "shrugged",
-    "shy": "made shy around",
-    "sigh": "sighed",
-    "sip": "sipped with",
-    "sleep": "slept with",
-    "slowclap": "slow clapped for",
-    "smack": "smacked",
-    "smile": "smiled at",
-    "sneeze": "sneezed at",
-    "sorry": "said sorry to",
-    "stare": "stared at",
-    "surprised": "surprised",
-    "sweat": "sweated at",
-    "thumbsup": "gave a thumbs up to",
-    "tired": "made tired with",
-    "wave": "waved at",
-    "wink": "winked at",
-    "woah": "said woah at",
-    "yawn": "yawned with",
-    "yay": "yayed with",
-    "yes": "said yes to",
+ACTION_SUBTEXT_TEMPLATE: dict[str, str] = {
+    # Original commands - transitive ("got <past> by @author")
+    "slap":   "-# {target} got slapped by {author}.",
+    "kiss":   "-# {target} got kissed by {author}.",
+    "laugh":  "-# {target} laughed at {author}.",
+    "boot":   "-# {target} got kicked by {author}.",
+    "yeet":   "-# {target} got yeeted by {author}.",
+    "tickle": "-# {target} got tickled by {author}.",
+    "hug":    "-# {target} got hugged by {author}.",
+    "dap":    "-# {target} got dapped by {author}.",
+    "bonk":   "-# {target} got bonked by {author}.",
+    "cuddle": "-# {target} got cuddled by {author}.",
+    "flirt":  "-# {target} flirted with {author}.",
+    "poke":   "-# {target} got poked by {author}.",
+    # New commands - transitive
+    "airkiss": "-# {target} got air kissed by {author}.",
+    "angrystare": "-# {target} angrily stared at {author}.",
+    "bite": "-# {target} got bitten by {author}.",
+    "bleh": "-# {target} made a bleh face at {author}.",
+    "celebrate": "-# {target} celebrated with {author}.",
+    "cheers": "-# {target} cheered with {author}.",
+    "clap": "-# {target} clapped for {author}.",
+    "confused": "-# {target} looked confused at {author}.",
+    "cool": "-# {target} looked cool with {author}.",
+    "cry": "-# {target} cried at {author}.",
+    "dance": "-# {target} danced with {author}.",
+    "drool": "-# {target} drooled at {author}.",
+    "evillaugh": "-# {target} evilly laughed at {author}.",
+    "facepalm": "-# {target} got facepalmed by {author}.",
+    "handhold": "-# {target} held hands with {author}.",
+    "headbang": "-# {target} headbanged with {author}.",
+    "lick": "-# {target} got licked by {author}.",
+    "mad": "-# {target} made mad at {author}.",
+    "nervous": "-# {target} made nervous around {author}.",
+    "eat": "-# {target} ate {author}.",
+    "boop": "-# {target} got booped by {author}.",
+    "nyah": "-# {target} nyah'd at {author}.",
+    "pat": "-# {target} got patted by {author}.",
+    "peek": "-# {target} peeked at {author}.",
+    "pinch": "-# {target} got pinched by {author}.",
+    "pout": "-# {target} pouted at {author}.",
+    "sad": "-# {target} made sad at {author}.",
+    "scared": "-# {target} got scared by {author}.",
+    "shout": "-# {target} shouted at {author}.",
+    "shrug": "-# {target} got shrugged by {author}.",
+    "shy": "-# {target} got made shy around by {author}.",
+    "sigh": "-# {target} got sighed by {author}.",
+    "sip": "-# {target} sipped with {author}.",
+    "sleep": "-# {target} slept with {author}.",
+    "slowclap": "-# {target} slow clapped for {author}.",
+    "smack": "-# {target} got smacked by {author}.",
+    "smile": "-# {target} smiled at {author}.",
+    "sneeze": "-# {target} sneezed at {author}.",
+    "sorry": "-# {target} said sorry to {author}.",
+    "stare": "-# {target} stared at {author}.",
+    "surprised": "-# {target} got surprised by {author}.",
+    "sweat": "-# {target} sweated at {author}.",
+    "thumbsup": "-# {target} gave a thumbs up to {author}.",
+    "tired": "-# {target} got made tired with by {author}.",
+    "wave": "-# {target} got waved by {author}.",
+    "wink": "-# {target} got winked by {author}.",
+    "woah": "-# {target} said woah at {author}.",
+    "yawn": "-# {target} yawned with {author}.",
+    "yay": "-# {target} yayed with {author}.",
+    "yes": "-# {target} said yes to {author}.",
 }
 
 # Past participle for footer: "<name> got <past_participle> {count} time"
@@ -337,11 +336,9 @@ ACTION_VERB_SUBTEXT_EXCEPTIONS: dict[str, str] = {
 }
 
 
-def _verb_past(action: str) -> str:
-    """Return the past-tense verb phrase, checking preposition-ending first."""
-    if action in ACTION_VERB_PAST_SUBTEXT:
-        return ACTION_VERB_PAST_SUBTEXT[action]
-    return action
+def _verb_past_subtext(action: str) -> str:
+    """Return simple past tense for subtext."""
+    return ACTION_VERB_PAST_SUBTEXT.get(action, action)
 
 
 def _verb_past_with_author(action: str, author_mention: str) -> str:
@@ -354,7 +351,7 @@ def _verb_past_with_author(action: str, author_mention: str) -> str:
 
 
 def _verb_past_footer(action: str) -> str:
-    """Return the past participle for footer: '<name> got <verb> {count} time'."""
+    """Return past participle for footer: '<name> got <verb> {count} time'."""
     return ACTION_VERB_PAST_FOOTER.get(action, action)
 
 
@@ -431,14 +428,18 @@ class FunCommands(commands.Cog):
         count = await self.bot.db.count_fun_slaps(ctx.guild.id, target.id, action)
 
         verb = ACTION_VERBS[action]
-        verb_past = _verb_past(action)
 
         # Subtext: describes what just happened
         # Transitive verbs: "-# @target got slapped by @author."
-        # Preposition verbs: "-# @target got ate with @author."
-        subtext = f"-# {target.mention} got {_verb_past_with_author(action, author.mention)}."
+        # Preposition verbs: "-# @target ate @author."
+        past_subtext = ACTION_VERB_PAST_SUBTEXT.get(action, action)
+        if action in ACTION_VERB_USES_BY:
+            subtext = f"-# {target.mention} got {past_subtext} by {author.mention}."
+        else:
+            subtext = f"-# {target.mention} {past_subtext} {author.mention}."
 
         # Footer: tracks how many times this has happened
+        verb_past = ACTION_VERB_PAST_FOOTER.get(action, action)
         footer_text = f"{target.display_name} got {verb_past} {ordinal(count)} time."
 
         # Download GIF and attach as a file so Discord renders it large in the embed
