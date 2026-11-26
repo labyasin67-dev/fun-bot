@@ -8,7 +8,7 @@
       "United States of America"
     ],
     "code": "us",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/us.png"
+    "url": "http://flags.ox3.in/svg/us.svg"
   },
   {
     "name": "United Kingdom",
@@ -19,7 +19,7 @@
       "England"
     ],
     "code": "gb",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/gb.png"
+    "url": "http://flags.ox3.in/svg/gb.svg"
   },
   {
     "name": "France",
@@ -27,7 +27,7 @@
       "French Republic"
     ],
     "code": "fr",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/fr.png"
+    "url": "http://flags.ox3.in/svg/fr.svg"
   },
   {
     "name": "Germany",
@@ -35,13 +35,13 @@
       "Deutschland"
     ],
     "code": "de",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/de.png"
+    "url": "http://flags.ox3.in/svg/de.svg"
   },
   {
     "name": "Italy",
     "aliases": [],
     "code": "it",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/it.png"
+    "url": "http://flags.ox3.in/svg/it.svg"
   },
   {
     "name": "Spain",
@@ -50,19 +50,19 @@
       "Espana"
     ],
     "code": "es",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/es.png"
+    "url": "http://flags.ox3.in/svg/es.svg"
   },
   {
     "name": "Canada",
     "aliases": [],
     "code": "ca",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ca.png"
+    "url": "http://flags.ox3.in/svg/ca.svg"
   },
   {
     "name": "Australia",
     "aliases": [],
     "code": "au",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/au.png"
+    "url": "http://flags.ox3.in/svg/au.svg"
   },
   {
     "name": "Japan",
@@ -71,7 +71,7 @@
       "Nihon"
     ],
     "code": "jp",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/jp.png"
+    "url": "http://flags.ox3.in/svg/jp.svg"
   },
   {
     "name": "China",
@@ -80,7 +80,7 @@
       "People's Republic of China"
     ],
     "code": "cn",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/cn.png"
+    "url": "http://flags.ox3.in/svg/cn.svg"
   },
   {
     "name": "India",
@@ -88,7 +88,7 @@
       "Bharat"
     ],
     "code": "in",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/in.png"
+    "url": "http://flags.ox3.in/svg/in.svg"
   },
   {
     "name": "Brazil",
@@ -96,7 +96,7 @@
       "Brasil"
     ],
     "code": "br",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/br.png"
+    "url": "http://flags.ox3.in/svg/br.svg"
   },
   {
     "name": "Mexico",
@@ -105,7 +105,7 @@
       "Mexico"
     ],
     "code": "mx",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/mx.png"
+    "url": "http://flags.ox3.in/svg/mx.svg"
   },
   {
     "name": "South Africa",
@@ -113,7 +113,7 @@
       "RSA"
     ],
     "code": "za",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/za.png"
+    "url": "http://flags.ox3.in/svg/za.svg"
   },
   {
     "name": "South Korea",
@@ -123,7 +123,7 @@
       "ROK"
     ],
     "code": "kr",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/kr.png"
+    "url": "http://flags.ox3.in/svg/kr.svg"
   },
   {
     "name": "North Korea",
@@ -131,7 +131,7 @@
       "DPRK"
     ],
     "code": "kp",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/kp.png"
+    "url": "http://flags.ox3.in/svg/kp.svg"
   },
   {
     "name": "Russia",
@@ -139,31 +139,31 @@
       "Russian Federation"
     ],
     "code": "ru",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ru.png"
+    "url": "http://flags.ox3.in/svg/ru.svg"
   },
   {
     "name": "Sweden",
     "aliases": [],
     "code": "se",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/se.png"
+    "url": "http://flags.ox3.in/svg/se.svg"
   },
   {
     "name": "Norway",
     "aliases": [],
     "code": "no",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/no.png"
+    "url": "http://flags.ox3.in/svg/no.svg"
   },
   {
     "name": "Finland",
     "aliases": [],
     "code": "fi",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/fi.png"
+    "url": "http://flags.ox3.in/svg/fi.svg"
   },
   {
     "name": "Denmark",
     "aliases": [],
     "code": "dk",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/dk.png"
+    "url": "http://flags.ox3.in/svg/dk.svg"
   },
   {
     "name": "Netherlands",
@@ -172,13 +172,13 @@
       "The Netherlands"
     ],
     "code": "nl",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/nl.png"
+    "url": "http://flags.ox3.in/svg/nl.svg"
   },
   {
     "name": "Belgium",
     "aliases": [],
     "code": "be",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/be.png"
+    "url": "http://flags.ox3.in/svg/be.svg"
   },
   {
     "name": "Switzerland",
@@ -186,19 +186,19 @@
       "Swiss"
     ],
     "code": "ch",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ch.png"
+    "url": "http://flags.ox3.in/svg/ch.svg"
   },
   {
     "name": "Austria",
     "aliases": [],
     "code": "at",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/at.png"
+    "url": "http://flags.ox3.in/svg/at.svg"
   },
   {
     "name": "Portugal",
     "aliases": [],
     "code": "pt",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/pt.png"
+    "url": "http://flags.ox3.in/svg/pt.svg"
   },
   {
     "name": "Greece",
@@ -206,7 +206,7 @@
       "Hellas"
     ],
     "code": "gr",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/gr.png"
+    "url": "http://flags.ox3.in/svg/gr.svg"
   },
   {
     "name": "Turkey",
@@ -215,13 +215,13 @@
       "Turkiye"
     ],
     "code": "tr",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/tr.png"
+    "url": "http://flags.ox3.in/svg/tr.svg"
   },
   {
     "name": "Poland",
     "aliases": [],
     "code": "pl",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/pl.png"
+    "url": "http://flags.ox3.in/svg/pl.svg"
   },
   {
     "name": "Ireland",
@@ -230,7 +230,7 @@
       "Eire"
     ],
     "code": "ie",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ie.png"
+    "url": "http://flags.ox3.in/svg/ie.svg"
   },
   {
     "name": "New Zealand",
@@ -239,55 +239,55 @@
       "NZ"
     ],
     "code": "nz",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/nz.png"
+    "url": "http://flags.ox3.in/svg/nz.svg"
   },
   {
     "name": "Argentina",
     "aliases": [],
     "code": "ar",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ar.png"
+    "url": "http://flags.ox3.in/svg/ar.svg"
   },
   {
     "name": "Chile",
     "aliases": [],
     "code": "cl",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/cl.png"
+    "url": "http://flags.ox3.in/svg/cl.svg"
   },
   {
     "name": "Colombia",
     "aliases": [],
     "code": "co",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/co.png"
+    "url": "http://flags.ox3.in/svg/co.svg"
   },
   {
     "name": "Peru",
     "aliases": [],
     "code": "pe",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/pe.png"
+    "url": "http://flags.ox3.in/svg/pe.svg"
   },
   {
     "name": "Egypt",
     "aliases": [],
     "code": "eg",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/eg.png"
+    "url": "http://flags.ox3.in/svg/eg.svg"
   },
   {
     "name": "Nigeria",
     "aliases": [],
     "code": "ng",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ng.png"
+    "url": "http://flags.ox3.in/svg/ng.svg"
   },
   {
     "name": "Kenya",
     "aliases": [],
     "code": "ke",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ke.png"
+    "url": "http://flags.ox3.in/svg/ke.svg"
   },
   {
     "name": "Morocco",
     "aliases": [],
     "code": "ma",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ma.png"
+    "url": "http://flags.ox3.in/svg/ma.svg"
   },
   {
     "name": "Saudi Arabia",
@@ -295,7 +295,7 @@
       "KSA"
     ],
     "code": "sa",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/sa.png"
+    "url": "http://flags.ox3.in/svg/sa.svg"
   },
   {
     "name": "United Arab Emirates",
@@ -304,13 +304,13 @@
       "Emirates"
     ],
     "code": "ae",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ae.png"
+    "url": "http://flags.ox3.in/svg/ae.svg"
   },
   {
     "name": "Israel",
     "aliases": [],
     "code": "il",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/il.png"
+    "url": "http://flags.ox3.in/svg/il.svg"
   },
   {
     "name": "Thailand",
@@ -318,7 +318,7 @@
       "Siam"
     ],
     "code": "th",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/th.png"
+    "url": "http://flags.ox3.in/svg/th.svg"
   },
   {
     "name": "Vietnam",
@@ -326,19 +326,19 @@
       "Viet Nam"
     ],
     "code": "vn",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/vn.png"
+    "url": "http://flags.ox3.in/svg/vn.svg"
   },
   {
     "name": "Indonesia",
     "aliases": [],
     "code": "id",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/id.png"
+    "url": "http://flags.ox3.in/svg/id.svg"
   },
   {
     "name": "Malaysia",
     "aliases": [],
     "code": "my",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/my.png"
+    "url": "http://flags.ox3.in/svg/my.svg"
   },
   {
     "name": "Philippines",
@@ -346,31 +346,31 @@
       "The Philippines"
     ],
     "code": "ph",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ph.png"
+    "url": "http://flags.ox3.in/svg/ph.svg"
   },
   {
     "name": "Singapore",
     "aliases": [],
     "code": "sg",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/sg.png"
+    "url": "http://flags.ox3.in/svg/sg.svg"
   },
   {
     "name": "Pakistan",
     "aliases": [],
     "code": "pk",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/pk.png"
+    "url": "http://flags.ox3.in/svg/pk.svg"
   },
   {
     "name": "Bangladesh",
     "aliases": [],
     "code": "bd",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/bd.png"
+    "url": "http://flags.ox3.in/svg/bd.svg"
   },
   {
     "name": "Ukraine",
     "aliases": [],
     "code": "ua",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ua.png"
+    "url": "http://flags.ox3.in/svg/ua.svg"
   },
   {
     "name": "Czech Republic",
@@ -378,55 +378,55 @@
       "Czechia"
     ],
     "code": "cz",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/cz.png"
+    "url": "http://flags.ox3.in/svg/cz.svg"
   },
   {
     "name": "Hungary",
     "aliases": [],
     "code": "hu",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/hu.png"
+    "url": "http://flags.ox3.in/svg/hu.svg"
   },
   {
     "name": "Romania",
     "aliases": [],
     "code": "ro",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/ro.png"
+    "url": "http://flags.ox3.in/svg/ro.svg"
   },
   {
     "name": "Croatia",
     "aliases": [],
     "code": "hr",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/hr.png"
+    "url": "http://flags.ox3.in/svg/hr.svg"
   },
   {
     "name": "Iceland",
     "aliases": [],
     "code": "is",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/is.png"
+    "url": "http://flags.ox3.in/svg/is.svg"
   },
   {
     "name": "Jamaica",
     "aliases": [],
     "code": "jm",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/jm.png"
+    "url": "http://flags.ox3.in/svg/jm.svg"
   },
   {
     "name": "Cuba",
     "aliases": [],
     "code": "cu",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/cu.png"
+    "url": "http://flags.ox3.in/svg/cu.svg"
   },
   {
     "name": "Ghana",
     "aliases": [],
     "code": "gh",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/gh.png"
+    "url": "http://flags.ox3.in/svg/gh.svg"
   },
   {
     "name": "Ethiopia",
     "aliases": [],
     "code": "et",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/et.png"
+    "url": "http://flags.ox3.in/svg/et.svg"
   },
   {
     "name": "Vatican City",
@@ -435,6 +435,6 @@
       "Holy See"
     ],
     "code": "va",
-    "url": "https://raw.githubusercontent.com/hampusborgos/country-flags/main/png/va.png"
+    "url": "http://flags.ox3.in/svg/va.svg"
   }
 ]
