@@ -470,7 +470,7 @@ async def refuse_if_flagged_alt(bot: SocializeBot, member: discord.Member) -> st
         return None
     linked = await find_linked_user_ids(bot, member.guild, member)
     for uid in linked:
-        if await member_owns_or_holds(bot.db, member.guild.id, uid) is not None:
+        if await bot.db.get_custom_role(member.guild.id, uid) is not None:
             reason = "Flagged as an alt of a member who already has a custom role"
             await restrict_user(bot, member.guild, member.id, reason=reason, by=None, delete_role=True)
             await _alt_log(
@@ -868,16 +868,12 @@ class CustomRoles(commands.Cog):
         if not staff and await self.bot.db.is_custom_role_give_blocked(ctx.guild.id, ctx.author.id):
             await ctx.send(embed=make_embed("Blocked", "You're blocked from using `.role give`.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
-        existing = await member_owns_or_holds(self.bot.db, ctx.guild.id, member.id)
-        if existing is not None:
-            await ctx.send(embed=make_embed("Already has one", f"{member.mention} already owns or holds a custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
-            return
         if holder_id_of(row) == member.id:
             await ctx.send(embed=make_embed("Already holding it", f"{member.mention} already holds that role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         linked = await find_linked_user_ids(self.bot, ctx.guild, member)
         for uid in linked:
-            if await member_owns_or_holds(self.bot.db, ctx.guild.id, uid) is not None:
+            if await self.bot.db.get_custom_role(ctx.guild.id, uid) is not None:
                 await ctx.send(embed=make_embed("Can't give that", f"{member.mention} is linked to an account that already has a custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
                 return
         if ctx.guild.me.top_role <= role:

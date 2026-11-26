@@ -81,7 +81,7 @@ HELP_SECTIONS = [
         "• `.role create` — open a form for the name and colours\n"
         "• `.role name <new>` / `.role colour <hex>` / `.role gradient #hex1 #hex2` / `.role delete` / `.role info`\n"
         "• `.role toggle on|off` / `.role minlevel <n>` / `.role list` — (manage roles)\n"
-        "• `.role give @user @role` — hand your custom role to another member; staff can give any custom role\n"
+        "• `.role give @user @role` — hand your custom role to another member, even if they already own one; staff can give any custom role\n"
         "• `.role take @user` — take your custom role back\n"
         "• `.role restrict @user [reason]` / `.role unrestrict @user`\n"
         "• `.role remove` — delete your own custom role (and take it off anyone you gave it to)\n"
