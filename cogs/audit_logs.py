@@ -59,7 +59,8 @@ GROUP_ORDER = ("Members", "Moderation", "Roles", "Channels", "Messages", "Voice"
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS audit_settings (
     guild_id INTEGER PRIMARY KEY,
-    channel_id INTEGER
+    channel_id INTEGER,
+    log_admins INTEGER NOT NULL DEFAULT 1
 );
 CREATE TABLE IF NOT EXISTS audit_events (
     guild_id INTEGER NOT NULL,
@@ -93,6 +94,24 @@ def who(obj: Any) -> str:
     return f"{mention} (`{getattr(obj, 'id', '?')}`)"
 
 
+def by_user(obj: Any) -> str:
+    """Responsible user as '@mention (name, id)'."""
+    if obj is None:
+        return "Unknown"
+    uid = getattr(obj, "id", "?")
+    mention = getattr(obj, "mention", None) or f"<@{uid}>"
+    name = (
+        getattr(obj, "display_name", None)
+        or getattr(obj, "global_name", None)
+        or getattr(obj, "name", None)
+        or "Unknown"
+    )
+    return f"{mention} ({name}, {uid})"
+
+
+UNKNOWN_BY = "Unknown (needs View Audit Log permission)"
+
+
 def perm_names(perms: discord.Permissions) -> set[str]:
     return {name for name, value in perms if value}
 
@@ -104,23 +123,30 @@ class AuditLogs(commands.Cog):
         self.bot = bot
         # guild_id -> (channel_id | None, enabled event keys)
         self._cfg: dict[int, tuple[int | None, set[str]]] = {}
+        # guild_id -> log admin/owner actions (missing means ON)
+        self._log_admins: dict[int, bool] = {}
 
     # ---------- storage ----------
     async def cog_load(self) -> None:
         await self.bot.db.db.executescript(SCHEMA)
+        await self._migrate_log_admins()
         await self._load_all()
 
     async def _load_all(self) -> None:
         cfg: dict[int, tuple[int | None, set[str]]] = {}
-        cur = await self.bot.db.db.execute("SELECT guild_id, channel_id FROM audit_settings")
+        cur = await self.bot.db.db.execute("SELECT guild_id, channel_id, log_admins FROM audit_settings")
+        log_admins: dict[int, bool] = {}
         for row in await cur.fetchall():
-            cfg[int(row[0])] = (int(row[1]) if row[1] else None, set())
+            gid = int(row[0])
+            cfg[gid] = (int(row[1]) if row[1] else None, set())
+            log_admins[gid] = bool(row[2]) if row[2] is not None else True
         cur = await self.bot.db.db.execute("SELECT guild_id, event FROM audit_events WHERE enabled = 1")
         for row in await cur.fetchall():
             gid = int(row[0])
             if row[1] in EVENT_KEYS:
                 cfg.setdefault(gid, (None, set()))[1].add(str(row[1]))
         self._cfg = cfg
+        self._log_admins = log_admins
 
     def get_config(self, guild_id: int) -> tuple[int | None, set[str]]:
         channel_id, events = self._cfg.get(int(guild_id), (None, set()))
@@ -147,6 +173,44 @@ class AuditLogs(commands.Cog):
         channel_id, _old = self._cfg.get(int(guild_id), (None, set()))
         self._cfg[int(guild_id)] = (channel_id, events)
 
+    async def _migrate_log_admins(self) -> None:
+        cur = await self.bot.db.db.execute("PRAGMA table_info(audit_settings)")
+        cols = {str(row[1]) for row in await cur.fetchall()}
+        if "log_admins" not in cols:
+            await self.bot.db.db.execute(
+                "ALTER TABLE audit_settings ADD COLUMN log_admins INTEGER NOT NULL DEFAULT 1"
+            )
+            await self.bot.db.db.commit()
+
+    def log_admins(self, guild_id: int) -> bool:
+        return self._log_admins.get(int(guild_id), True)
+
+    async def set_log_admins(self, guild_id: int, enabled: bool) -> None:
+        await self.bot.db.db.execute(
+            """INSERT INTO audit_settings (guild_id, channel_id, log_admins) VALUES (?, NULL, ?)
+               ON CONFLICT(guild_id) DO UPDATE SET log_admins = excluded.log_admins""",
+            (int(guild_id), 1 if enabled else 0),
+        )
+        await self.bot.db.db.commit()
+        self._log_admins[int(guild_id)] = bool(enabled)
+
+    def _is_privileged_actor(self, guild: discord.Guild, user: Any) -> bool:
+        if user is None:
+            return False
+        uid = getattr(user, "id", None)
+        owner_id = getattr(guild, "owner_id", None)
+        if uid is not None and owner_id is not None and int(uid) == int(owner_id):
+            return True
+        member = user
+        if getattr(member, "guild_permissions", None) is None and uid is not None:
+            getter = getattr(guild, "get_member", None)
+            member = getter(int(uid)) if getter else None
+        perms = getattr(member, "guild_permissions", None)
+        return bool(perms is not None and getattr(perms, "administrator", False))
+
+    def _omit_actor(self, guild: discord.Guild, user: Any) -> bool:
+        return (not self.log_admins(guild.id)) and self._is_privileged_actor(guild, user)
+
     def _channel_for(self, guild: discord.Guild, event: str) -> discord.TextChannel | None:
         channel_id, events = self._cfg.get(guild.id, (None, set()))
         if not channel_id or event not in events:
@@ -158,7 +222,10 @@ class AuditLogs(commands.Cog):
         return self._channel_for(guild, event) is not None
 
     # ---------- posting ----------
-    async def _post(self, guild: discord.Guild, event: str, embed: discord.Embed) -> bool:
+    async def _post(self, guild: discord.Guild, event: str, embed: discord.Embed, *, entry: Any = None, actor: Any = None) -> bool:
+        who_did = actor if actor is not None else (getattr(entry, "user", None) if entry is not None else None)
+        if self._omit_actor(guild, who_did):
+            return False
         channel = self._channel_for(guild, event)
         if channel is None:
             return False
@@ -200,20 +267,19 @@ class AuditLogs(commands.Cog):
         return None
 
     @staticmethod
-    def _by(entry: discord.AuditLogEntry | None, guild: discord.Guild) -> str:
-        if entry is None:
-            me = guild.me
-            if me is not None and not me.guild_permissions.view_audit_log:
-                return "Unavailable (give the bot **View Audit Log**)"
-            return "Unknown"
-        return who(entry.user)
+    def _by(entry: discord.AuditLogEntry | None, guild: discord.Guild, *, message_delete: bool = False) -> str:
+        if entry is not None and getattr(entry, "user", None) is not None:
+            return by_user(entry.user)
+        if message_delete:
+            return "author or unknown"
+        return UNKNOWN_BY
 
     @staticmethod
     def _reason(entry: discord.AuditLogEntry | None) -> str | None:
         return clip(entry.reason, 500) if entry is not None and entry.reason else None
 
     def _mod_embed(self, title: str, color: int, guild: discord.Guild, target: Any, entry, extra: str = "") -> discord.Embed:
-        lines = [f"**Who:** {who(target)}", f"**Moderator:** {self._by(entry, guild)}"]
+        lines = [f"**Who:** {who(target)}", f"**By:** {self._by(entry, guild)}"]
         reason = self._reason(entry)
         if reason:
             lines.append(f"**Reason:** {reason}")
@@ -244,7 +310,7 @@ class AuditLogs(commands.Cog):
         kick_entry = await self._audit_entry(guild, discord.AuditLogAction.kick, user.id)
         if kick_entry is not None:
             if self.wants(guild, "kick"):
-                await self._post(guild, "kick", self._mod_embed("Member kicked", DANGER, guild, user, kick_entry))
+                await self._post(guild, "kick", self._mod_embed("Member kicked", DANGER, guild, user, kick_entry), entry=kick_entry)
             return  # a kick is not a voluntary leave
         if not self.wants(guild, "member_leave"):
             return
@@ -270,14 +336,14 @@ class AuditLogs(commands.Cog):
         if not self.wants(guild, "ban"):
             return
         entry = await self._audit_entry(guild, discord.AuditLogAction.ban, user.id)
-        await self._post(guild, "ban", self._mod_embed("Member banned", DANGER, guild, user, entry))
+        await self._post(guild, "ban", self._mod_embed("Member banned", DANGER, guild, user, entry), entry=entry)
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, user: discord.abc.User) -> None:
         if not self.wants(guild, "unban"):
             return
         entry = await self._audit_entry(guild, discord.AuditLogAction.unban, user.id)
-        await self._post(guild, "unban", self._mod_embed("Member unbanned", SUCCESS, guild, user, entry))
+        await self._post(guild, "unban", self._mod_embed("Member unbanned", SUCCESS, guild, user, entry), entry=entry)
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member) -> None:
@@ -288,7 +354,7 @@ class AuditLogs(commands.Cog):
                 "Nickname changed", COLOR, guild, after, entry,
                 f"**Before:** {before.nick or '*none*'}\n**After:** {after.nick or '*none*'}",
             )
-            await self._post(guild, "nickname", e)
+            await self._post(guild, "nickname", e, entry=entry)
         if before.roles != after.roles and self.wants(guild, "member_roles"):
             added = [r for r in after.roles if r not in before.roles]
             removed = [r for r in before.roles if r not in after.roles]
@@ -300,7 +366,7 @@ class AuditLogs(commands.Cog):
                 if removed:
                     extra += "\n**Removed:** " + " ".join(r.mention for r in removed)
                 e = self._mod_embed("Member roles changed", COLOR, guild, after, entry, extra.strip())
-                await self._post(guild, "member_roles", e)
+                await self._post(guild, "member_roles", e, entry=entry)
         if before.timed_out_until != after.timed_out_until and self.wants(guild, "timeout"):
             entry = await self._audit_entry(guild, discord.AuditLogAction.member_update, after.id)
             if after.timed_out_until and after.timed_out_until > datetime.now(timezone.utc):
@@ -308,7 +374,7 @@ class AuditLogs(commands.Cog):
                 e = self._mod_embed("Member timed out", WARNING, guild, after, entry, f"**Until:** <t:{until}:f> (<t:{until}:R>)")
             else:
                 e = self._mod_embed("Timeout removed", SUCCESS, guild, after, entry)
-            await self._post(guild, "timeout", e)
+            await self._post(guild, "timeout", e, entry=entry)
 
     # ---------- roles ----------
     @commands.Cog.listener()
@@ -321,7 +387,7 @@ class AuditLogs(commands.Cog):
             f"**Role:** {role.mention} (`{role.id}`)\n**By:** {self._by(entry, role.guild)}",
             color=SUCCESS,
         )
-        await self._post(role.guild, "role_create", e)
+        await self._post(role.guild, "role_create", e, entry=entry)
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role) -> None:
@@ -333,7 +399,7 @@ class AuditLogs(commands.Cog):
             f"**Role:** {role.name} (`{role.id}`)\n**By:** {self._by(entry, role.guild)}",
             color=DANGER,
         )
-        await self._post(role.guild, "role_delete", e)
+        await self._post(role.guild, "role_delete", e, entry=entry)
 
     @commands.Cog.listener()
     async def on_guild_role_update(self, before: discord.Role, after: discord.Role) -> None:
@@ -362,7 +428,7 @@ class AuditLogs(commands.Cog):
             f"**Role:** {after.mention} (`{after.id}`)\n**By:** {self._by(entry, after.guild)}\n" + clip("\n".join(changes), 1500),
             color=COLOR,
         )
-        await self._post(after.guild, "role_update", e)
+        await self._post(after.guild, "role_update", e, entry=entry)
 
     # ---------- channels / threads ----------
     @staticmethod
@@ -381,7 +447,7 @@ class AuditLogs(commands.Cog):
             f"**Channel:** {self._chan(channel)}\n**By:** {self._by(entry, channel.guild)}",
             color=SUCCESS,
         )
-        await self._post(channel.guild, "channel_create", e)
+        await self._post(channel.guild, "channel_create", e, entry=entry)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
@@ -394,7 +460,7 @@ class AuditLogs(commands.Cog):
             f"**Channel:** #{channel.name} (`{channel.id}`) · {kind}\n**By:** {self._by(entry, channel.guild)}",
             color=DANGER,
         )
-        await self._post(channel.guild, "channel_delete", e)
+        await self._post(channel.guild, "channel_delete", e, entry=entry)
 
     @commands.Cog.listener()
     async def on_guild_channel_update(self, before: discord.abc.GuildChannel, after: discord.abc.GuildChannel) -> None:
@@ -420,7 +486,7 @@ class AuditLogs(commands.Cog):
             f"**Channel:** {self._chan(after)}\n**By:** {self._by(entry, after.guild)}\n" + clip("\n".join(changes), 1500),
             color=COLOR,
         )
-        await self._post(after.guild, "channel_update", e)
+        await self._post(after.guild, "channel_update", e, entry=entry)
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread: discord.Thread) -> None:
@@ -430,10 +496,10 @@ class AuditLogs(commands.Cog):
         parent = f"<#{thread.parent_id}>" if thread.parent_id else "unknown"
         e = make_embed(
             "Thread created",
-            f"**Thread:** {thread.mention} (`{thread.id}`)\n**In:** {parent}\n**By:** {who(owner) if owner else (f'<@{thread.owner_id}>' if thread.owner_id else 'Unknown')}",
+            f"**Thread:** {thread.mention} (`{thread.id}`)\n**In:** {parent}\n**By:** {by_user(owner) if owner else (f'<@{thread.owner_id}>' if thread.owner_id else UNKNOWN_BY)}",
             color=SUCCESS,
         )
-        await self._post(thread.guild, "thread_create", e)
+        await self._post(thread.guild, "thread_create", e, actor=owner)
 
     @commands.Cog.listener()
     async def on_thread_delete(self, thread: discord.Thread) -> None:
@@ -446,7 +512,7 @@ class AuditLogs(commands.Cog):
             f"**Thread:** {thread.name} (`{thread.id}`)\n**In:** {parent}\n**By:** {self._by(entry, thread.guild)}",
             color=DANGER,
         )
-        await self._post(thread.guild, "thread_delete", e)
+        await self._post(thread.guild, "thread_delete", e, entry=entry)
 
     # ---------- messages ----------
     def _ignore_channel(self, guild: discord.Guild, channel_id: int) -> bool:
@@ -493,13 +559,13 @@ class AuditLogs(commands.Cog):
         lines = [
             f"**Author:** {who(msg.author) if msg is not None else '*message not cached*'}",
             f"**Where:** <#{payload.channel_id}>",
-            f"**Deleted by:** {who(entry.user) if entry is not None else ('the author or unknown' if msg is not None else 'Unknown')}",
+            f"**By:** {self._by(entry, guild, message_delete=True)}",
         ]
         if msg is not None:
             lines.append(f"**Content:** {clip(msg.content) or '*no text*'}")
             if msg.attachments:
                 lines.append("**Attachments:** " + clip(", ".join(a.filename for a in msg.attachments), 400))
-        await self._post(guild, "message_delete", make_embed("Message deleted", clip("\n".join(lines), 3800), color=DANGER))
+        await self._post(guild, "message_delete", make_embed("Message deleted", clip("\n".join(lines), 3800), color=DANGER), entry=entry)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload: discord.RawBulkMessageDeleteEvent) -> None:
@@ -512,7 +578,7 @@ class AuditLogs(commands.Cog):
             f"**Count:** {len(payload.message_ids)}\n**Where:** <#{payload.channel_id}>\n**By:** {self._by(entry, guild)}",
             color=DANGER,
         )
-        await self._post(guild, "bulk_delete", e)
+        await self._post(guild, "bulk_delete", e, entry=entry)
 
     # ---------- voice ----------
     @commands.Cog.listener()
@@ -539,11 +605,11 @@ class AuditLogs(commands.Cog):
         age = "never expires" if not invite.max_age else f"expires in {invite.max_age // 60} min"
         e = make_embed(
             "Invite created",
-            f"**Code:** `{invite.code}`\n**By:** {who(invite.inviter) if invite.inviter else 'Unknown'}\n"
+            f"**Code:** `{invite.code}`\n**By:** {by_user(invite.inviter) if invite.inviter else UNKNOWN_BY}\n"
             f"**Channel:** {getattr(invite.channel, 'mention', 'unknown')}\n**Max uses:** {uses} · {age}",
             color=SUCCESS,
         )
-        await self._post(guild, "invite_create", e)
+        await self._post(guild, "invite_create", e, actor=invite.inviter)
 
     @commands.Cog.listener()
     async def on_invite_delete(self, invite: discord.Invite) -> None:
@@ -556,7 +622,7 @@ class AuditLogs(commands.Cog):
             f"**Code:** `{invite.code}`\n**Channel:** {getattr(invite.channel, 'mention', 'unknown')}\n**By:** {self._by(entry, guild)}",
             color=DANGER,
         )
-        await self._post(guild, "invite_delete", e)
+        await self._post(guild, "invite_delete", e, entry=entry)
 
     # ---------- emoji / stickers / server ----------
     @commands.Cog.listener()
@@ -573,7 +639,7 @@ class AuditLogs(commands.Cog):
         action = discord.AuditLogAction.emoji_create if len(after) > len(before) else (
             discord.AuditLogAction.emoji_delete if len(after) < len(before) else discord.AuditLogAction.emoji_update)
         entry = await self._audit_entry(guild, action)
-        await self._post(guild, "emoji", make_embed("Emoji changed", clip("\n".join(lines) + f"\n**By:** {self._by(entry, guild)}", 3800), color=COLOR))
+        await self._post(guild, "emoji", make_embed("Emoji changed", clip("\n".join(lines) + f"\n**By:** {self._by(entry, guild)}", 3800), color=COLOR), entry=entry)
 
     @commands.Cog.listener()
     async def on_guild_stickers_update(self, guild: discord.Guild, before, after) -> None:
@@ -589,7 +655,7 @@ class AuditLogs(commands.Cog):
         action = discord.AuditLogAction.sticker_create if len(after) > len(before) else (
             discord.AuditLogAction.sticker_delete if len(after) < len(before) else discord.AuditLogAction.sticker_update)
         entry = await self._audit_entry(guild, action)
-        await self._post(guild, "sticker", make_embed("Stickers changed", clip("\n".join(lines) + f"\n**By:** {self._by(entry, guild)}", 3800), color=COLOR))
+        await self._post(guild, "sticker", make_embed("Stickers changed", clip("\n".join(lines) + f"\n**By:** {self._by(entry, guild)}", 3800), color=COLOR), entry=entry)
 
     @commands.Cog.listener()
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild) -> None:
@@ -620,7 +686,7 @@ class AuditLogs(commands.Cog):
             return
         entry = await self._audit_entry(after, discord.AuditLogAction.guild_update)
         e = make_embed("Server settings updated", clip("\n".join(changes) + f"\n**By:** {self._by(entry, after)}", 3800), color=COLOR)
-        await self._post(after, "server_update", e)
+        await self._post(after, "server_update", e, entry=entry)
 
     # ---------- commands ----------
     @commands.hybrid_group(
@@ -663,6 +729,8 @@ class AuditLogs(commands.Cog):
         channel_id, events = self.get_config(ctx.guild.id)
         channel = ctx.guild.get_channel(channel_id) if channel_id else None
         head = f"**Channel:** {channel.mention}" if channel else "**Channel:** not set (nothing is logged until one is set)"
+        admins = "logged" if self.log_admins(ctx.guild.id) else "not logged"
+        head += f"\n**Admins & owner:** {admins} (`auditlog admins on|off`)"
         lines = []
         for group, items in grouped_events():
             lines.append(f"**{group}**: " + ", ".join(f"{'✅' if k in events else '▫️'} `{k}`" for k, _label in items))
@@ -682,6 +750,23 @@ class AuditLogs(commands.Cog):
             return
         await self.set_events(ctx.guild.id, events)
         await ctx.send(embed=make_embed("Audit logs updated", f"`{event}` is now **{'on' if on else 'off'}**.", color=SUCCESS))
+
+    @auditlog.command(name="admins", description="Log actions by admins and the server owner (on or off).")
+    @commands.guild_only()
+    @commands.has_guild_permissions(manage_guild=True)
+    async def auditlog_admins(self, ctx: commands.Context, state: str) -> None:
+        assert ctx.guild
+        key = state.lower().strip()
+        if key not in {"on", "off"}:
+            await ctx.send(embed=make_embed("Use on or off", "Try `auditlog admins on` or `auditlog admins off`.", color=WARNING))
+            return
+        on = key == "on"
+        await self.set_log_admins(ctx.guild.id, on)
+        if on:
+            msg = "Actions by admins and the server owner will be logged."
+        else:
+            msg = "Actions by admins and the server owner will not be logged."
+        await ctx.send(embed=make_embed("Audit logs updated", msg, color=SUCCESS))
 
     @auditlog.command(name="enable", aliases=["on"], description="Turn an audit event on (or 'all').")
     @commands.guild_only()

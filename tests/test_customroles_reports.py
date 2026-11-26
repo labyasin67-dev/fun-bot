@@ -136,5 +136,34 @@ class ReportTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(await self.db.is_report_blocked(7, 11))
 
 
+class ReportNameTests(unittest.TestCase):
+    def test_embed_uses_mention_and_username(self):
+        import types
+        from cogs.reports import build_report_embed, format_claimer, format_report_user
+
+        guild = types.SimpleNamespace(id=7, name="Test", get_member=lambda uid: None, _state=None)
+        member = types.SimpleNamespace(id=11, name="alice", display_name="Alice")
+        guild.get_member = lambda uid, m=member: m if int(uid) == 11 else None
+        self.assertEqual(format_report_user(guild, 11, "Stored"), "<@11> @alice")
+        self.assertEqual(format_report_user(guild, 22, "Bob"), "<@22> @Bob")
+        self.assertEqual(format_report_user(guild, 33, None), "<@33>")
+        self.assertEqual(format_claimer(guild, 11, "Stored"), "@alice (11)")
+        self.assertEqual(format_claimer(guild, 44, None), "44")
+
+        row = {
+            "id": 1, "status": "open", "reporter_id": 11, "reporter_name": "Stored",
+            "reported_user_id": 22, "reported_name": "Bob", "reason": "spam",
+            "message_preview": None, "message_link": None, "claimed_by": 11,
+            "claimed_by_name": "Stored", "claimed_at": None, "decided_by": None,
+        }
+        emb = build_report_embed(guild, row)
+        self.assertIn("<@11> @alice", emb.description)
+        self.assertIn("<@22> @Bob", emb.description)
+        self.assertNotIn("ID 11", emb.description)
+        self.assertNotIn("(`11`)", emb.description)
+        self.assertEqual(emb.fields[0].name, "Claimed by")
+        self.assertEqual(emb.fields[0].value, "@alice (11)")
+
+
 if __name__ == "__main__":
     unittest.main()

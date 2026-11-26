@@ -87,16 +87,52 @@ def format_ts(ts: float | None) -> str:
     return time.strftime("%Y-%m-%d %H:%M", time.localtime(float(ts)))
 
 
+def _cached_username(guild: discord.Guild, user_id: int | None, stored_name: str | None = None) -> str | None:
+    if user_id:
+        member = guild.get_member(int(user_id))
+        if member is not None:
+            return member.name or member.display_name or stored_name
+        state = getattr(guild, "_state", None)
+        user = state.get_user(int(user_id)) if state is not None and hasattr(state, "get_user") else None
+        if user is not None:
+            return getattr(user, "name", None) or getattr(user, "global_name", None) or getattr(user, "display_name", None) or stored_name
+    return stored_name
+
+
+def format_report_user(guild: discord.Guild, user_id, stored_name: str | None = None) -> str:
+    """Mention plus @username for the report embed, or a mention alone if the name is unknown."""
+    if not user_id:
+        if stored_name:
+            return stored_name if str(stored_name).startswith("@") else f"@{stored_name}"
+        return "—"
+    name = _cached_username(guild, int(user_id), stored_name)
+    mention = f"<@{int(user_id)}>"
+    if name:
+        uname = name if str(name).startswith("@") else f"@{name}"
+        return f"{mention} {uname}"
+    return mention
+
+
+def format_claimer(guild: discord.Guild, user_id, stored_name: str | None = None) -> str:
+    """@username (user ID) for a claimed report."""
+    if not user_id:
+        return stored_name or "—"
+    name = _cached_username(guild, int(user_id), stored_name)
+    if name:
+        uname = name if str(name).startswith("@") else f"@{name}"
+        return f"{uname} ({int(user_id)})"
+    return str(int(user_id))
+
+
 def build_report_embed(guild: discord.Guild, row) -> discord.Embed:
     status = str(row["status"] or "open")
-    reporter = row["reporter_name"] or f"ID {row['reporter_id']}"
-    reported = row["reported_name"] or (f"ID {row['reported_user_id']}" if row["reported_user_id"] else "—")
+    reporter = format_report_user(guild, row["reporter_id"], row["reporter_name"])
+    reported = format_report_user(guild, row["reported_user_id"], row["reported_name"]) if row["reported_user_id"] or row["reported_name"] else "—"
     reason = row["reason"] or "No reason given."
     desc = (
-        f"**Reporter:** {reporter} (`{row['reporter_id']}`)\n"
-        f"**Reported:** {reported}"
-        + (f" (`{row['reported_user_id']}`)" if row["reported_user_id"] else "")
-        + f"\n**Reason:** {reason}"
+        f"**Reporter:** {reporter}\n"
+        f"**Reported:** {reported}\n"
+        f"**Reason:** {reason}"
     )
     e = make_embed(
         f"Report #{int(row['id'])} — {STATUS_LABELS.get(status, status)}",
@@ -111,7 +147,7 @@ def build_report_embed(guild: discord.Guild, row) -> discord.Embed:
             body += f"\n[Jump to message]({link})"
         e.add_field(name="Message", value=body[:1024], inline=False)
     if row["claimed_by"]:
-        who = row["claimed_by_name"] or f"ID {row['claimed_by']}"
+        who = format_claimer(guild, row["claimed_by"], row["claimed_by_name"])
         when = format_ts(row["claimed_at"])
         e.add_field(name="Claimed by", value=f"{who}{(' · ' + when) if when else ''}", inline=False)
     if status in {"approved", "denied"} and row["decided_by"]:

@@ -28,17 +28,31 @@ class FakeChannel(discord.TextChannel):
 
 
 class FakeGuild:
-    def __init__(self, gid: int, channel: FakeChannel) -> None:
+    def __init__(self, gid: int, channel: FakeChannel, owner_id: int = 1) -> None:
         self.id = gid
         self._channel = channel
+        self.owner_id = owner_id
         self.me = types.SimpleNamespace(guild_permissions=types.SimpleNamespace(view_audit_log=False))
+        self._members: dict[int, object] = {}
 
     def get_channel(self, cid):
         return self._channel if cid == self._channel.id else None
 
+    def get_member(self, uid):
+        return self._members.get(int(uid))
 
-def user(uid: int, bot: bool = False):
-    return types.SimpleNamespace(id=uid, mention=f"<@{uid}>", bot=bot, display_avatar=types.SimpleNamespace(url="http://x"))
+
+def user(uid: int, bot: bool = False, name: str | None = None, *, administrator: bool = False):
+    uname = name or f"User{uid}"
+    return types.SimpleNamespace(
+        id=uid,
+        mention=f"<@{uid}>",
+        bot=bot,
+        name=uname,
+        display_name=uname,
+        guild_permissions=types.SimpleNamespace(administrator=administrator),
+        display_avatar=types.SimpleNamespace(url="http://x"),
+    )
 
 
 class AuditTests(unittest.IsolatedAsyncioTestCase):
@@ -80,13 +94,17 @@ class AuditTests(unittest.IsolatedAsyncioTestCase):
         desc = self.ch.sent[0].description
         self.assertIn("<@9>", desc)
         self.assertIn("<@77>", desc)
+        self.assertIn("User77", desc)
+        self.assertIn("**By:**", desc)
+        self.assertNotIn("**Moderator:**", desc)
         self.assertIn("spam", desc)
 
     async def test_moderator_unavailable_without_permission(self):
         await self.cog.set_channel(1, 50)
         await self.cog.set_events(1, {"unban"})
         await self.cog.on_member_unban(self.guild, user(9))
-        self.assertIn("View Audit Log", self.ch.sent[0].description)
+        self.assertIn("Unknown (needs View Audit Log permission)", self.ch.sent[0].description)
+        self.assertIn("**By:**", self.ch.sent[0].description)
 
     async def test_log_channel_and_bots_are_ignored_for_messages(self):
         await self.cog.set_channel(1, 50)
@@ -103,6 +121,7 @@ class AuditTests(unittest.IsolatedAsyncioTestCase):
         await self.cog.on_raw_message_delete(types.SimpleNamespace(guild_id=1, channel_id=7, message_id=4, cached_message=cached))
         self.assertEqual(len(self.ch.sent), 1)
         self.assertIn("hi", self.ch.sent[0].description)
+        self.assertIn("**By:** author or unknown", self.ch.sent[0].description)
 
     async def test_edit_with_same_content_not_logged(self):
         await self.cog.set_channel(1, 50)
@@ -124,6 +143,59 @@ class AuditTests(unittest.IsolatedAsyncioTestCase):
         third = al.AuditLogs(self.bot)
         await third.cog_load()
         self.assertEqual(third.get_config(1), (50, set()))
+
+    async def test_log_admins_defaults_on_and_persists(self):
+        self.assertTrue(self.cog.log_admins(1))
+        await self.cog.set_log_admins(1, False)
+        self.assertFalse(self.cog.log_admins(1))
+        again = al.AuditLogs(self.bot)
+        await again.cog_load()
+        self.assertFalse(again.log_admins(1))
+        self.assertTrue(again.log_admins(2))
+
+    async def test_skips_owner_and_administrator_when_disabled(self):
+        await self.cog.set_channel(1, 50)
+        await self.cog.set_events(1, {"ban", "unban"})
+        await self.cog.set_log_admins(1, False)
+        self.guild.owner_id = 77
+        owner = user(77, name="Owner")
+        admin = user(88, name="Admin", administrator=True)
+        regular = user(99, name="Mod")
+        self.guild._members[88] = admin
+
+        async def fake_entry(guild, action, target_id=None, **kw):
+            return types.SimpleNamespace(user=self._actor, reason=None, target=user(9))
+
+        self.cog._audit_entry = fake_entry
+        self._actor = owner
+        await self.cog.on_member_ban(self.guild, user(9))
+        self.assertEqual(self.ch.sent, [])
+        self._actor = admin
+        await self.cog.on_member_ban(self.guild, user(9))
+        self.assertEqual(self.ch.sent, [])
+        self._actor = regular
+        await self.cog.on_member_unban(self.guild, user(9))
+        self.assertEqual(len(self.ch.sent), 1)
+        self.assertIn("Mod", self.ch.sent[0].description)
+        self.assertIn("<@99>", self.ch.sent[0].description)
+
+        # turning the setting back on logs the owner
+        await self.cog.set_log_admins(1, True)
+        self._actor = owner
+        await self.cog.on_member_ban(self.guild, user(9))
+        self.assertEqual(len(self.ch.sent), 2)
+        self.assertIn("<@77>", self.ch.sent[1].description)
+
+    async def test_legacy_settings_table_migrates_log_admins_on(self):
+        # simulate a pre-migration database: drop the column by using a bare table
+        await self.db.db.execute("DROP TABLE audit_settings")
+        await self.db.db.execute("CREATE TABLE audit_settings (guild_id INTEGER PRIMARY KEY, channel_id INTEGER)")
+        await self.db.db.execute("INSERT INTO audit_settings (guild_id, channel_id) VALUES (1, 50)")
+        await self.db.db.commit()
+        again = al.AuditLogs(self.bot)
+        await again.cog_load()
+        self.assertTrue(again.log_admins(1))
+        self.assertEqual(again.get_config(1)[0], 50)
 
     async def test_event_catalogue_covers_requested_events(self):
         want = {"member_join", "member_leave", "ban", "unban", "kick", "timeout", "nickname", "member_roles", "role_create",

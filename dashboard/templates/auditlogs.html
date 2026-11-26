@@ -24,6 +24,11 @@
       {{ chansel('channel_id', grouped, selected=audit_channel_id, empty_label='Not set (logging paused)') }}
     </div>
     <p class="faint">Use a private staff channel: message edits and deletes include the message text.</p>
+    <label class="audit-check" style="margin-top:12px">
+      <input class="uk-checkbox" type="checkbox" name="log_admins" value="1" {% if log_admins %}checked{% endif %}>
+      <span>Log actions by admins and the server owner</span>
+    </label>
+    <p class="faint">When this is off, actions by the server owner or anyone with Administrator are not posted. This is on by default.</p>
   </div>
 
   <div class="audit-groups">

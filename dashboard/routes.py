@@ -326,6 +326,48 @@ def _staff_person(name: str | None, avatar: str | None, user_id: int | None, gui
     return {"name": label, "avatar": avatar or "", "id": user_id}
 
 
+def _resolve_username(guild: discord.Guild | None, user_id: int | None, stored_name: str | None = None, bot=None) -> str | None:
+    if user_id and guild is not None:
+        member = guild.get_member(int(user_id))
+        if member is not None:
+            return member.name or member.display_name or stored_name
+        user = bot.get_user(int(user_id)) if bot is not None and hasattr(bot, "get_user") else None
+        if user is None:
+            state = getattr(guild, "_state", None)
+            if state is not None and hasattr(state, "get_user"):
+                user = state.get_user(int(user_id))
+        if user is not None:
+            return getattr(user, "name", None) or getattr(user, "global_name", None) or getattr(user, "display_name", None) or stored_name
+    return stored_name
+
+
+def _at_username(guild: discord.Guild | None, user_id: int | None, stored_name: str | None = None, bot=None) -> str:
+    name = _resolve_username(guild, user_id, stored_name, bot=bot)
+    if name:
+        return name if str(name).startswith("@") else f"@{name}"
+    return str(int(user_id)) if user_id else "Unknown"
+
+
+def _claimer_label(guild: discord.Guild | None, user_id: int | None, stored_name: str | None = None, bot=None) -> str:
+    name = _resolve_username(guild, user_id, stored_name, bot=bot)
+    if name and user_id:
+        uname = name if str(name).startswith("@") else f"@{name}"
+        return f"{uname} ({int(user_id)})"
+    if user_id:
+        return str(int(user_id))
+    return name or "—"
+
+
+def _report_list_person(name, avatar, user_id, guild, bot=None, *, claimed: bool = False):
+    person = _staff_person(name, avatar, user_id, guild)
+    if person is None:
+        return None
+    person["name"] = (
+        _claimer_label(guild, user_id, name, bot=bot) if claimed else _at_username(guild, user_id, name, bot=bot)
+    )
+    return person
+
+
 def _fmt_ts(ts) -> str:
     if not ts:
         return ""
@@ -1239,7 +1281,8 @@ def register_routes(app: FastAPI) -> None:
         if redir:
             return redir
         assert guild
-        db = _bot(request).db
+        bot = _bot(request)
+        db = bot.db
         settings = await db.get_report_settings(guild.id)
         owner_view = _is_owner(request, user)
         per = 50
@@ -1270,9 +1313,9 @@ def register_routes(app: FastAPI) -> None:
                         "reason": row["reason"] or "",
                         "message_link": row["message_link"] or "",
                         "created": _fmt_ts(row["created_at"]),
-                        "reporter": _staff_person(row["reporter_name"], row["reporter_avatar"], row["reporter_id"], guild),
-                        "reported": _staff_person(row["reported_name"], row["reported_avatar"], row["reported_user_id"], guild) if row["reported_user_id"] or row["reported_name"] else None,
-                        "claimed": _staff_person(row["claimed_by_name"], row["claimed_by_avatar"], row["claimed_by"], guild) if row["claimed_by"] else None,
+                        "reporter": _report_list_person(row["reporter_name"], row["reporter_avatar"], row["reporter_id"], guild, bot),
+                        "reported": _report_list_person(row["reported_name"], row["reported_avatar"], row["reported_user_id"], guild, bot) if row["reported_user_id"] or row["reported_name"] else None,
+                        "claimed": _report_list_person(row["claimed_by_name"], row["claimed_by_avatar"], row["claimed_by"], guild, bot, claimed=True) if row["claimed_by"] else None,
                         "claimed_at": _fmt_ts(row["claimed_at"]),
                         "decided": _staff_person(row["decided_by_name"], row["decided_by_avatar"], row["decided_by"], guild) if row["decided_by"] else None,
                         "decided_at": _fmt_ts(row["decided_at"]),
