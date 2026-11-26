@@ -2,7 +2,7 @@
 {% block title %}Your servers{% endblock %}
 {% block body %}
 <div class="page-head">{{ ui.cat_icon('server') }}<div><h1 class="page-title">Your servers</h1>
-<p class="lede">Servers where you have Manage Server. Invite the bot if it is not there yet.</p></div></div>
+<p class="lede">Servers where you have Administrator. Invite the bot if it is not there yet.</p></div></div>
 {% if not bot_ready %}
   <p class="muted">The bot is still starting, so membership may be incomplete for a moment.</p>
 {% endif %}
@@ -24,7 +24,7 @@
       {% endif %}
     </div>
   {% else %}
-    <div class="uk-card card muted">No servers found where you have Manage Server. Try logging in again after you get that permission.</div>
+    <div class="uk-card card muted">No servers found where you have Administrator. Try logging in again after you get that permission.</div>
   {% endfor %}
 </div>
 {% endblock %}

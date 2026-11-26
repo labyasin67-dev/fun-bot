@@ -11,7 +11,7 @@ import aiohttp
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from dashboard import ADMINISTRATOR, MANAGE_GUILD, client_id, dashboard_url, oauth_configured
+from dashboard import ADMINISTRATOR, client_id, dashboard_url, oauth_configured
 
 AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize"
 TOKEN_URL = "https://discord.com/api/oauth2/token"
@@ -48,16 +48,65 @@ def require_user(request: Request) -> dict | RedirectResponse:
     return RedirectResponse(f"/login?next={next_url}", status_code=302)
 
 
+def has_manage_permission(permissions: int, owner: bool = False) -> bool:
+    """True if the user is the guild owner or has Discord Administrator."""
+    if owner:
+        return True
+    try:
+        perms = int(permissions or 0)
+    except (TypeError, ValueError):
+        perms = 0
+    return bool(perms & ADMINISTRATOR)
+
+
+def _live_admin_access(request: Request, guild_id: int) -> bool | None:
+    """True/False when the bot can see this member or owner; otherwise None."""
+    user = current_user(request)
+    if not user:
+        return None
+    try:
+        uid = int(user["id"])
+    except (TypeError, ValueError, KeyError):
+        return None
+    bot = getattr(getattr(getattr(request, "app", None), "state", None), "bot", None)
+    if bot is None:
+        return None
+    get_guild = getattr(bot, "get_guild", None)
+    guild = get_guild(guild_id) if callable(get_guild) else None
+    if guild is None:
+        return None
+    try:
+        if int(getattr(guild, "owner_id", 0) or 0) == uid:
+            return True
+    except (TypeError, ValueError):
+        pass
+    get_member = getattr(guild, "get_member", None)
+    member = get_member(uid) if callable(get_member) else None
+    if member is None:
+        return None
+    perms = getattr(member, "guild_permissions", None)
+    return bool(getattr(perms, "administrator", False))
+
+
+def _entry_admin_access(request: Request, entry: dict) -> bool:
+    try:
+        gid = int(entry["id"])
+    except (TypeError, ValueError, KeyError):
+        return False
+    live = _live_admin_access(request, gid)
+    if live is not None:
+        return live
+    if "permissions" in entry or "owner" in entry:
+        return has_manage_permission(entry.get("permissions") or 0, owner=bool(entry.get("owner")))
+    return False
+
+
 def managed_guilds(request: Request) -> list[dict]:
-    return list(request.session.get("guilds") or [])
+    return [g for g in (request.session.get("guilds") or []) if isinstance(g, dict) and _entry_admin_access(request, g)]
 
 
 def can_manage_guild(request: Request, guild_id: int) -> bool:
     return any(int(g["id"]) == guild_id for g in managed_guilds(request))
-
-
-def has_manage_permission(permissions: int) -> bool:
-    return bool(permissions & (MANAGE_GUILD | ADMINISTRATOR))
 
 
 def oauth_authorize_url(request: Request, next_url: str | None = None) -> str:
@@ -107,12 +156,15 @@ async def exchange_code(request: Request, code: str) -> dict:
             perms = int(guild.get("permissions") or 0)
         except (TypeError, ValueError):
             perms = 0
-        if has_manage_permission(perms):
+        owner = bool(guild.get("owner"))
+        if has_manage_permission(perms, owner=owner):
             managed.append(
                 {
                     "id": str(guild["id"]),
                     "name": guild.get("name") or "Unknown server",
                     "icon": guild.get("icon"),
+                    "permissions": perms,
+                    "owner": owner,
                 }
             )
     request.session["user"] = {

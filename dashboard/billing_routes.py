@@ -43,6 +43,7 @@ def register_billing_routes(app) -> None:
         _guild_or_redirect,
     )
     from dashboard.auth import (
+        can_manage_guild,
         current_user,
         flash,
         managed_guilds,
@@ -123,8 +124,8 @@ def register_billing_routes(app) -> None:
             flash(request, "error", "Pick a server.")
             return RedirectResponse(f"/subscribe?plan={plan}", status_code=303)
         guild_id = int(raw)
-        if not any(int(g["id"]) == guild_id for g in managed_guilds(request)):
-            flash(request, "error", "You need Manage Server in that community.")
+        if not can_manage_guild(request, guild_id):
+            flash(request, "error", "You need Administrator in that community.")
             return RedirectResponse(f"/subscribe?plan={plan}", status_code=303)
         bot = _bot(request)
         if bot is None or bot.get_guild(guild_id) is None:

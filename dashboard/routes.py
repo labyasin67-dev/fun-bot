@@ -108,7 +108,7 @@ async def _guild_or_redirect(request: Request, guild_id: int):
     if isinstance(user, RedirectResponse):
         return user, None, None
     if not can_manage_guild(request, guild_id):
-        flash(request, "error", "You need Manage Server in that community.")
+        flash(request, "error", "You need Administrator in that community.")
         return RedirectResponse("/servers", status_code=302), None, None
     bot = _bot(request)
     guild = bot.get_guild(guild_id) if bot is not None else None

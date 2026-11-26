@@ -281,7 +281,7 @@ def landing(login_disabled: bool = False, oauth_ready: bool = True) -> Markup:
                 Div(Span(str(i), cls="step-num"), Div(t, cls="step-title"), P(d, cls="muted"), cls="step-x")
                 for i, (t, d) in enumerate(
                     (
-                        ("Log in with Discord", "We only see servers where you have Manage Server."),
+                        ("Log in with Discord", "We only see servers where you have Administrator."),
                         ("Pick a server", "Invite the bot if it is not there yet."),
                         ("Change settings", "Saved instantly — the bot picks them up right away."),
                     ),
