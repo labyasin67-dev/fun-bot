@@ -228,7 +228,6 @@ def footer() -> Markup:
 
 FEATURES: tuple[tuple[str, str, str], ...] = (
     ("shield", "Moderation & Safety", "Mod log, warnings, alt detection, member reports and per-event audit logs sent to the channel you pick."),
-    ("trophy", "Levels", "XP from chat and voice, level roles, a leaderboard, and a master switch so it never clashes with another levelling bot."),
     ("youtube", "Creator Integration", "Post an alert the moment a YouTube channel uploads, with your own message and @everyone, role or no ping."),
     ("palette", "Roles", "Member-made custom roles with gradients, plus button self-roles for your community."),
     ("message-square", "Messages", "Welcome, leave and ban messages with placeholders, all edited from one screen."),
