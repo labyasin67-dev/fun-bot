@@ -1889,6 +1889,12 @@ class Arcade(commands.Cog):
         answers = [item["name"], *item.get("aliases", [])]
         code = item["code"]
         flag_path = Path(banks.ROOT) / "data" / "flags" / f"{code}.png"
+        if not flag_path.exists():
+            # Fall back to the CWD-relative layout so the flag image still
+            # loads when the working directory differs from the repo root.
+            fallback = Path("data" / "flags" / f"{code}.png")
+            if fallback.exists():
+                flag_path = fallback
         emoji = None
         try:
             emoji = flag_emoji(code)
