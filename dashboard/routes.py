@@ -1107,3 +1107,11 @@ def register_routes(app: FastAPI) -> None:
 
     from dashboard.billing_routes import register_billing_routes
     register_billing_routes(app)
+
+    @app.get("/privacy", response_class=HTMLResponse)
+    async def privacy(request: Request):
+        return render(request, "privacy.html")
+
+    @app.get("/terms", response_class=HTMLResponse)
+    async def terms(request: Request):
+        return render(request, "terms.html")
