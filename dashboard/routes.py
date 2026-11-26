@@ -1333,7 +1333,7 @@ def register_routes(app: FastAPI) -> None:
             blocks.append(
                 {
                     "user_id": int(row["user_id"]),
-                    "name": _member_name(guild, int(row["user_id"])),
+                    "name": _claimer_label(guild, int(row["user_id"]), None, bot=bot),
                     "reason": row["reason"] or "",
                 }
             )

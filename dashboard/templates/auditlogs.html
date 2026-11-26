@@ -40,6 +40,12 @@
         <input class="uk-checkbox" type="checkbox" name="ev_{{ key }}" value="1" {% if key in audit_events %}checked{% endif %}>
         <span>{{ label }}</span>
       </label>
+      {% if key == 'message_delete' %}
+      <label class="audit-check">
+        <input class="uk-checkbox" type="checkbox" name="log_admin_deletes" value="1" {% if log_admin_deletes %}checked{% endif %}>
+        <span>Log messages deleted by admins and the server owner</span>
+      </label>
+      {% endif %}
       {% endfor %}
     </section>
     {% endfor %}

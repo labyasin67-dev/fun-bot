@@ -195,7 +195,66 @@ class AuditTests(unittest.IsolatedAsyncioTestCase):
         again = al.AuditLogs(self.bot)
         await again.cog_load()
         self.assertTrue(again.log_admins(1))
+        self.assertTrue(again.log_admin_deletes(1))
         self.assertEqual(again.get_config(1)[0], 50)
+
+    async def test_log_admin_deletes_defaults_on_and_is_independent(self):
+        self.assertTrue(self.cog.log_admin_deletes(1))
+        await self.cog.set_log_admin_deletes(1, False)
+        await self.cog.set_log_admins(1, True)
+        self.assertFalse(self.cog.log_admin_deletes(1))
+        self.assertTrue(self.cog.log_admins(1))
+        again = al.AuditLogs(self.bot)
+        await again.cog_load()
+        self.assertFalse(again.log_admin_deletes(1))
+        self.assertTrue(again.log_admins(1))
+
+    async def test_skips_admin_and_owner_message_deletes_when_disabled(self):
+        await self.cog.set_channel(1, 50)
+        await self.cog.set_events(1, {"message_delete", "bulk_delete"})
+        await self.cog.set_log_admin_deletes(1, False)
+        await self.cog.set_log_admins(1, True)  # general toggle stays on
+        self.guild.owner_id = 77
+        owner = user(77, name="Owner")
+        admin = user(88, name="Admin", administrator=True)
+        regular = user(5, name="Member")
+        self.guild._members[88] = admin
+
+        # no audit entry: author is used
+        await self.cog.on_raw_message_delete(types.SimpleNamespace(
+            guild_id=1, channel_id=7, message_id=10, cached_message=types.SimpleNamespace(author=owner, content="o", attachments=[]),
+        ))
+        await self.cog.on_raw_message_delete(types.SimpleNamespace(
+            guild_id=1, channel_id=7, message_id=11, cached_message=types.SimpleNamespace(author=admin, content="a", attachments=[]),
+        ))
+        self.assertEqual(self.ch.sent, [])
+        await self.cog.on_raw_message_delete(types.SimpleNamespace(
+            guild_id=1, channel_id=7, message_id=12, cached_message=types.SimpleNamespace(author=regular, content="m", attachments=[]),
+        ))
+        self.assertEqual(len(self.ch.sent), 1)
+        self.assertIn("m", self.ch.sent[0].description)
+
+        # audit entry names the deleter (admin deleted a regular user's message)
+        async def fake_entry(guild, action, target_id=None, **kw):
+            return types.SimpleNamespace(user=admin, reason=None, target=regular)
+        self.cog._audit_entry = fake_entry
+        self.ch.sent.clear()
+        await self.cog.on_raw_message_delete(types.SimpleNamespace(
+            guild_id=1, channel_id=7, message_id=13, cached_message=types.SimpleNamespace(author=regular, content="x", attachments=[]),
+        ))
+        self.assertEqual(self.ch.sent, [])
+        await self.cog.on_raw_bulk_message_delete(types.SimpleNamespace(guild_id=1, channel_id=7, message_ids=[1, 2, 3]))
+        self.assertEqual(self.ch.sent, [])
+
+        # independent: general log_admins off must not by itself hide message deletes when this toggle is on
+        await self.cog.set_log_admin_deletes(1, True)
+        await self.cog.set_log_admins(1, False)
+        self.ch.sent.clear()
+        await self.cog.on_raw_message_delete(types.SimpleNamespace(
+            guild_id=1, channel_id=7, message_id=14, cached_message=types.SimpleNamespace(author=regular, content="kept", attachments=[]),
+        ))
+        self.assertEqual(len(self.ch.sent), 1)
+        self.assertIn("kept", self.ch.sent[0].description)
 
     async def test_event_catalogue_covers_requested_events(self):
         want = {"member_join", "member_leave", "ban", "unban", "kick", "timeout", "nickname", "member_roles", "role_create",

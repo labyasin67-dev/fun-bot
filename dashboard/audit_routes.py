@@ -31,6 +31,7 @@ def register_audit_routes(app: FastAPI) -> None:
             grouped=_grouped_channels(guild),
             can_view_audit=bool(me and me.guild_permissions.view_audit_log),
             log_admins=cog.log_admins(guild.id) if cog else True,
+            log_admin_deletes=cog.log_admin_deletes(guild.id) if cog else True,
         )
 
     @app.post("/servers/{guild_id}/auditlogs")
@@ -56,6 +57,7 @@ def register_audit_routes(app: FastAPI) -> None:
             await cog.set_channel(guild.id, channel_id)
             await cog.set_events(guild.id, chosen)
             await cog.set_log_admins(guild.id, form.get("log_admins") == "1")
+            await cog.set_log_admin_deletes(guild.id, form.get("log_admin_deletes") == "1")
             if channel_id is None:
                 flash(request, "ok", "Saved. No log channel is set, so nothing is logged yet.")
             elif not chosen:

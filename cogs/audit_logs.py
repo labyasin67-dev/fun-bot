@@ -60,7 +60,8 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS audit_settings (
     guild_id INTEGER PRIMARY KEY,
     channel_id INTEGER,
-    log_admins INTEGER NOT NULL DEFAULT 1
+    log_admins INTEGER NOT NULL DEFAULT 1,
+    log_admin_deletes INTEGER NOT NULL DEFAULT 1
 );
 CREATE TABLE IF NOT EXISTS audit_events (
     guild_id INTEGER NOT NULL,
@@ -125,6 +126,7 @@ class AuditLogs(commands.Cog):
         self._cfg: dict[int, tuple[int | None, set[str]]] = {}
         # guild_id -> log admin/owner actions (missing means ON)
         self._log_admins: dict[int, bool] = {}
+        self._log_admin_deletes: dict[int, bool] = {}
 
     # ---------- storage ----------
     async def cog_load(self) -> None:
@@ -134,12 +136,16 @@ class AuditLogs(commands.Cog):
 
     async def _load_all(self) -> None:
         cfg: dict[int, tuple[int | None, set[str]]] = {}
-        cur = await self.bot.db.db.execute("SELECT guild_id, channel_id, log_admins FROM audit_settings")
+        cur = await self.bot.db.db.execute(
+            "SELECT guild_id, channel_id, log_admins, log_admin_deletes FROM audit_settings"
+        )
         log_admins: dict[int, bool] = {}
+        log_admin_deletes: dict[int, bool] = {}
         for row in await cur.fetchall():
             gid = int(row[0])
             cfg[gid] = (int(row[1]) if row[1] else None, set())
             log_admins[gid] = bool(row[2]) if row[2] is not None else True
+            log_admin_deletes[gid] = bool(row[3]) if row[3] is not None else True
         cur = await self.bot.db.db.execute("SELECT guild_id, event FROM audit_events WHERE enabled = 1")
         for row in await cur.fetchall():
             gid = int(row[0])
@@ -147,6 +153,7 @@ class AuditLogs(commands.Cog):
                 cfg.setdefault(gid, (None, set()))[1].add(str(row[1]))
         self._cfg = cfg
         self._log_admins = log_admins
+        self._log_admin_deletes = log_admin_deletes
 
     def get_config(self, guild_id: int) -> tuple[int | None, set[str]]:
         channel_id, events = self._cfg.get(int(guild_id), (None, set()))
@@ -181,6 +188,13 @@ class AuditLogs(commands.Cog):
                 "ALTER TABLE audit_settings ADD COLUMN log_admins INTEGER NOT NULL DEFAULT 1"
             )
             await self.bot.db.db.commit()
+        cur = await self.bot.db.db.execute("PRAGMA table_info(audit_settings)")
+        cols = {str(row[1]) for row in await cur.fetchall()}
+        if "log_admin_deletes" not in cols:
+            await self.bot.db.db.execute(
+                "ALTER TABLE audit_settings ADD COLUMN log_admin_deletes INTEGER NOT NULL DEFAULT 1"
+            )
+            await self.bot.db.db.commit()
 
     def log_admins(self, guild_id: int) -> bool:
         return self._log_admins.get(int(guild_id), True)
@@ -193,6 +207,21 @@ class AuditLogs(commands.Cog):
         )
         await self.bot.db.db.commit()
         self._log_admins[int(guild_id)] = bool(enabled)
+
+    def log_admin_deletes(self, guild_id: int) -> bool:
+        return self._log_admin_deletes.get(int(guild_id), True)
+
+    async def set_log_admin_deletes(self, guild_id: int, enabled: bool) -> None:
+        await self.bot.db.db.execute(
+            "INSERT INTO audit_settings (guild_id, channel_id, log_admin_deletes) VALUES (?, NULL, ?)"
+            " ON CONFLICT(guild_id) DO UPDATE SET log_admin_deletes = excluded.log_admin_deletes",
+            (int(guild_id), 1 if enabled else 0),
+        )
+        await self.bot.db.db.commit()
+        self._log_admin_deletes[int(guild_id)] = bool(enabled)
+
+    def _omit_admin_delete(self, guild: discord.Guild, user: Any) -> bool:
+        return (not self.log_admin_deletes(guild.id)) and self._is_privileged_actor(guild, user)
 
     def _is_privileged_actor(self, guild: discord.Guild, user: Any) -> bool:
         if user is None:
@@ -222,9 +251,9 @@ class AuditLogs(commands.Cog):
         return self._channel_for(guild, event) is not None
 
     # ---------- posting ----------
-    async def _post(self, guild: discord.Guild, event: str, embed: discord.Embed, *, entry: Any = None, actor: Any = None) -> bool:
+    async def _post(self, guild: discord.Guild, event: str, embed: discord.Embed, *, entry: Any = None, actor: Any = None, ignore_log_admins: bool = False) -> bool:
         who_did = actor if actor is not None else (getattr(entry, "user", None) if entry is not None else None)
-        if self._omit_actor(guild, who_did):
+        if (not ignore_log_admins) and self._omit_actor(guild, who_did):
             return False
         channel = self._channel_for(guild, event)
         if channel is None:
@@ -565,7 +594,13 @@ class AuditLogs(commands.Cog):
             lines.append(f"**Content:** {clip(msg.content) or '*no text*'}")
             if msg.attachments:
                 lines.append("**Attachments:** " + clip(", ".join(a.filename for a in msg.attachments), 400))
-        await self._post(guild, "message_delete", make_embed("Message deleted", clip("\n".join(lines), 3800), color=DANGER), entry=entry)
+        deleter = entry.user if entry is not None and getattr(entry, "user", None) is not None else (msg.author if msg is not None else None)
+        if self._omit_admin_delete(guild, deleter):
+            return
+        await self._post(
+            guild, "message_delete", make_embed("Message deleted", clip("\n".join(lines), 3800), color=DANGER),
+            entry=entry, actor=deleter, ignore_log_admins=True,
+        )
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload: discord.RawBulkMessageDeleteEvent) -> None:
@@ -578,7 +613,10 @@ class AuditLogs(commands.Cog):
             f"**Count:** {len(payload.message_ids)}\n**Where:** <#{payload.channel_id}>\n**By:** {self._by(entry, guild)}",
             color=DANGER,
         )
-        await self._post(guild, "bulk_delete", e, entry=entry)
+        deleter = entry.user if entry is not None else None
+        if self._omit_admin_delete(guild, deleter):
+            return
+        await self._post(guild, "bulk_delete", e, entry=entry, ignore_log_admins=True)
 
     # ---------- voice ----------
     @commands.Cog.listener()

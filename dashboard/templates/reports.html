@@ -192,7 +192,7 @@
     <tr><th>Member</th><th>Reason</th><th></th></tr>
     {% for item in blocks %}
       <tr>
-        <td data-label="Member">{{ item.name }}<br><span class="muted">{{ item.user_id }}</span></td>
+        <td data-label="Member">{{ item.name }}</td>
         <td data-label="Reason">{{ item.reason or "—" }}</td>
         <td data-label="">
           <form method="post">
