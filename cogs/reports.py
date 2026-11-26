@@ -609,6 +609,21 @@ class Reports(commands.Cog):
             except discord.HTTPException:
                 pass
 
+    async def delete_report(self, guild: discord.Guild, ticket_id: int) -> str | None:
+        row = await self.bot.db.get_report_ticket(ticket_id, guild.id)
+        if row is None:
+            return "That report was not found."
+        await self._delete_message(guild, row["message_channel_id"], row["message_id"])
+        await self._delete_message(guild, row["announce_channel_id"], row["announce_message_id"])
+        ticket_ch = guild.get_channel(int(row["channel_id"])) if row["channel_id"] else None
+        if isinstance(ticket_ch, discord.TextChannel):
+            try:
+                await ticket_ch.delete(reason=f"Report #{ticket_id} removed from the dashboard")
+            except discord.HTTPException:
+                pass
+        await self.bot.db.delete_report_ticket(ticket_id, guild.id)
+        return None
+
     async def close_ticket(self, guild: discord.Guild, ticket_id: int, actor: discord.abc.User, *, actor_name: str | None = None, actor_avatar: str | None = None) -> str | None:
         row = await self.bot.db.get_report_ticket(ticket_id, guild.id)
         if row is None:

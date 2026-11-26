@@ -646,6 +646,22 @@ class Database:
         await self.db.commit()
         return cur.rowcount
 
+    async def delete_warning(self, guild_id: int, user_id: int, warning_id: int) -> bool:
+        cur = await self.db.execute(
+            "DELETE FROM warnings WHERE guild_id = ? AND user_id = ? AND id = ?",
+            (guild_id, user_id, int(warning_id)),
+        )
+        await self.db.commit()
+        return cur.rowcount > 0
+
+    async def delete_latest_warning(self, guild_id: int, user_id: int):
+        rows = await self.get_warnings(guild_id, user_id)
+        if not rows:
+            return None
+        latest = rows[-1]
+        ok = await self.delete_warning(guild_id, user_id, int(latest["id"]))
+        return latest if ok else None
+
 
     # --- feature channels (setchannel) ---
 
@@ -1850,6 +1866,18 @@ class Database:
             (time.time(), closed_by, closed_by_name, closed_by_avatar, ticket_id),
         )
         await self.db.commit()
+
+    async def delete_report_ticket(self, ticket_id: int, guild_id: int) -> bool:
+        await self.db.execute(
+            "DELETE FROM report_notes WHERE ticket_id = ? AND guild_id = ?",
+            (ticket_id, guild_id),
+        )
+        cur = await self.db.execute(
+            "DELETE FROM report_tickets WHERE id = ? AND guild_id = ?",
+            (ticket_id, guild_id),
+        )
+        await self.db.commit()
+        return cur.rowcount > 0
 
     async def add_report_note(
         self,

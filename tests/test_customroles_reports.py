@@ -127,6 +127,10 @@ class ReportTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(notes[0]["body"], "Private note")
         self.assertEqual(await self.db.count_reports(7, "approved"), 1)
         self.assertEqual(await self.db.count_open_reports(7, 11), 0)
+        self.assertTrue(await self.db.delete_report_ticket(ticket_id, 7))
+        self.assertIsNone(await self.db.get_report_ticket(ticket_id, 7))
+        self.assertEqual(await self.db.list_report_notes(ticket_id), [])
+        self.assertFalse(await self.db.delete_report_ticket(ticket_id, 7))
 
     async def test_block_and_cooldown_helpers(self):
         self.assertFalse(await self.db.is_report_blocked(7, 11))

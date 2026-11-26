@@ -89,7 +89,7 @@
       <th>Message</th>
       <th>Claimed by</th>
       <th>{% if status == 'open' %}Opened{% else %}Decision{% endif %}</th>
-      {% if status == 'open' %}<th></th>{% endif %}
+      <th></th>
     </tr>
     {% for item in items %}
       <tr>
@@ -108,8 +108,8 @@
             {% if item.decision_reason %}<br>{{ item.decision_reason }}{% endif %}
           {% endif %}
         </td>
-        {% if status == 'open' %}
         <td data-label="">
+          {% if status == 'open' %}
           <form method="post" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="approve">
@@ -124,13 +124,19 @@
             <input class="uk-input" type="text" name="reason" maxlength="500" placeholder="Reason (optional)" style="width:140px">
             <button class="uk-btn uk-btn-destructive uk-btn-sm btn danger small" type="submit">Deny</button>
           </form>
+          {% endif %}
+          <form method="post" style="display:inline" onsubmit="return confirm('Delete report #{{ item.id }}? This cannot be undone.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="ticket_id" value="{{ item.id }}">
+            <button class="uk-btn uk-btn-destructive uk-btn-sm btn danger small" type="submit">Delete</button>
+          </form>
         </td>
-        {% endif %}
       </tr>
       {% if owner_view %}
       <tr>
-        <td colspan="{% if status == 'open' %}8{% else %}7{% endif %}">
-          <div class="muted" style="margin-bottom:6px">Owner-only comments</div>
+        <td colspan="8">
+          <div class="muted" style="margin-bottom:6px">Staff comments (visible to server administrators)</div>
           {% if item.notes %}
             <ul class="notes" style="margin:0 0 8px;padding-left:18px">
               {% for note in item.notes %}
@@ -149,7 +155,7 @@
             <input type="hidden" name="action" value="note">
             <input type="hidden" name="ticket_id" value="{{ item.id }}">
             <div class="field" style="flex:1">
-              <input class="uk-input" type="text" name="body" maxlength="2000" placeholder="Add a private comment (only you can see this)" required>
+              <input class="uk-input" type="text" name="body" maxlength="2000" placeholder="Add a private comment (visible to this server's administrators)" required>
             </div>
             <button class="uk-btn uk-btn-secondary btn secondary" type="submit">Add comment</button>
           </form>

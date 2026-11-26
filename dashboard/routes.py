@@ -315,6 +315,26 @@ def _is_owner(request: Request, user) -> bool:
         return False
 
 
+def _is_guild_administrator(guild, user) -> bool:
+    if not user:
+        return False
+    try:
+        uid = int(user["id"])
+    except (TypeError, ValueError, KeyError):
+        return False
+    try:
+        if int(getattr(guild, "owner_id", 0) or 0) == uid:
+            return True
+    except (TypeError, ValueError):
+        pass
+    get_member = getattr(guild, "get_member", None)
+    member = get_member(uid) if callable(get_member) else None
+    if member is None:
+        return False
+    perms = getattr(member, "guild_permissions", None)
+    return bool(getattr(perms, "administrator", False))
+
+
 def _categories(guild: discord.Guild) -> list[discord.CategoryChannel]:
     return sorted(guild.categories, key=lambda c: (c.position, c.id))
 
@@ -1283,7 +1303,7 @@ def register_routes(app: FastAPI) -> None:
         bot = _bot(request)
         db = bot.db
         settings = await db.get_report_settings(guild.id)
-        owner_view = _is_owner(request, user)
+        owner_view = _is_guild_administrator(guild, user) or _is_owner(request, user)
         per = 50
 
         async def section(status: str, page: int):
@@ -1423,9 +1443,27 @@ def register_routes(app: FastAPI) -> None:
             else:
                 flash(request, "ok", f"Report #{ticket_id} was {action}d. The reporter was notified if I could reach them.")
             return RedirectResponse(redirect, status_code=303)
+        if action == "delete":
+            if not (_is_guild_administrator(guild, user) or _is_owner(request, user)):
+                flash(request, "error", "Only server administrators can delete a report.")
+                return RedirectResponse(redirect, status_code=303)
+            if not ticket_id:
+                flash(request, "error", "Missing report ID.")
+                return RedirectResponse(redirect, status_code=303)
+            cog = _bot(request).get_cog("Reports")
+            if cog is None:
+                ok = await db.delete_report_ticket(ticket_id, guild.id)
+                flash(request, "ok" if ok else "error", f"Report #{ticket_id} was deleted." if ok else "That report was not found.")
+            else:
+                err = await cog.delete_report(guild, ticket_id)
+                if err:
+                    flash(request, "error", err)
+                else:
+                    flash(request, "ok", f"Report #{ticket_id} was deleted.")
+            return RedirectResponse(redirect, status_code=303)
         if action == "note":
-            if not _is_owner(request, user):
-                flash(request, "error", "Only the bot owner can add or view private comments.")
+            if not (_is_guild_administrator(guild, user) or _is_owner(request, user)):
+                flash(request, "error", "Only server administrators can add or view private comments.")
                 return RedirectResponse(redirect, status_code=303)
             if not ticket_id:
                 flash(request, "error", "Missing report ID.")
@@ -1444,7 +1482,7 @@ def register_routes(app: FastAPI) -> None:
                 if err:
                     flash(request, "error", err)
                 else:
-                    flash(request, "ok", "Private comment saved. Only you can see it on this page.")
+                    flash(request, "ok", "Private comment saved. Server administrators can see it on this page.")
             return RedirectResponse(redirect, status_code=303)
         if action in {"block", "unblock"}:
             raw = str(form.get("user_id") or "")

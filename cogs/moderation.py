@@ -283,7 +283,7 @@ async def perform_warn(
     _require_hierarchy(actor, member, guild)
     why = reason or "No reason provided."
     count_before = len(await bot.db.get_warnings(guild.id, member.id))
-    await bot.db.add_warning(guild.id, member.id, actor.id, why)
+    warning_id = await bot.db.add_warning(guild.id, member.id, actor.id, why)
     total = count_before + 1
     await try_dm(member, make_embed("You were warned", f"You were warned in **{guild.name}**.\nReason: {why}", color=WARNING))
     await post_modlog(
@@ -293,7 +293,7 @@ async def perform_warn(
         f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {actor.mention}\n**Reason:** {why}\n**Warnings:** {total}",
         color=WARNING,
     )
-    return f"**{member}** was warned. Reason: {why}\nThey now have **{total}** warning{'s' if total != 1 else ''}."
+    return f"**{member}** was warned. Reason: {why}\nWarning **#{warning_id}**. They now have **{total}** warning{'s' if total != 1 else ''}."
 
 
 async def perform_clearwarns(bot: Any, guild: discord.Guild, member_label: str, user_id: int) -> str:
@@ -411,21 +411,56 @@ class Moderation(commands.Cog):
         await member.timeout(None, reason=f"Timeout removed by {ctx.author}")
         await ctx.send(embed=make_embed("Timeout removed", f"**{member}** can speak again.", color=SUCCESS))
 
-    @commands.hybrid_command(name="warn", description="Warn a member and log the reason.")
+    @commands.hybrid_group(name="warn", description="Warn a member and log the reason.", invoke_without_command=True)
     @commands.guild_only()
     @commands.has_permissions(moderate_members=True)
     @app_commands.describe(member="The member to warn.", reason="Why they're being warned.")
     async def warn(self, ctx: commands.Context, member: discord.Member, *, reason: str | None = None) -> None:
+        if ctx.invoked_subcommand is not None:
+            return
         if not await self._target_check(ctx, member):
             return
         why = reason or "No reason provided."
         assert ctx.guild
         count_before = len(await self.bot.db.get_warnings(ctx.guild.id, member.id))
-        await self.bot.db.add_warning(ctx.guild.id, member.id, ctx.author.id, why)
+        warning_id = await self.bot.db.add_warning(ctx.guild.id, member.id, ctx.author.id, why)
         total = count_before + 1
         await try_dm(member, make_embed("You were warned", f"You were warned in **{ctx.guild.name}**.\nReason: {why}", color=WARNING))
-        await ctx.send(embed=make_embed("Member warned", f"**{member}** was warned. Reason: {why}\nThey now have **{total}** warning{'s' if total != 1 else ''}.", color=SUCCESS))
-        await post_modlog(self.bot, ctx.guild, "Member warned", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}\n**Warnings:** {total}", color=WARNING)
+        await ctx.send(embed=make_embed("Member warned", f"**{member}** was warned. Reason: {why}\nWarning **#{warning_id}**. They now have **{total}** warning{'s' if total != 1 else ''}.", color=SUCCESS))
+        await post_modlog(self.bot, ctx.guild, "Member warned", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}\n**Warning ID:** {warning_id}\n**Warnings:** {total}", color=WARNING)
+
+    @warn.command(name="remove", description="Remove one warning from a member.")
+    @commands.guild_only()
+    @commands.has_permissions(moderate_members=True)
+    @app_commands.describe(member="The member to remove a warning from.", warning="The warning id, or latest.")
+    async def warn_remove(self, ctx: commands.Context, member: discord.Member, warning: str | None = None) -> None:
+        assert ctx.guild
+        raw = (warning or "latest").strip()
+        if raw.lower() in {"latest", "last", "recent"}:
+            row = await self.bot.db.delete_latest_warning(ctx.guild.id, member.id)
+            if row is None:
+                await ctx.send(embed=make_embed("No warnings", f"**{member}** has no warnings to remove.", color=DANGER), ephemeral=True)
+                return
+        elif raw.isdigit():
+            warning_id = int(raw)
+            rows = await self.bot.db.get_warnings(ctx.guild.id, member.id)
+            row = next((r for r in rows if int(r["id"]) == warning_id), None)
+            if row is None:
+                await ctx.send(embed=make_embed("Warning not found", f"**{member}** has no warning **#{warning_id}** in this server.", color=DANGER), ephemeral=True)
+                return
+            await self.bot.db.delete_warning(ctx.guild.id, member.id, warning_id)
+        else:
+            await ctx.send(embed=make_embed("Invalid warning", "Give a warning id, or `latest`.", color=DANGER), ephemeral=True)
+            return
+        left = len(await self.bot.db.get_warnings(ctx.guild.id, member.id))
+        reason = row["reason"] or "No reason provided."
+        await ctx.send(
+            embed=make_embed(
+                "Warning removed",
+                f"Removed warning **#{row['id']}** from **{member}**. Reason was: {reason}\nThey now have **{left}** warning{'s' if left != 1 else ''}.",
+                color=SUCCESS,
+            )
+        )
 
     @commands.hybrid_command(name="warnings", description="List a member's warnings.")
     @commands.guild_only()
@@ -438,9 +473,9 @@ class Moderation(commands.Cog):
             await ctx.send(embed=make_embed("Warnings", f"**{member}** has no warnings."))
             return
         lines = []
-        for i, row in enumerate(rows, start=1):
+        for row in rows:
             reason = row["reason"] or "No reason provided."
-            lines.append(f"**{i}.** {reason} — by <@{row['moderator_id']}>")
+            lines.append(f"**#{row['id']}.** {reason} — by <@{row['moderator_id']}>")
         await ctx.send(embed=make_embed(f"Warnings for {member}", "\n".join(lines[:25])))
 
     @commands.hybrid_command(name="clearwarns", description="Clear all warnings for a member.")
