@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import html
+import logging
 import random
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
 import aiohttp
@@ -33,6 +35,8 @@ from cogs.sessions import (
 )
 from utils import DANGER, WARNING, embed as make_embed
 
+log = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from main import SocializeBot
 
@@ -47,6 +51,14 @@ def host_details(dest: Any, host_id: int) -> tuple[str | None, str | None]:
     user = dest_user(dest)
     name = getattr(user, "display_name", None) or getattr(user, "name", None)
     return (name or f"<@{host_id}>"), avatar_url(user)
+
+
+def flag_emoji(code: str) -> str | None:
+    """Convert an ISO 3166-1 alpha-2 code to its regional-indicator flag emoji."""
+    if len(code) != 2 or not code.isalpha():
+        return None
+    offset = 0x1F1E6 - ord("A")
+    return "".join(chr(ord(ch.upper()) + offset) for ch in code)
 
 # key, emoji, title, blurb, command name
 MENU_GAMES = [
@@ -233,6 +245,7 @@ class ChatGuessGame(ChannelGame):
         self.match = match
         self.message: discord.Message | None = None
         self.hinted = False
+        self._hint_shown = False
         self.seconds_left: int | None = None
         self.end_ts: int | None = None
         self.host_name: str | None = None
@@ -279,7 +292,7 @@ class ChatGuessGame(ChannelGame):
                 host_avatar=self.host_avatar,
                 fields=fields,
             )
-        if self.image_url:
+        if self.image_url and phase in ("play", "hint"):
             e.set_image(url=self.image_url)
         return e
 
@@ -294,6 +307,9 @@ class ChatGuessGame(ChannelGame):
     async def refresh(self) -> None:
         if self.message is None or self.finished:
             return
+        if self.hinted == self._hint_shown:
+            return
+        self._hint_shown = self.hinted
         try:
             await self.message.edit(embed=self._embed(phase="play"))
         except discord.HTTPException:
@@ -1872,18 +1888,38 @@ class Arcade(commands.Cog):
         item = random.choice(banks.flags())
         answers = [item["name"], *item.get("aliases", [])]
         code = item["code"]
-        file = discord.File(f"data/flags/{code}.png", filename=f"{code}.png")
+        flag_path = Path(banks.ROOT) / "data" / "flags" / f"{code}.png"
+        emoji = None
+        try:
+            emoji = flag_emoji(code)
+        except Exception:
+            emoji = None
+
         def factory(bot, channel, host_id):
+            if flag_path.exists():
+                file = discord.File(flag_path, filename=f"{code}.png")
+                reveal = item["name"] + (f" {emoji}" if emoji else "")
+                return ChatGuessGame(
+                    bot, channel, host_id,
+                    title="Flag",
+                    prompt="Which country is this flag from? Type the country name.",
+                    answers=answers,
+                    reveal=reveal,
+                    hint=f"The name starts with **{item['name'][0].upper()}**.",
+                    image_url=f"attachment://{code}.png",
+                    file=file,
+                )
+            log.warning("Flag image missing for %s (%s); falling back to text-only prompt", item["name"], code)
+            reveal = item["name"] + (f" {emoji}" if emoji else "")
             return ChatGuessGame(
                 bot, channel, host_id,
                 title="Flag",
-                prompt="Which country is this flag from? Type the country name.",
+                prompt=f"Which country is this flag from? {emoji or ''} Type the country name.",
                 answers=answers,
-                reveal=item["name"],
+                reveal=reveal,
                 hint=f"The name starts with **{item['name'][0].upper()}**.",
-                image_url=f"attachment://{code}.png",
-                file=file,
             )
+
         await self._launch(dest, factory)
 
     async def _start_reaction(self, dest) -> None:

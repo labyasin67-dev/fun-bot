@@ -179,6 +179,9 @@ async def end_game_message(message, result_embed, view=None) -> None:
         except Exception:
             pass
     try:
+        image_url = getattr(result_embed.image, "url", None)
+        if image_url and (image_url.startswith("attachment://") or "cdn.discordapp.com" in image_url):
+            result_embed.set_image(url=None)
         await message.channel.send(embed=result_embed)
     except Exception:
         pass
