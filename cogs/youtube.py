@@ -339,8 +339,7 @@ class YoutubeGroup(app_commands.Group, name="youtube"):
         import random
         result = random.choice(results)
         video_id = result["id"]
-        title = result.get("title", "Unknown")
-        await interaction.response.send_message(f"https://youtu.be/{video_id} ({title})")
+        await interaction.response.send_message(f"https://youtu.be/{video_id}")
 
     @app_commands.command(name="scheduled", description="Show scheduled YouTube posts.")
     async def scheduled(self, interaction: discord.Interaction) -> None:
