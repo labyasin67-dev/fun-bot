@@ -58,6 +58,7 @@ EXTENSIONS = (
     "cogs.youtube",
     "cogs.fun_commands",
     "cogs.creator_alerts",
+    "cogs.levels_switch",
 )
 
 

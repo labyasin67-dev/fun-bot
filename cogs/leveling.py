@@ -40,6 +40,17 @@ class Leveling(commands.Cog):
         self.bot = bot
         self._awarding: set[tuple[int, int]] = set()
 
+    def _levels_off(self, guild_id: int) -> bool:
+        """True when the server turned levelling off (see cogs/levels_switch.py)."""
+        return guild_id in getattr(self.bot, "levels_off_guilds", ())
+
+    async def _reply_if_off(self, ctx: commands.Context) -> bool:
+        assert ctx.guild
+        if not self._levels_off(ctx.guild.id):
+            return False
+        await ctx.send(embed=make_embed("Levelling is off", "Levelling is turned off in this server, so there are no levels, ranks or leaderboards right now.", color=WARNING))
+        return True
+
     async def cog_load(self) -> None:
         self.voice_xp_loop.start()
 
@@ -49,6 +60,8 @@ class Leveling(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or message.guild is None or not message.content:
+            return
+        if self._levels_off(message.guild.id):
             return
         # Don't award XP for counting-channel traffic or bare prefix pokes.
         counting_id = await self.bot.db.get_feature_channel(message.guild.id, "counting")
@@ -70,6 +83,8 @@ class Leveling(commands.Cog):
         old_xp: int,
         new_xp: int,
     ) -> None:
+        if self._levels_off(guild.id):
+            return
         old_level = level_from_xp(old_xp)
         new_level = level_from_xp(new_xp)
         if new_level <= old_level:
@@ -125,6 +140,8 @@ class Leveling(commands.Cog):
     @tasks.loop(seconds=VOICE_TICK_SECONDS)
     async def voice_xp_loop(self) -> None:
         for guild in self.bot.guilds:
+            if self._levels_off(guild.id):
+                continue
             for channel in guild.voice_channels:
                 humans = [m for m in channel.members if not m.bot]
                 if len(humans) < 2:
@@ -158,6 +175,8 @@ class Leveling(commands.Cog):
     @app_commands.describe(member="Whose rank to show. Defaults to you.")
     async def rank(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         assert ctx.guild
+        if await self._reply_if_off(ctx):
+            return
         target = member or ctx.author
         row = await self.bot.db.ensure_member(ctx.guild.id, target.id)
         xp = int(row["xp"])
@@ -180,6 +199,8 @@ class Leveling(commands.Cog):
     @commands.guild_only()
     async def leaderboard(self, ctx: commands.Context) -> None:
         assert ctx.guild
+        if await self._reply_if_off(ctx):
+            return
         rows = await self.bot.db.top_xp(ctx.guild.id, 10)
         if not rows:
             await ctx.send(embed=make_embed("Leaderboard", "No one has earned XP yet. Chat or hop in voice to get started."))
@@ -201,6 +222,8 @@ class Leveling(commands.Cog):
     @app_commands.describe(member="Whose voice time to show. Defaults to you.")
     async def voicetime(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         assert ctx.guild
+        if await self._reply_if_off(ctx):
+            return
         target = member or ctx.author
         row = await self.bot.db.ensure_member(ctx.guild.id, target.id)
         seconds = int(row["voice_seconds"])
@@ -216,6 +239,8 @@ class Leveling(commands.Cog):
     @commands.guild_only()
     async def voiceleaderboard(self, ctx: commands.Context) -> None:
         assert ctx.guild
+        if await self._reply_if_off(ctx):
+            return
         rows = await self.bot.db.top_voice(ctx.guild.id, 10)
         if not rows or all(int(r["voice_seconds"]) == 0 for r in rows):
             await ctx.send(embed=make_embed("Voice leaderboard", "No voice time has been tracked yet."))

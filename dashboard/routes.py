@@ -496,10 +496,13 @@ def register_routes(app: FastAPI) -> None:
                 "level": level_from_xp(xp),
             })
         levelup_id = await db.get_feature_channel(guild.id, "levelups")
+        switch = _bot(request).get_cog("LevelsSwitch")
         return render(
             request,
             "levels.html",
             **_nav(guild, "levels"),
+            levels_on=switch.is_enabled(guild.id) if switch else True,
+            levels_switch_ready=switch is not None,
             role_rows=role_rows,
             assignable=_roles(guild),
             board=board,
@@ -538,6 +541,14 @@ def register_routes(app: FastAPI) -> None:
                 flash(request, "ok", f"Removed the reward for level {level}.")
             else:
                 flash(request, "error", "That level role was not set.")
+        elif action == "levels_switch":
+            switch = _bot(request).get_cog("LevelsSwitch")
+            if switch is None:
+                flash(request, "error", "Levels switch is still starting. Try again in a moment.")
+            else:
+                turn_on = str(form.get("levels_state") or "") == "on"
+                await switch.set_enabled(guild.id, turn_on)
+                flash(request, "ok", "Levelling turned on for this server." if turn_on else "Levelling turned off for this server.")
         elif action == "channel":
             value = str(form.get("levelup_channel") or "").strip()
             valid = {c.id for c in _text_channels(guild)}

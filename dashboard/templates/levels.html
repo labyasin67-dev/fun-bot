@@ -5,7 +5,24 @@
 <h1>Levels</h1>
 <p class="lede">Automatic roles, where level-ups are announced, the current leaderboard, and tools to add or remove XP.</p>
 
-<div class="card">
+{% if levels_switch_ready %}
+<div class="card levels-switch {% if levels_on %}is-on{% else %}is-off{% endif %}">
+  <h2>Levelling <span class="pill {% if levels_on %}pill-on{% else %}pill-off{% endif %}">{% if levels_on %}On{% else %}Off{% endif %}</span></h2>
+  <form method="post" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="levels_switch">
+    <input type="hidden" name="levels_state" value="{% if levels_on %}off{% else %}on{% endif %}">
+    {% if levels_on %}
+    <button class="btn danger" type="submit">Turn levelling off</button>
+    {% else %}
+    <button class="btn" type="submit">Turn levelling on</button>
+    {% endif %}
+  </form>
+  <p class="faint">{% if levels_on %}Members earn XP from chat and voice. Turn this off to stop all XP, level-up messages and level roles, and to avoid clashing with another levelling bot. Existing XP is kept.{% else %}No XP is earned, no level-up messages are sent, and rank and leaderboard commands say levelling is off. Existing XP and settings below are kept for when you turn it back on.{% endif %}</p>
+</div>
+
+{% endif %}
+<div class="card"{% if levels_switch_ready %} style="margin-top:14px"{% endif %}>
   <h2>Level-up channel</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
