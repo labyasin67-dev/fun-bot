@@ -38,7 +38,7 @@ HELP_SECTIONS = [
         "• `.kick @user [reason]`\n"
         "• `.timeout @user 10m|1h|1d [reason]` / `.untimeout @user`\n"
         "• `.mute @user 10m|1h|1d [reason]` / `.unmute @user` — same as `.timeout` / `.untimeout`\n"
-        "• `.warn @user [reason]` / `.warnings @user` / `.clearwarns @user`\n"
+        "• `.warn @user [reason]` / `.warnings @user` / `.warn remove @user [id|latest] [reason]` / `.clearwarns @user`\n"
         "• `.purge N` — delete recent messages\n"
         "• `.slowmode <seconds>` — 0 turns it off\n"
         "• `.lock` / `.unlock` `[#channel]`\n"
@@ -76,18 +76,22 @@ HELP_SECTIONS = [
         "• `.vcstats` / `/vcstats` — how many people are in voice right now",
     ),
     (
-        "Roles & welcome",
+        "Roles",
         "• `.role create <name> [#hex1] [#hex2]` — one custom role; two colours make a gradient\n"
         "• `.role create` — open a form for the name and colours\n"
-        "• `.role name <new>` / `.role colour <hex>` / `.role gradient #hex1 #hex2` / `.role delete` / `.role info`\n"
-        "• `.role toggle on|off` / `.role minlevel <n>` / `.role list` — (manage roles)\n"
-        "• `.role give @user @role` — hand your custom role to another member, even if they already own one; staff can give any custom role\n"
-        "• `.role take @user` — take your custom role back\n"
+        "• `.role name` / `.role colour` / `.role gradient` / `.role delete` / `.role info`\n"
+        "• `.role manage` — hide roles from your `.profile`\n"
+        "• `.profile [@user]` — show a member's profile and roles\n"
+        "• `.roleremoveme` — drop a custom role someone else gave you\n"
+        "• `.role toggle` / `.role minlevel` / `.role list` — (manage roles)\n"
+        "• `.role give @user @role` / `.role take @user` — hand over or take back a custom role\n"
         "• `.role restrict @user [reason]` / `.role unrestrict @user`\n"
-        "• `.role remove` — delete your own custom role (and take it off anyone you gave it to)\n"
-        "• `.role remove @user` — (manage roles) take away their custom role; add `@role` for a normal role\n"
-        "• `.role add @user @role` — (manage roles)\n"
-        "• `.selfrole add/remove/list/panel` — button panel so members can pick roles\n"
+        "• `.role remove` — delete your own custom role\n"
+        "• `.role remove @user [@role]` / `.role add @user @role` — (manage roles)\n"
+        "• `.selfrole add/remove/list/panel` — button panel so members can pick roles",
+    ),
+    (
+        "Welcome",
         "• `.setwelcome #channel [message]` — greet new members\n"
         "  Placeholders: `{mention}` `{user}` `{server}` `{membercount}`\n"
         "• `.welcometest` — preview the welcome message",
@@ -129,70 +133,97 @@ HELP_SECTIONS = [
     ),
     (
         "Fun",
-        "• `.slap @user` — slap someone (tracks count)\n"
-        "• `.kiss @user` — kiss someone\n"
-        "• `.laugh @user` — laugh at someone\n"
-        "• `.boot @user` — kick someone (fun)\n"
-        "• `.yeet @user` — yeet someone\n"
-        "• `.tickle @user` — tickle someone\n"
-        "• `.hug @user` — hug someone\n"
-        "• `.dap @user` — dap someone up\n"
-        "• `.bonk @user` — bonk someone\n"
-        "• `.cuddle @user` — cuddle someone\n"
-        "• `.flirt @user` — flirt with someone\n"
-        "• `.poke @user` — poke someone\n"
-        "• `.airkiss @user` — air kiss someone\n"
-        "• `.angrystare @user` — angrily stare at someone\n"
-        "• `.bite @user` — bite someone\n"
-        "• `.bleh @user` — bleh face at someone\n"
-        "• `.celebrate @user` — celebrate with someone\n"
-        "• `.cheers @user` — cheers with someone\n"
-        "• `.clap @user` — clap for someone\n"
-        "• `.confused @user` — look confused at someone\n"
-        "• `.cool @user` — look cool with someone\n"
-        "• `.cry @user` — cry at someone\n"
-        "• `.dance @user` — dance with someone\n"
-        "• `.drool @user` — drool at someone\n"
-        "• `.evillaugh @user` — evil laugh at someone\n"
-        "• `.facepalm @user` — facepalm at someone\n"
-        "• `.handhold @user` — hold hands with someone\n"
-        "• `.headbang @user` — headbang with someone\n"
-        "• `.lick @user` — lick someone\n"
-        "• `.mad @user` — get mad at someone\n"
-        "• `.nervous @user` — get nervous around someone\n"
-        "• `.eat @user` — eat with someone\n"
-        "• `.boop @user` — boop someone\n"
-        "• `.nyah @user` — nyah at someone\n"
-        "• `.pat @user` — pat someone\n"
-        "• `.peek @user` — peek at someone\n"
-        "• `.pinch @user` — pinch someone\n"
-        "• `.pout @user` — pout at someone\n"
-        "• `.sad @user` — get sad at someone\n"
-        "• `.scared @user` — get scared at someone\n"
-        "• `.shout @user` — shout at someone\n"
-        "• `.shrug @user` — shrug at someone\n"
-        "• `.shy @user` — get shy around someone\n"
-        "• `.sigh @user` — sigh at someone\n"
-        "• `.sip @user` — sip with someone\n"
-        "• `.sleep @user` — sleep with someone\n"
-        "• `.slowclap @user` — slow clap for someone\n"
-        "• `.smack @user` — smack someone\n"
-        "• `.smile @user` — smile at someone\n"
-        "• `.sneeze @user` — sneeze at someone\n"
-        "• `.sorry @user` — say sorry to someone\n"
-        "• `.stare @user` — stare at someone\n"
-        "• `.surprised @user` — get surprised at someone\n"
-        "• `.sweat @user` — sweat at someone\n"
-        "• `.thumbsup @user` — thumbs up someone\n"
-        "• `.tired @user` — get tired with someone\n"
-        "• `.wave @user` — wave at someone\n"
-        "• `.wink @user` — wink at someone\n"
-        "• `.woah @user` — say woah at someone\n"
-        "• `.yawn @user` — yawn with someone\n"
-        "• `.yay @user` — yay with someone\n"
-        "• `.yes @user` — say yes to someone",
+        "These take `@user` and track how often each action is used.\n"
+        "• `.slap` `.kiss` `.laugh` `.boot` `.yeet` `.tickle`\n"
+        "• `.hug` `.dap` `.bonk` `.cuddle` `.flirt` `.poke`\n"
+        "• `.airkiss` `.angrystare` `.bite` `.bleh` `.celebrate` `.cheers`\n"
+        "• `.clap` `.confused` `.cool` `.cry` `.dance` `.drool`\n"
+        "• `.evillaugh` `.facepalm` `.handhold` `.headbang` `.lick` `.mad`\n"
+        "• `.nervous` `.eat` `.boop` `.nyah` `.pat` `.peek`\n"
+        "• `.pinch` `.pout` `.sad` `.scared` `.shout` `.shrug`\n"
+        "• `.shy` `.sigh` `.sip` `.sleep` `.slowclap` `.smack`\n"
+        "• `.smile` `.sneeze` `.sorry` `.stare` `.surprised` `.sweat`\n"
+        "• `.thumbsup` `.tired` `.wave` `.wink` `.woah` `.yawn`\n"
+        "• `.yay` `.yes`",
     ),
 ]
+
+
+
+EMBED_FIELD_VALUE_LIMIT = 1024
+EMBED_FIELD_LIMIT = 25
+EMBED_TOTAL_LIMIT = 6000
+EMBED_NAME_LIMIT = 256
+
+
+def _chunk_text(text: str, limit: int = EMBED_FIELD_VALUE_LIMIT) -> list[str]:
+    text = text or "—"
+    if len(text) <= limit:
+        return [text]
+    chunks: list[str] = []
+    rest = text
+    while rest:
+        if len(rest) <= limit:
+            chunks.append(rest)
+            break
+        cut = rest.rfind("\n", 0, limit)
+        if cut < limit // 2:
+            cut = rest.rfind(" ", 0, limit)
+        if cut < limit // 2:
+            cut = limit
+        chunks.append(rest[:cut].rstrip())
+        rest = rest[cut:].lstrip()
+    return chunks
+
+
+def _embed_text_len(embed: discord.Embed) -> int:
+    total = len(embed.title or "") + len(embed.description or "")
+    if embed.footer and embed.footer.text:
+        total += len(embed.footer.text)
+    if embed.author and embed.author.name:
+        total += len(embed.author.name)
+    for field in embed.fields:
+        total += len(field.name or "") + len(field.value or "")
+    return total
+
+
+def add_help_field(embed: discord.Embed, name: str, value: str, *, inline: bool = False) -> list[tuple[str, str]]:
+    """Add a field, splitting values over 1024 characters. Returns leftover (name, value) pairs if the field cap is hit."""
+    leftover: list[str] = []
+    chunks = _chunk_text(value)
+    overflow: list[tuple[str, str]] = []
+    for i, chunk in enumerate(chunks):
+        label = name if i == 0 else f"{name} (cont.)"
+        label = label[:EMBED_NAME_LIMIT]
+        if len(embed.fields) >= EMBED_FIELD_LIMIT:
+            overflow.append((label, chunk))
+            overflow.extend((f"{name} (cont.)"[:EMBED_NAME_LIMIT], c) for c in chunks[i + 1 :])
+            break
+        # If this field would blow the 6000-character cap, leave it for the next embed.
+        projected = _embed_text_len(embed) + len(label) + len(chunk)
+        if embed.fields and projected > EMBED_TOTAL_LIMIT:
+            overflow.append((label, chunk))
+            overflow.extend((f"{name} (cont.)"[:EMBED_NAME_LIMIT], c) for c in chunks[i + 1 :])
+            break
+        embed.add_field(name=label, value=chunk, inline=inline)
+    return overflow
+
+
+def build_help_embeds(sections: list[tuple[str, str]] | None = None) -> list[discord.Embed]:
+    sections = sections if sections is not None else HELP_SECTIONS
+    intro = "Every command works with a `.` prefix or as a slash command, for example `.games` and `/games`."
+    embeds: list[discord.Embed] = []
+    current = make_embed("Help", intro, footer=CREDIT)
+    pending: list[tuple[str, str]] = list(sections)
+    while pending:
+        name, value = pending.pop(0)
+        overflow = add_help_field(current, name, value, inline=False)
+        if overflow:
+            embeds.append(current)
+            current = make_embed("Help (continued)", intro, footer=CREDIT)
+            pending = overflow + pending
+    embeds.append(current)
+    return embeds
 
 
 class Help(commands.Cog):
@@ -215,18 +246,19 @@ class Help(commands.Cog):
             e = make_embed(f"Help: .{cmd.qualified_name}", f"{desc}\n\nUsage: `{usage}`", footer=CREDIT)
             if isinstance(cmd, commands.Group) and cmd.commands:
                 subs = "\n".join(f"• `.{c.qualified_name}` — {c.description or c.help or '—'}" for c in sorted(cmd.commands, key=lambda c: c.name))
-                e.add_field(name="Subcommands", value=subs, inline=False)
+                leftover = add_help_field(e, "Subcommands", subs, inline=False)
+                if leftover:
+                    more = make_embed(f"Help: .{cmd.qualified_name} (continued)", "More subcommands:")
+                    for name, value in leftover:
+                        add_help_field(more, name, value, inline=False)
+                    more.set_footer(text=CREDIT)
+                    await ctx.send(embeds=[e, more])
+                    return
             await ctx.send(embed=e)
             return
 
-        e = make_embed(
-            "Help",
-            "Every command works with a `.` prefix or as a slash command, for example `.games` and `/games`.",
-        )
-        for title, body in HELP_SECTIONS:
-            e.add_field(name=title, value=body, inline=False)
-        e.set_footer(text=CREDIT)
-        await ctx.send(embed=e)
+        embeds = build_help_embeds()
+        await ctx.send(embeds=embeds)
 
     @commands.hybrid_command(name="ping", description="Check that the bot is online.")
     async def ping(self, ctx: commands.Context) -> None:
