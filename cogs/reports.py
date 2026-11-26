@@ -100,17 +100,18 @@ def _cached_username(guild: discord.Guild, user_id: int | None, stored_name: str
 
 
 def format_report_user(guild: discord.Guild, user_id, stored_name: str | None = None) -> str:
-    """Mention plus @username for the report embed, or a mention alone if the name is unknown."""
+    """Mention plus @username and id for the report embed: '<@id> @username (id)'."""
     if not user_id:
         if stored_name:
             return stored_name if str(stored_name).startswith("@") else f"@{stored_name}"
         return "—"
     name = _cached_username(guild, int(user_id), stored_name)
     mention = f"<@{int(user_id)}>"
+    uid = int(user_id)
     if name:
         uname = name if str(name).startswith("@") else f"@{name}"
-        return f"{mention} {uname}"
-    return mention
+        return f"{mention} {uname} ({uid})"
+    return f"{mention} ({uid})"
 
 
 def format_claimer(guild: discord.Guild, user_id, stored_name: str | None = None) -> str:

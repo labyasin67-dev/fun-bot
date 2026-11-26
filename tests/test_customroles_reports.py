@@ -144,9 +144,9 @@ class ReportNameTests(unittest.TestCase):
         guild = types.SimpleNamespace(id=7, name="Test", get_member=lambda uid: None, _state=None)
         member = types.SimpleNamespace(id=11, name="alice", display_name="Alice")
         guild.get_member = lambda uid, m=member: m if int(uid) == 11 else None
-        self.assertEqual(format_report_user(guild, 11, "Stored"), "<@11> @alice")
-        self.assertEqual(format_report_user(guild, 22, "Bob"), "<@22> @Bob")
-        self.assertEqual(format_report_user(guild, 33, None), "<@33>")
+        self.assertEqual(format_report_user(guild, 11, "Stored"), "<@11> @alice (11)")
+        self.assertEqual(format_report_user(guild, 22, "Bob"), "<@22> @Bob (22)")
+        self.assertEqual(format_report_user(guild, 33, None), "<@33> (33)")
         self.assertEqual(format_claimer(guild, 11, "Stored"), "@alice (11)")
         self.assertEqual(format_claimer(guild, 44, None), "44")
 
@@ -157,8 +157,8 @@ class ReportNameTests(unittest.TestCase):
             "claimed_by_name": "Stored", "claimed_at": None, "decided_by": None,
         }
         emb = build_report_embed(guild, row)
-        self.assertIn("<@11> @alice", emb.description)
-        self.assertIn("<@22> @Bob", emb.description)
+        self.assertIn("<@11> @alice (11)", emb.description)
+        self.assertIn("<@22> @Bob (22)", emb.description)
         self.assertNotIn("ID 11", emb.description)
         self.assertNotIn("(`11`)", emb.description)
         self.assertEqual(emb.fields[0].name, "Claimed by")

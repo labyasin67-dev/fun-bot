@@ -362,9 +362,8 @@ def _report_list_person(name, avatar, user_id, guild, bot=None, *, claimed: bool
     person = _staff_person(name, avatar, user_id, guild)
     if person is None:
         return None
-    person["name"] = (
-        _claimer_label(guild, user_id, name, bot=bot) if claimed else _at_username(guild, user_id, name, bot=bot)
-    )
+    # Reporter, reported, and claimer all show "@username (id)" on the list.
+    person["name"] = _claimer_label(guild, user_id, name, bot=bot)
     return person
 
 
