@@ -15,10 +15,6 @@ Last updated: 26 November 2026
 
 The Discord All In One Bot (also called Meowchi Cafe) and this website are operated by an individual known as Whiskey/WarRaven.
 
-[Add your contact email here]
-
-[Add any other contact instructions here, such as a Discord server or a form you prefer]
-
 Please do not send passwords, payment card details, or Discord tokens in a message. If your question is about a paid subscription, say so and include the server name or server ID if you can.
 """
 
@@ -231,6 +227,30 @@ def render_page_body(text: str) -> str:
     return "\n".join(out)
 
 
+CONTACT_PLACEHOLDERS = (
+    "[Add your contact email here]",
+    "[Add any other contact instructions here, such as a Discord server or a form you prefer]",
+)
+
+
+def strip_contact_placeholders(text: str) -> str:
+    """Remove exactly the two placeholder lines (and the blank line after each); nothing else."""
+    lines = text.split("\n")
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        if lines[i].strip() in CONTACT_PLACEHOLDERS:
+            i += 1
+            if i < len(lines) and lines[i].strip() == "" and out and out[-1].strip() == "":
+                i += 1  # avoid leaving a double blank gap
+            elif i < len(lines) and lines[i].strip() == "" and not out:
+                i += 1
+            continue
+        out.append(lines[i])
+        i += 1
+    return "\n".join(out)
+
+
 async def load_site_page(db, key: str) -> str:
     default = DEFAULTS[key]
     if db is None:
@@ -238,7 +258,14 @@ async def load_site_page(db, key: str) -> str:
     stored = await db.get_site_page(key)
     if stored is None or not str(stored).strip():
         return default
-    return str(stored)
+    stored = str(stored)
+    if key == CONTACT_KEY:
+        cleaned = strip_contact_placeholders(stored)
+        if cleaned != stored:
+            # One-off clean-up of saved Contact text: only the two placeholder lines are removed.
+            await db.set_site_page(key, cleaned)
+            stored = cleaned
+    return stored
 
 
 async def save_site_page(db, key: str, body: str) -> None:
