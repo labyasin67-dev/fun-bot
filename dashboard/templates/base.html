@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}Meowchi Cafe dashboard{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=ocean3">
+  <link rel="stylesheet" href="/static/style.css?v=ocean4">
 </head>
 <body>
   <canvas id="space-bg" aria-hidden="true"></canvas>
@@ -12,7 +12,7 @@
 {# One list drives the desktop sidebar and the phone menu, so they never drift apart. #}
 {% set nav_groups = [
   ("Overview", [("overview", "Overview", "")]),
-  ("Moderation & Safety", [("moderation", "Moderation", "/moderation"), ("alts", "Alt detection", "/alts"), ("reports", "Reports", "/reports")]),
+  ("Moderation & Safety", [("moderation", "Moderation", "/moderation"), ("alts", "Alt detection", "/alts"), ("reports", "Reports", "/reports"), ("auditlogs", "Audit Logs", "/auditlogs")]),
   ("Roles", [("customroles", "Custom Roles", "/customroles"), ("selfroles", "Self roles", "/selfroles")]),
   ("Community", [("levels", "Levels", "/levels"), ("welcome", "Messages", "/welcome"), ("games", "Games", "/games"), ("channels", "Channels", "/channels")]),
   ("Creator Integration", [("youtube", "Creator Integration", "/youtube")]),

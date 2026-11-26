@@ -1424,6 +1424,9 @@ def register_routes(app: FastAPI) -> None:
     from dashboard.creator_routes import register_creator_routes
     register_creator_routes(app)
 
+    from dashboard.audit_routes import register_audit_routes
+    register_audit_routes(app)
+
     @app.get("/privacy", response_class=HTMLResponse)
     async def privacy(request: Request):
         return render(request, "privacy.html")

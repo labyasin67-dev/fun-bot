@@ -59,6 +59,7 @@ EXTENSIONS = (
     "cogs.fun_commands",
     "cogs.creator_alerts",
     "cogs.levels_switch",
+    "cogs.audit_logs",
 )
 
 

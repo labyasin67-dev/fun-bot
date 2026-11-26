@@ -682,3 +682,22 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); bo
 .levels-switch .pill-on { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.6); }
 .levels-switch .pill-off { background: rgba(248, 113, 113, 0.15); color: #fca5a5; border: 1px solid rgba(248, 113, 113, 0.6); }
 .levels-switch.is-off { border-color: rgba(248, 113, 113, 0.5); }
+
+
+/* --- Audit Logs panel --- */
+.audit-form .card { margin-bottom: 14px; }
+.audit-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.audit-groups .card { margin-bottom: 0; }
+.audit-group h3 { margin: 0 0 8px; font-size: 15px; color: #7dd3fc; }
+.audit-check { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 0; cursor: pointer; }
+.audit-check input[type="checkbox"] { width: 20px; height: 20px; flex: 0 0 20px; accent-color: #38bdf8; margin: 0; }
+.audit-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.audit-actions p { flex: 1 1 100%; margin: 4px 0 0; }
+.audit-warn { border-color: rgba(251, 191, 36, 0.55); }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; vertical-align: middle; }
+.pill-on { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.6); }
+.pill-off { background: rgba(248, 113, 113, 0.15); color: #fca5a5; border: 1px solid rgba(248, 113, 113, 0.6); }
+@media (max-width: 800px) {
+  .audit-actions .btn { flex: 1 1 100%; }
+  .audit-groups { grid-template-columns: 1fr; }
+}
