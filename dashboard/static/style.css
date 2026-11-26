@@ -328,3 +328,26 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); bo
 @media (prefers-reduced-motion: reduce) {
   .server, .plan-card, a.card, .card.clickable, .btn { transition: none; }
 }
+
+/* --- Creator Integration page --- */
+.creator-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; align-items: end; margin-top: 12px; }
+.creator-form .field { min-width: 0; margin-bottom: 8px; }
+.creator-form .creator-wide { grid-column: 1 / -1; }
+.creator-form .btn { justify-self: start; }
+.creator-form textarea { min-height: 84px; }
+.creator-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.creator-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
+.creator-meta { margin: 10px 0 4px; overflow-wrap: anywhere; }
+.creator-msg { margin: 4px 0 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.creator-warn { margin: 8px 0; font-size: 13px; }
+.creator-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.creator-actions form { margin: 0; }
+.creator-card.is-off { opacity: 0.8; }
+.creator-edit summary { cursor: pointer; font-weight: 600; color: var(--accent); padding: 6px 0; }
+@media (max-width: 800px) {
+  .creator-form { grid-template-columns: 1fr; }
+  .creator-form .btn { width: 100%; justify-self: stretch; }
+  .creator-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .creator-actions form:last-child { grid-column: 1 / -1; }
+  .creator-actions .btn { width: 100%; min-height: 44px; }
+}

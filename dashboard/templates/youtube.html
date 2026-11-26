@@ -1,8 +1,10 @@
 {% extends "base.html" %}
-{% block title %}YouTube · {{ guild.name }}{% endblock %}
+{% block title %}Creator Integration · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>YouTube</h1>
-<p class="lede">Schedule YouTube videos to post automatically in a channel, play videos as embeds, and authenticate for uploads.</p>
+<h1>Creator Integration</h1>
+<p class="lede">Post new YouTube uploads in a channel, with an optional @everyone, @here or role ping. Schedule videos and play them as embeds.</p>
+
+{% include "creator_panel.html" %}
 
 <div class="card">
   <h2>Settings</h2>
@@ -23,7 +25,7 @@
     </div>
     <button class="btn" type="submit">Save</button>
   </form>
-  <p class="faint">Commands: <code>/youtube post</code> (schedule), <code>/youtube embed &lt;link&gt;</code> (play), <code>/youtube auth</code> (login), <code>/youtube scheduled</code> (list).</p>
+  <p class="faint">Commands: <code>/youtube post</code> (schedule), <code>/youtube embed &lt;link&gt;</code> (play), <code>/youtube scheduled</code> (list).</p>
 </div>
 
 <div class="card" style="margin-top:14px">

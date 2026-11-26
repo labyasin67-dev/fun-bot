@@ -117,6 +117,17 @@ HELP_SECTIONS = [
         "• `/youtube scheduled` — list scheduled posts",
     ),
     (
+        "Creator Integration",
+        "Post new YouTube uploads in a channel, with an optional @everyone, @here or role ping. Needs Manage Server.\n"
+        "• `.creator add <channel link or @handle> #channel [everyone|here|@role|none]`\n"
+        "• `.creator list` / `.creator remove <link or #number>`\n"
+        "• `.creator message <link or #number> <text>` — placeholders: `{title}` `{url}` `{channel}` `{ping}`\n"
+        "• `.creator ping <link or #number> <everyone|here|@role|none>`\n"
+        "• `.creator toggle <link or #number> on|off`\n"
+        "• `.creator test <link or #number>` — posts the latest video now, without a ping\n"
+        "Also on the dashboard under **Creator Integration**. No YouTube login needed.",
+    ),
+    (
         "Fun",
         "• `.slap @user` — slap someone (tracks count)\n"
         "• `.kiss @user` — kiss someone\n"

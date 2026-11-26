@@ -26,6 +26,7 @@ from cogs.moderation import (
 )
 from cogs.welcome import DEFAULT_LEAVE, DEFAULT_WELCOME
 from cogs.customroles import colour_hex, colour_hex_optional, edit_role_colours, guild_has_gradients, parse_hex_colour, remove_stored_custom_role, restrict_user
+from dashboard.creator_routes import creator_context
 from dashboard import DEFAULT_CLIENT_ID, INVITE_PERMISSIONS, ROOT, client_id, oauth_configured
 from site_pages import CONTACT_KEY, load_site_page, render_page_body
 from utils import level_from_xp, parse_user_id, resolve_member
@@ -899,6 +900,7 @@ def register_routes(app: FastAPI) -> None:
             **_nav(guild, "youtube"),
             enabled=int(settings["enabled"] or 0),
             channel_id=settings["channel_id"],
+            **await creator_context(request, guild),
         )
 
     @app.post("/servers/{guild_id}/youtube")
@@ -1407,6 +1409,9 @@ def register_routes(app: FastAPI) -> None:
 
     from dashboard.billing_routes import register_billing_routes
     register_billing_routes(app)
+
+    from dashboard.creator_routes import register_creator_routes
+    register_creator_routes(app)
 
     @app.get("/privacy", response_class=HTMLResponse)
     async def privacy(request: Request):

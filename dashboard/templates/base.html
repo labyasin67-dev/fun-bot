@@ -48,7 +48,7 @@
         <option value="/servers/{{ guild.id }}/games" {% if active=='games' %}selected{% endif %}>Games</option>
         <option value="/servers/{{ guild.id }}/moderation" {% if active=='moderation' %}selected{% endif %}>Moderation</option>
         <option value="/servers/{{ guild.id }}/reports" {% if active=='reports' %}selected{% endif %}>Reports</option>
-        <option value="/servers/{{ guild.id }}/youtube" {% if active=='youtube' %}selected{% endif %}>YouTube</option>
+        <option value="/servers/{{ guild.id }}/youtube" {% if active=='youtube' %}selected{% endif %}>Creator Integration</option>
         <option value="/servers/{{ guild.id }}/billing" {% if active=='billing' %}selected{% endif %}>Billing</option>
         <option value="/servers">All servers</option>
       </select>
@@ -69,7 +69,7 @@
           <a href="/servers/{{ guild.id }}/games" class="{% if active=='games' %}active{% endif %}">Games</a>
           <a href="/servers/{{ guild.id }}/moderation" class="{% if active=='moderation' %}active{% endif %}">Moderation</a>
           <a href="/servers/{{ guild.id }}/reports" class="{% if active=='reports' %}active{% endif %}">Reports</a>
-          <a href="/servers/{{ guild.id }}/youtube" class="{% if active=='youtube' %}active{% endif %}">YouTube</a>
+          <a href="/servers/{{ guild.id }}/youtube" class="{% if active=='youtube' %}active{% endif %}">Creator Integration</a>
           <a href="/servers/{{ guild.id }}/billing" class="{% if active=='billing' %}active{% endif %}">Billing</a>
           <a href="/servers">← All servers</a>
         </nav>
