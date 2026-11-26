@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as _dt
+import os
 import re
 import time
 from typing import TYPE_CHECKING
@@ -155,8 +156,19 @@ class YoutubeGroup(app_commands.Group, name="youtube"):
     @app_commands.command(name="auth", description="Open YouTube authentication login.")
     async def auth(self, interaction: discord.Interaction) -> None:
         auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+        client_id = os.getenv("YOUTUBE_CLIENT_ID")
+        if not client_id:
+            await interaction.response.send_message(
+                embed=make_embed(
+                    "YouTube Auth Not Configured",
+                    "YouTube OAuth client ID is not set. Ask the bot owner to set the `YOUTUBE_CLIENT_ID` environment variable.",
+                    color=DANGER,
+                ),
+                ephemeral=True,
+            )
+            return
         params = {
-            "client_id": "YOUR_YOUTUBE_CLIENT_ID",
+            "client_id": client_id,
             "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
             "response_type": "code",
             "scope": "https://www.googleapis.com/auth/youtube.upload",
@@ -167,12 +179,7 @@ class YoutubeGroup(app_commands.Group, name="youtube"):
         url = f"{auth_url}?{urlencode(params)}"
         e = make_embed(
             "YouTube Auth",
-            f"**[Click here to authenticate with YouTube]({url})**\n\nAfter authorising, paste the code back here.\n\n---\n**Troubleshooting auth errors:**\n"
-            "**Browser cache:** Clear cookies/cache for google.com and youtube.com, then retry.\n"
-            "**Account permissions:** Ensure the Google account has YouTube upload access and is not a restricted/workspace account.\n"
-            "**Extension interference:** Disable ad-blockers or privacy extensions, then try again.\n"
-            "**Desktop:** Use Chrome/Firefox/Edge in incognito mode if issues persist.\n"
-            "**Mobile:** Use the Chrome app (not in-app browsers), enable cookies, then retry.",
+            f"[Click here to authenticate with YouTube]({url})\n\nAfter authorising, paste the code back here.",
             color=COLOR,
         )
         await interaction.response.send_message(embed=e, ephemeral=True)
