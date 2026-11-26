@@ -279,6 +279,17 @@ CREATE TABLE IF NOT EXISTS fun_slaps (
 
 CREATE INDEX IF NOT EXISTS idx_youtube_schedule_guild ON youtube_schedule(guild_id, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_fun_slaps_guild ON fun_slaps(guild_id, slapped_id, action);
+
+CREATE TABLE IF NOT EXISTS youtube_tokens (
+    user_id INTEGER NOT NULL,
+    guild_id INTEGER,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT,
+    expires_at REAL NOT NULL,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (user_id, guild_id)
+);
+CREATE INDEX IF NOT EXISTS idx_youtube_tokens_user ON youtube_tokens(user_id);
 """
 
 FEATURE_SETTINGS_COLUMN = {
@@ -1853,6 +1864,36 @@ class Database:
         cur = await self.db.execute(
             "DELETE FROM youtube_schedule WHERE id = ?",
             (schedule_id,),
+        )
+        await self.db.commit()
+        return cur.rowcount > 0
+
+    # --- YouTube OAuth tokens ---
+
+    async def save_youtube_token(
+        self, user_id: int, guild_id: int | None, access_token: str,
+        refresh_token: str | None, expires_at: float
+    ) -> None:
+        await self.db.execute(
+            """
+            INSERT OR REPLACE INTO youtube_tokens (user_id, guild_id, access_token, refresh_token, expires_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, guild_id, access_token, refresh_token, expires_at, time.time()),
+        )
+        await self.db.commit()
+
+    async def get_youtube_token(self, user_id: int, guild_id: int | None) -> aiosqlite.Row | None:
+        cur = await self.db.execute(
+            "SELECT * FROM youtube_tokens WHERE user_id = ? AND guild_id = ?",
+            (user_id, guild_id),
+        )
+        return await cur.fetchone()
+
+    async def delete_youtube_token(self, user_id: int, guild_id: int | None) -> bool:
+        cur = await self.db.execute(
+            "DELETE FROM youtube_tokens WHERE user_id = ? AND guild_id = ?",
+            (user_id, guild_id),
         )
         await self.db.commit()
         return cur.rowcount > 0
