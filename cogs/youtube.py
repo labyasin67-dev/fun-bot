@@ -13,6 +13,7 @@ import aiohttp
 import discord
 from discord import app_commands
 from discord.ext import commands
+from youtube_search import YoutubeSearch
 
 from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
 
@@ -306,6 +307,40 @@ class YoutubeGroup(app_commands.Group, name="youtube"):
                 ),
                 ephemeral=True,
             )
+
+    @app_commands.command(name="search", description="Search YouTube and post a random result.")
+    @app_commands.describe(text="Search query")
+    async def search(self, interaction: discord.Interaction, text: str) -> None:
+        assert interaction.guild is not None
+        if not await self.cog_enabled(interaction.guild.id):
+            await interaction.response.send_message(
+                embed=make_embed("Disabled", "YouTube is disabled in this server. Enable it in the dashboard.", color=WARNING),
+                ephemeral=True,
+            )
+            return
+        try:
+            results = YoutubeSearch(text, max_results=10).to_dict()
+        except Exception as exc:
+            await interaction.response.send_message(
+                embed=make_embed(
+                    "YouTube Search Failed",
+                    f"Error: {str(exc)[:200]}",
+                    color=DANGER,
+                ),
+                ephemeral=True,
+            )
+            return
+        if not results:
+            await interaction.response.send_message(
+                embed=make_embed("YouTube Search Failed", "No results found.", color=WARNING),
+                ephemeral=True,
+            )
+            return
+        import random
+        result = random.choice(results)
+        video_id = result["id"]
+        title = result.get("title", "Unknown")
+        await interaction.response.send_message(f"https://youtu.be/{video_id} ({title})")
 
     @app_commands.command(name="scheduled", description="Show scheduled YouTube posts.")
     async def scheduled(self, interaction: discord.Interaction) -> None:
