@@ -223,6 +223,12 @@ CREATE TABLE IF NOT EXISTS custom_role_give_blocks (
     at REAL NOT NULL,
     PRIMARY KEY (guild_id, user_id)
 );
+CREATE TABLE IF NOT EXISTS profile_hidden_roles (
+    guild_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role_id INTEGER NOT NULL,
+    PRIMARY KEY (guild_id, user_id, role_id)
+);
 
 CREATE TABLE IF NOT EXISTS report_settings (
     guild_id INTEGER PRIMARY KEY,
@@ -265,7 +271,9 @@ CREATE TABLE IF NOT EXISTS report_tickets (
     closed_at REAL,
     closed_by INTEGER,
     closed_by_name TEXT,
-    closed_by_avatar TEXT
+    closed_by_avatar TEXT,
+    reporter_dm_channel_id INTEGER,
+    reporter_dm_message_id INTEGER
 );
 CREATE TABLE IF NOT EXISTS report_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1528,6 +1536,16 @@ class Database:
             )
             """
         )
+        await self.db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS profile_hidden_roles (
+                guild_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL,
+                PRIMARY KEY (guild_id, user_id, role_id)
+            )
+            """
+        )
         await self.db.commit()
 
     # --- custom roles ---
@@ -1686,6 +1704,25 @@ class Database:
         )
         return await cur.fetchall()
 
+    async def get_profile_hidden_roles(self, guild_id: int, user_id: int) -> list[int]:
+        cur = await self.db.execute(
+            "SELECT role_id FROM profile_hidden_roles WHERE guild_id = ? AND user_id = ?",
+            (int(guild_id), int(user_id)),
+        )
+        return [int(row["role_id"]) for row in await cur.fetchall()]
+
+    async def set_profile_hidden_roles(self, guild_id: int, user_id: int, role_ids: list[int]) -> None:
+        await self.db.execute(
+            "DELETE FROM profile_hidden_roles WHERE guild_id = ? AND user_id = ?",
+            (int(guild_id), int(user_id)),
+        )
+        for role_id in {int(rid) for rid in role_ids}:
+            await self.db.execute(
+                "INSERT OR IGNORE INTO profile_hidden_roles (guild_id, user_id, role_id) VALUES (?, ?, ?)",
+                (int(guild_id), int(user_id), int(role_id)),
+            )
+        await self.db.commit()
+
     async def is_custom_role_give_blocked(self, guild_id: int, user_id: int) -> bool:
         cur = await self.db.execute(
             "SELECT 1 FROM custom_role_give_blocks WHERE guild_id = ? AND user_id = ?",
@@ -1763,6 +1800,8 @@ class Database:
                 "decided_by_avatar": "TEXT",
                 "closed_by_name": "TEXT",
                 "closed_by_avatar": "TEXT",
+                "reporter_dm_channel_id": "INTEGER",
+                "reporter_dm_message_id": "INTEGER",
             }
             for name, typ in additions.items():
                 if name not in cols:
@@ -1874,6 +1913,17 @@ class Database:
             WHERE id = ?
             """,
             (channel_id, message_channel_id, message_id, announce_channel_id, announce_message_id, ticket_id),
+        )
+        await self.db.commit()
+
+    async def set_report_dm_message(self, ticket_id: int, channel_id: int, message_id: int) -> None:
+        await self.db.execute(
+            """
+            UPDATE report_tickets
+            SET reporter_dm_channel_id = ?, reporter_dm_message_id = ?
+            WHERE id = ?
+            """,
+            (int(channel_id), int(message_id), int(ticket_id)),
         )
         await self.db.commit()
 

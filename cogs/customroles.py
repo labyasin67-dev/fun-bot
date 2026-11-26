@@ -274,16 +274,11 @@ async def member_level(db, guild_id: int, user_id: int) -> int:
 
 
 def placement_position(guild: discord.Guild, settings) -> int | None:
+    """Highest position the bot can assign: immediately under its top role."""
     me = guild.me
     if me is None or me.top_role is None:
         return None
-    ceiling = me.top_role.position
-    anchor_id = settings["anchor_role_id"] if settings and settings["anchor_role_id"] else None
-    if anchor_id:
-        anchor = guild.get_role(int(anchor_id))
-        if anchor is not None and 0 < anchor.position < ceiling:
-            ceiling = anchor.position
-    pos = ceiling - 1
+    pos = me.top_role.position - 1
     return pos if pos >= 1 else None
 
 
@@ -292,7 +287,7 @@ async def place_role(role: discord.Role, settings) -> None:
     if pos is None:
         return
     try:
-        await role.edit(position=pos, reason="Place custom role below the bot or anchor role")
+        await role.edit(position=pos, reason="Place custom role just under the bot's highest role")
     except discord.HTTPException:
         log.warning("Could not move custom role %s in guild %s", role.id, role.guild.id)
 
@@ -584,11 +579,81 @@ class OpenCreateFormView(discord.ui.View):
         await interaction.response.send_modal(CreateCustomRoleModal(self.cog, default_name=self.default_name))
 
 
+def visible_profile_roles(
+    member: discord.Member,
+    *,
+    custom_role_id: int | None,
+    hidden: set[int],
+) -> list[discord.Role]:
+    roles = [role for role in member.roles if not role.is_default() and role.id not in hidden]
+    custom = None
+    if custom_role_id:
+        custom = next((role for role in roles if role.id == int(custom_role_id)), None)
+    rest = [role for role in roles if custom is None or role.id != custom.id]
+    rest.sort(key=lambda role: role.position, reverse=True)
+    return ([custom] + rest) if custom is not None else rest
+
+
+class HideRolesView(discord.ui.View):
+    def __init__(self, cog: "CustomRoles", member: discord.Member, roles: list[discord.Role], hidden: set[int]) -> None:
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.member = member
+        options = []
+        for role in roles[:25]:
+            options.append(
+                discord.SelectOption(
+                    label=role.name[:100],
+                    value=str(role.id),
+                    default=role.id in hidden,
+                    description="Hidden from profile" if role.id in hidden else "Shown on profile",
+                )
+            )
+        select = discord.ui.Select(
+            placeholder="Select roles to hide from your profile",
+            min_values=0,
+            max_values=len(options),
+            options=options,
+        )
+        select.callback = self.on_select
+        self.add_item(select)
+
+    async def on_select(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != self.member.id:
+            await interaction.response.send_message("Only you can change your hidden roles.", ephemeral=True)
+            return
+        if interaction.guild is None:
+            await interaction.response.send_message("This only works in a server.", ephemeral=True)
+            return
+        values = [int(v) for v in (interaction.data or {}).get("values", [])]
+        await self.cog.bot.db.set_profile_hidden_roles(interaction.guild.id, self.member.id, values)
+        hidden = set(values)
+        hidden_mentions = [role.mention for role in self.member.roles if role.id in hidden]
+        body = "Those roles will stay hidden from `.profile` in this server. Discord itself still shows them."
+        if hidden_mentions:
+            body += "\n**Hidden:** " + " ".join(hidden_mentions[:20])
+        await interaction.response.edit_message(
+            embed=make_embed("Profile roles updated", body, color=SUCCESS),
+            view=None,
+        )
+
+
 class CustomRoles(commands.Cog):
     """Custom roles members can create once they reach a set level."""
 
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
+
+    async def cog_load(self) -> None:
+        for guild in list(self.bot.guilds):
+            try:
+                settings = await self.bot.db.get_customrole_settings(guild.id)
+                for row in await self.bot.db.list_custom_roles(guild.id):
+                    role = guild.get_role(int(row["role_id"]))
+                    if role is not None:
+                        await place_role(role, settings)
+            except Exception:
+                log.warning("Could not reposition custom roles in guild %s", getattr(guild, "id", "?"), exc_info=True)
 
     @commands.hybrid_group(name="role", description="Custom roles, or add and remove a role.", invoke_without_command=True)
     @commands.guild_only()
@@ -606,6 +671,7 @@ class CustomRoles(commands.Cog):
                 "• `.role toggle on|off` / `.role minlevel <n>` — (manage roles)\n"
                 "• `.role restrict @user [reason]` / `.role unrestrict @user`\n"
                 "• `.role remove @user` — (manage roles) take away their custom role\n"
+                "• `.role manage` — hide roles from your `.profile`\n"
                 "• `.role list` — show custom roles and restrictions",
             ),
             allowed_mentions=NO_MENTIONS,
@@ -1109,6 +1175,56 @@ class CustomRoles(commands.Cog):
             await ctx.send(embed=make_embed("Not restricted", f"{member.mention} isn't restricted from custom roles.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         await ctx.send(embed=make_embed("Restriction lifted", f"{member.mention} can create a custom role again if they meet the requirements.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
+
+    @role.command(name="manage", description="Choose which of your roles are hidden from your .profile.")
+    @commands.guild_only()
+    async def role_manage(self, ctx: commands.Context) -> None:
+        assert ctx.guild and isinstance(ctx.author, discord.Member)
+        hidden = set(await self.bot.db.get_profile_hidden_roles(ctx.guild.id, ctx.author.id))
+        held = await member_owns_or_holds(self.bot.db, ctx.guild.id, ctx.author.id)
+        custom_id = int(held["role_id"]) if held is not None else None
+        roles = [role for role in ctx.author.roles if not role.is_default()]
+        roles.sort(key=lambda role: (0 if custom_id and role.id == custom_id else 1, -role.position))
+        if not roles:
+            await reply(ctx, make_embed("No roles", "You don't have any roles I can hide on your profile.", color=DANGER), ephemeral=True)
+            return
+        extra = ""
+        if len(roles) > 25:
+            roles = roles[:25]
+            extra = " Only the first 25 roles are listed, with your custom role first if you have one."
+        await reply(
+            ctx,
+            make_embed(
+                "Hide roles from your profile",
+                "Select the roles that should be hidden on `.profile` in this server."
+                " This does not hide them in Discord."
+                + extra,
+            ),
+            ephemeral=True,
+            view=HideRolesView(self, ctx.author, roles, hidden),
+        )
+
+    @commands.hybrid_command(name="profile", description="Show a member's profile and visible roles.")
+    @commands.guild_only()
+    @app_commands.describe(member="Optional member to look up.")
+    async def profile(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
+        assert ctx.guild
+        target = member or ctx.author
+        hidden = set(await self.bot.db.get_profile_hidden_roles(ctx.guild.id, target.id))
+        held = await member_owns_or_holds(self.bot.db, ctx.guild.id, target.id)
+        custom_id = int(held["role_id"]) if held is not None else None
+        roles = visible_profile_roles(target, custom_role_id=custom_id, hidden=hidden)
+        role_line = " ".join(role.mention for role in roles) if roles else "None shown"
+        if len(role_line) > 1000:
+            role_line = " ".join(role.mention for role in roles[:30])
+            if len(roles) > 30:
+                role_line += f" … +{len(roles) - 30} more"
+        body = (
+            f"**Member:** {target.mention} (`{target.id}`)\n"
+            f"**Username:** @{target.name}\n"
+            f"**Roles:** {role_line}"
+        )
+        await reply(ctx, make_embed(f"{target.display_name}'s profile", body), ephemeral=False)
 
     @role.command(name="list", description="List custom roles and restrictions in this server.")
     @commands.guild_only()

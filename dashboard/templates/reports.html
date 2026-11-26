@@ -102,6 +102,13 @@
         <td data-label="{{ 'Opened' if status == 'open' else 'Decision' }}">
           {% if status == 'open' %}
             {{ item.created }}
+          {% elif status == 'withdrawn' %}
+            Withdrawn by reporter
+            {% if item.decided_at %}<br><span class="muted">{{ item.decided_at }}</span>{% endif %}
+          {% elif status == 'cancelled' %}
+            Cancelled by {{ person(item.decided) }}
+            {% if item.decided_at %}<br><span class="muted">{{ item.decided_at }}</span>{% endif %}
+            {% if item.decision_reason %}<br>{{ item.decision_reason }}{% endif %}
           {% else %}
             {{ person(item.decided) }}
             {% if item.decided_at %}<br><span class="muted">{{ item.decided_at }}</span>{% endif %}
@@ -174,6 +181,8 @@
 {{ report_section("Open", "open", open_items, open_count, open_page, open_pages, "open") }}
 {{ report_section("Approved", "approved", approved_items, approved_count, approved_page, approved_pages, "approved") }}
 {{ report_section("Denied", "denied", denied_items, denied_count, denied_page, denied_pages, "denied") }}
+{{ report_section("Withdrawn", "withdrawn", withdrawn_items, withdrawn_count, withdrawn_page, withdrawn_pages, "withdrawn") }}
+{{ report_section("Cancelled", "cancelled", cancelled_items, cancelled_count, cancelled_page, cancelled_pages, "cancelled") }}
 {% if closed_count %}
 {{ report_section("Closed", "closed", closed_items, closed_count, closed_page, closed_pages, "closed") }}
 {% endif %}

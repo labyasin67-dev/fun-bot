@@ -1305,7 +1305,7 @@ def register_routes(app: FastAPI) -> None:
 
 
     @app.get("/servers/{guild_id}/reports", response_class=HTMLResponse)
-    async def reports_get(request: Request, guild_id: int, open: int = 1, approved: int = 1, denied: int = 1, closed: int = 1):
+    async def reports_get(request: Request, guild_id: int, open: int = 1, approved: int = 1, denied: int = 1, closed: int = 1, withdrawn: int = 1, cancelled: int = 1):
         redir, guild, user = await _guild_or_redirect(request, guild_id)
         if redir:
             return redir
@@ -1346,7 +1346,11 @@ def register_routes(app: FastAPI) -> None:
                         "reported": _report_list_person(row["reported_name"], row["reported_avatar"], row["reported_user_id"], guild, bot) if row["reported_user_id"] or row["reported_name"] else None,
                         "claimed": _report_list_person(row["claimed_by_name"], row["claimed_by_avatar"], row["claimed_by"], guild, bot, claimed=True) if row["claimed_by"] else None,
                         "claimed_at": _fmt_ts(row["claimed_at"]),
-                        "decided": _staff_person(row["decided_by_name"], row["decided_by_avatar"], row["decided_by"], guild) if row["decided_by"] else None,
+                        "decided": (
+                            _report_list_person(row["decided_by_name"], row["decided_by_avatar"], row["decided_by"], guild, bot)
+                            if status == "cancelled" and row["decided_by"]
+                            else _staff_person(row["decided_by_name"], row["decided_by_avatar"], row["decided_by"], guild) if row["decided_by"] else None
+                        ),
                         "decided_at": _fmt_ts(row["decided_at"]),
                         "decision_reason": row["decision_reason"] or "",
                         "notes": notes,
@@ -1357,6 +1361,8 @@ def register_routes(app: FastAPI) -> None:
         open_items, open_count, open_page, open_pages = await section("open", open)
         approved_items, approved_count, approved_page, approved_pages = await section("approved", approved)
         denied_items, denied_count, denied_page, denied_pages = await section("denied", denied)
+        withdrawn_items, withdrawn_count, withdrawn_page, withdrawn_pages = await section("withdrawn", withdrawn)
+        cancelled_items, cancelled_count, cancelled_page, cancelled_pages = await section("cancelled", cancelled)
         closed_items, closed_count, closed_page, closed_pages = await section("closed", closed)
         blocks = []
         for row in await db.list_report_blocks(guild.id):
@@ -1398,6 +1404,8 @@ def register_routes(app: FastAPI) -> None:
             open_items=open_items, open_count=open_count, open_page=open_page, open_pages=open_pages,
             approved_items=approved_items, approved_count=approved_count, approved_page=approved_page, approved_pages=approved_pages,
             denied_items=denied_items, denied_count=denied_count, denied_page=denied_page, denied_pages=denied_pages,
+            withdrawn_items=withdrawn_items, withdrawn_count=withdrawn_count, withdrawn_page=withdrawn_page, withdrawn_pages=withdrawn_pages,
+            cancelled_items=cancelled_items, cancelled_count=cancelled_count, cancelled_page=cancelled_page, cancelled_pages=cancelled_pages,
             closed_items=closed_items, closed_count=closed_count, closed_page=closed_page, closed_pages=closed_pages,
             blocks=blocks,
         )

@@ -69,6 +69,34 @@ class CustomRoleTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await self.db.unrestrict_custom_role_user(11, 22))
         self.assertFalse(await self.db.is_custom_role_restricted(11, 22))
 
+    async def test_profile_hidden_roles_roundtrip(self):
+        self.assertEqual(await self.db.get_profile_hidden_roles(11, 22), [])
+        await self.db.set_profile_hidden_roles(11, 22, [4, 5, 5])
+        self.assertEqual(set(await self.db.get_profile_hidden_roles(11, 22)), {4, 5})
+        await self.db.set_profile_hidden_roles(11, 22, [])
+        self.assertEqual(await self.db.get_profile_hidden_roles(11, 22), [])
+        # other users/guilds stay isolated
+        await self.db.set_profile_hidden_roles(11, 22, [9])
+        await self.db.set_profile_hidden_roles(11, 33, [8])
+        self.assertEqual(await self.db.get_profile_hidden_roles(11, 22), [9])
+        self.assertEqual(await self.db.get_profile_hidden_roles(12, 22), [])
+
+    def test_profile_puts_custom_role_first_and_hides_selected(self):
+        import types
+        from cogs.customroles import visible_profile_roles
+
+        def role(i, pos, *, default=False):
+            return types.SimpleNamespace(id=i, position=pos, is_default=lambda d=default: d, name=str(i))
+
+        everyone = role(1, 0, default=True)
+        custom = role(50, 2)
+        high = role(40, 10)
+        mid = role(30, 5)
+        hidden = role(20, 8)
+        member = types.SimpleNamespace(roles=[everyone, mid, high, custom, hidden])
+        shown = visible_profile_roles(member, custom_role_id=50, hidden={20})
+        self.assertEqual([r.id for r in shown], [50, 40, 30])
+
 
 class ReportTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -131,6 +159,36 @@ class ReportTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(await self.db.get_report_ticket(ticket_id, 7))
         self.assertEqual(await self.db.list_report_notes(ticket_id), [])
         self.assertFalse(await self.db.delete_report_ticket(ticket_id, 7))
+
+    async def test_withdrawn_and_cancelled_statuses_are_listed(self):
+        withdrawn_id = await self.db.create_report_ticket(
+            7, reporter_id=11, reporter_name="alice", reported_user_id=22, reported_name="bob",
+            message_link=None, message_preview=None, reason="mistake",
+        )
+        cancelled_id = await self.db.create_report_ticket(
+            7, reporter_id=11, reporter_name="alice", reported_user_id=22, reported_name="bob",
+            message_link=None, message_preview=None, reason="staff cancel",
+        )
+        await self.db.decide_report_ticket(
+            withdrawn_id, status="withdrawn", decided_by=11, decided_by_name="alice", decision_reason=None,
+        )
+        await self.db.decide_report_ticket(
+            cancelled_id, status="cancelled", decided_by=5, decided_by_name="admin", decision_reason="duplicate",
+        )
+        await self.db.set_report_dm_message(cancelled_id, 100, 200)
+        row = await self.db.get_report_ticket(cancelled_id, 7)
+        self.assertEqual(row["status"], "cancelled")
+        self.assertEqual(row["decided_by_name"], "admin")
+        self.assertEqual(row["decision_reason"], "duplicate")
+        self.assertEqual(int(row["reporter_dm_channel_id"]), 100)
+        self.assertEqual(int(row["reporter_dm_message_id"]), 200)
+        withdrawn = await self.db.list_report_tickets(7, status="withdrawn")
+        cancelled = await self.db.list_report_tickets(7, status="cancelled")
+        self.assertEqual([int(r["id"]) for r in withdrawn], [withdrawn_id])
+        self.assertEqual([int(r["id"]) for r in cancelled], [cancelled_id])
+        self.assertEqual(await self.db.count_reports(7, "withdrawn"), 1)
+        self.assertEqual(await self.db.count_reports(7, "cancelled"), 1)
+        self.assertEqual(await self.db.count_open_reports(7, 11), 0)
 
     async def test_block_and_cooldown_helpers(self):
         self.assertFalse(await self.db.is_report_blocked(7, 11))
