@@ -317,12 +317,26 @@ async def delete_guild_role(guild: discord.Guild, role_id: int, *, reason: str) 
         return False
 
 
+async def remove_role_from_all_members(bot: SocializeBot, guild: discord.Guild, role_id: int, reason: str) -> None:
+    """Remove a custom role from every member who currently has it."""
+    role = guild.get_role(role_id)
+    if role is None:
+        return
+    for member in guild.members:
+        if role in member.roles:
+            try:
+                await member.remove_roles(role, reason=reason)
+            except discord.HTTPException:
+                pass
+
+
 async def remove_stored_custom_role(bot: SocializeBot, guild: discord.Guild, user_id: int, *, reason: str) -> discord.Role | int | None:
     row = await bot.db.delete_custom_role(guild.id, user_id)
     if row is None:
         return None
     role_id = int(row["role_id"])
     role = guild.get_role(role_id)
+    await remove_role_from_all_members(bot, guild, role_id, reason=reason)
     await delete_guild_role(guild, role_id, reason=reason)
     return role if role is not None else role_id
 
@@ -1251,9 +1265,11 @@ class CustomRoles(commands.Cog):
         if ctx.guild.me.top_role <= role:
             await ctx.send(embed=make_embed("Can't do that", "My highest role is too low to move that custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
-        err = await transfer_custom_role(self.bot, ctx.guild, row, member, reason=f"Given by {ctx.author}")
-        if err:
-            await ctx.send(embed=make_embed("Couldn't give the role", err, color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+        # Role sharing: owner keeps their role, just add it to the new member.
+        try:
+            await member.add_roles(role, reason=f"Given by {ctx.author}")
+        except discord.HTTPException:
+            await ctx.send(embed=make_embed("Couldn't give the role", "Check my permissions and try again.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         await ctx.send(embed=make_embed("Custom role given", f"{role.mention} has been given to {member.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
 
