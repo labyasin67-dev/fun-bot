@@ -60,6 +60,7 @@ EXTENSIONS = (
     "cogs.creator_alerts",
     "cogs.levels_switch",
     "cogs.audit_logs",
+    "cogs.afk",
 )
 
 
