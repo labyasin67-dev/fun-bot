@@ -384,5 +384,26 @@ class Leveling(commands.Cog):
         from cogs.channels import post_modlog
         await post_modlog(self.bot, ctx.guild, "XP set", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=SUCCESS)
 
+    @commands.hybrid_command(name="setlvl", aliases=["setlv"], description="Set a member's level to an exact value.")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    @app_commands.describe(member="The member whose level to set.", level="The level to set them to (1–1000).")
+    async def setlvl(self, ctx: commands.Context, member: discord.Member, level: int) -> None:
+        if member.bot:
+            await ctx.send(embed=make_embed("Can't do that", "Bots don't earn levels.", color=DANGER), ephemeral=True)
+            return
+        if level < 1 or level > 1000:
+            await ctx.send(embed=make_embed("Invalid level", "Level must be between 1 and 1000.", color=DANGER), ephemeral=True)
+            return
+        target_xp = xp_for_level(level)
+        old, new = await self.bot.db.set_xp(ctx.guild.id, member.id, target_xp)
+        if new > old:
+            await self._handle_level_up(ctx.guild, member, ctx.channel, old, new)
+        old_level = level_from_xp(old)
+        new_level, _, _, _ = level_progress(new)
+        await ctx.send(embed=make_embed("Level set", f"{member.mention}: level **{old_level}** → **{new_level}** ({new:,} XP)", color=SUCCESS))
+        from cogs.channels import post_modlog
+        await post_modlog(self.bot, ctx.guild, "Level set", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Level:** {new_level}", color=SUCCESS)
+
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Leveling(bot))
