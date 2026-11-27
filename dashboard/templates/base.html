@@ -1,96 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{% block title %}Fun bot dashboard{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <title>{% block title %}Meowchi Cafe dashboard{% endblock %}</title>
+  {{ ui.head() }}
 </head>
-<body>
+<body class="site">
+  <canvas id="space-bg" aria-hidden="true"></canvas>
+  {% set nav_active = active if active is defined else None %}
   <div class="wrap">
-    <header class="topbar">
-      <a class="brand" href="{% if user %}/servers{% else %}/{% endif %}">
-        <span class="brand-mark">🎮</span>
-        <span>Fun bot</span>
-      </a>
-      {% if guild is defined %}
-        <span class="muted">/</span>
-        <strong>{{ guild.name }}</strong>
-      {% endif %}
-      <span class="spacer"></span>
-      <a class="top-link" href="/pricing">Pricing</a>
-      {% if is_admin %}
-        <a class="top-link" href="/admin">Admin</a>
-      {% endif %}
-      {% if user %}
-        <span class="user-chip">
-          {% if avatar_url %}<img src="{{ avatar_url }}" alt=""> {% endif %}
-          {{ user.username }}
-        </span>
-        <form method="post" action="/logout" style="margin:0">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button class="btn secondary" type="submit">Log out</button>
-        </form>
-      {% endif %}
-    </header>
+    {{ ui.topbar(user=user, guild=(guild if guild is defined else None), is_admin=is_admin, avatar_url=avatar_url, csrf_token=csrf_token) }}
     {% if guild is defined %}
-    <div class="mobile-nav">
-      <label class="faint" for="panel-jump">Panel</label>
-      <select id="panel-jump" onchange="if(this.value) location.href=this.value">
-        <option value="/servers/{{ guild.id }}" {% if active=='overview' %}selected{% endif %}>Overview</option>
-        <option value="/servers/{{ guild.id }}/channels" {% if active=='channels' %}selected{% endif %}>Channels</option>
-        <option value="/servers/{{ guild.id }}/levels" {% if active=='levels' %}selected{% endif %}>Levels</option>
-        <option value="/servers/{{ guild.id }}/selfroles" {% if active=='selfroles' %}selected{% endif %}>Self roles</option>
-        <option value="/servers/{{ guild.id }}/customroles" {% if active=='customroles' %}selected{% endif %}>Custom Roles</option>
-        <option value="/servers/{{ guild.id }}/alts" {% if active=='alts' %}selected{% endif %}>Alt detection</option>
-        <option value="/servers/{{ guild.id }}/welcome" {% if active=='welcome' %}selected{% endif %}>Welcome</option>
-        <option value="/servers/{{ guild.id }}/games" {% if active=='games' %}selected{% endif %}>Games</option>
-        <option value="/servers/{{ guild.id }}/moderation" {% if active=='moderation' %}selected{% endif %}>Moderation</option>
-        <option value="/servers/{{ guild.id }}/reports" {% if active=='reports' %}selected{% endif %}>Reports</option>
-        <option value="/servers/{{ guild.id }}/youtube" {% if active=='youtube' %}selected{% endif %}>YouTube</option>
-        <option value="/servers/{{ guild.id }}/billing" {% if active=='billing' %}selected{% endif %}>Billing</option>
-        <option value="/servers">All servers</option>
-      </select>
-    </div>
+    {{ ui.mobile_nav(guild, nav_active, is_admin) }}
     {% endif %}
-    <div class="layout">
+    <div class="layout{% if guild is defined %} has-sidebar{% endif %}">
       {% if guild is defined %}
-      <aside class="sidebar">
-        <h2>{{ guild.name }}</h2>
-        <nav class="nav">
-          <a href="/servers/{{ guild.id }}" class="{% if active=='overview' %}active{% endif %}">Overview</a>
-          <a href="/servers/{{ guild.id }}/channels" class="{% if active=='channels' %}active{% endif %}">Channels</a>
-          <a href="/servers/{{ guild.id }}/levels" class="{% if active=='levels' %}active{% endif %}">Levels</a>
-          <a href="/servers/{{ guild.id }}/selfroles" class="{% if active=='selfroles' %}active{% endif %}">Self roles</a>
-          <a href="/servers/{{ guild.id }}/customroles" class="{% if active=='customroles' %}active{% endif %}">Custom Roles</a>
-          <a href="/servers/{{ guild.id }}/alts" class="{% if active=='alts' %}active{% endif %}">Alt detection</a>
-          <a href="/servers/{{ guild.id }}/welcome" class="{% if active=='welcome' %}active{% endif %}">Welcome</a>
-          <a href="/servers/{{ guild.id }}/games" class="{% if active=='games' %}active{% endif %}">Games</a>
-          <a href="/servers/{{ guild.id }}/moderation" class="{% if active=='moderation' %}active{% endif %}">Moderation</a>
-          <a href="/servers/{{ guild.id }}/reports" class="{% if active=='reports' %}active{% endif %}">Reports</a>
-          <a href="/servers/{{ guild.id }}/youtube" class="{% if active=='youtube' %}active{% endif %}">YouTube</a>
-          <a href="/servers/{{ guild.id }}/billing" class="{% if active=='billing' %}active{% endif %}">Billing</a>
-          <a href="/servers">← All servers</a>
-        </nav>
-      </aside>
+      {{ ui.sidebar(guild, nav_active, is_admin) }}
       {% endif %}
       <main class="content">
         {% if guild is defined and premium_required_flag and not premium_ok %}
-          <div class="flash error upgrade-banner">This server needs Fun bot Premium — <a href="{{ pricing_url }}">subscribe at the pricing page</a>.</div>
+          {{ ui.upgrade_banner(pricing_url) }}
         {% endif %}
         {% for item in flash %}
-          <div class="flash {{ item.kind }}">{{ item.message }}</div>
+          {{ ui.flash(item.kind, item.message) }}
         {% endfor %}
         {% block body %}{% endblock %}
       </main>
     </div>
-    <footer class="site-footer">
-      <a href="/privacy">Privacy</a>
-      <span class="faint">|</span>
-      <a href="/terms">Terms</a>
-      <span class="faint">|</span>
-      Made by Whiskey/WarRaven
-    </footer>
+    {{ ui.footer() }}
   </div>
+  <script src="/static/space.js?v=fh3" defer></script>
 </body>
 </html>

@@ -2,26 +2,94 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Games · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Games</h1>
-<p class="lede">Turn individual drop-in games on or off, and optionally limit them to specific channels.</p>
+<div class="page-head">{{ ui.cat_icon('games') }}<div><h1 class="page-title">Games</h1>
+<p class="lede">Turn individual drop-in games on or off, and optionally limit them to specific channels.</p></div></div>
 <form method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <div class="card">
+  <div class="uk-card card">
     <h2>Enabled games</h2>
     <div class="checkgrid">
       {% for key, emoji, title, blurb in menu_games %}
         <label class="check">
-          <input type="checkbox" name="enabled" value="{{ key }}" {% if key not in disabled %}checked{% endif %}>
+          <input class="uk-checkbox" type="checkbox" name="enabled" value="{{ key }}" {% if key not in disabled %}checked{% endif %}>
           <span><strong>{{ emoji }} {{ title }}</strong><br><span class="faint">.{{ key }} — {{ blurb }}</span></span>
         </label>
       {% endfor %}
     </div>
   </div>
-  <div class="card" style="margin-top:14px">
+  <div class="uk-card card" style="margin-top:14px">
     <h2>Game channels</h2>
     <p class="faint">If none are selected, game commands work in every channel. If you pick some, games only work there.</p>
     {{ chansel('games_channel', grouped, selected=game_channels, allow_none=False, multiple=True) }}
   </div>
-  <button class="btn" type="submit" style="margin-top:14px">Save game settings</button>
+  <button class="uk-btn uk-btn-primary btn" type="submit" style="margin-top:14px">Save game settings</button>
 </form>
+<div class="uk-card card" style="margin-top:14px">
+  <h2>Fun commands</h2>
+  <p>Member interaction commands work in this server:</p>
+  <ul class="muted">
+    <li><code>.slap @user</code> — slap (tracks count)</li>
+    <li><code>.kiss @user</code> — kiss</li>
+    <li><code>.laugh @user</code> — laugh</li>
+    <li><code>.boot @user</code> — boot</li>
+    <li><code>.yeet @user</code> — yeet</li>
+    <li><code>.tickle @user</code> — tickle</li>
+    <li><code>.hug @user</code> — hug</li>
+    <li><code>.dap @user</code> — dap</li>
+    <li><code>.bonk @user</code> — bonk</li>
+    <li><code>.cuddle @user</code> — cuddle</li>
+    <li><code>.flirt @user</code> — flirt</li>
+    <li><code>.poke @user</code> — poke</li>
+    <li><code>.airkiss @user</code> — air kiss</li>
+    <li><code>.angrystare @user</code> — angry stare</li>
+    <li><code>.bite @user</code> — bite</li>
+    <li><code>.bleh @user</code> — bleh</li>
+    <li><code>.celebrate @user</code> — celebrate</li>
+    <li><code>.cheers @user</code> — cheers</li>
+    <li><code>.clap @user</code> — clap</li>
+    <li><code>.confused @user</code> — confused</li>
+    <li><code>.cool @user</code> — cool</li>
+    <li><code>.cry @user</code> — cry</li>
+    <li><code>.dance @user</code> — dance</li>
+    <li><code>.drool @user</code> — drool</li>
+    <li><code>.evillaugh @user</code> — evil laugh</li>
+    <li><code>.facepalm @user</code> — facepalm</li>
+    <li><code>.handhold @user</code> — hold hands</li>
+    <li><code>.headbang @user</code> — headbang</li>
+    <li><code>.lick @user</code> — lick</li>
+    <li><code>.mad @user</code> — mad</li>
+    <li><code>.nervous @user</code> — nervous</li>
+    <li><code>.eat @user</code> — eat</li>
+    <li><code>.boop @user</code> — boop</li>
+    <li><code>.nyah @user</code> — nyah</li>
+    <li><code>.pat @user</code> — pat</li>
+    <li><code>.peek @user</code> — peek</li>
+    <li><code>.pinch @user</code> — pinch</li>
+    <li><code>.pout @user</code> — pout</li>
+    <li><code>.sad @user</code> — sad</li>
+    <li><code>.scared @user</code> — scared</li>
+    <li><code>.shout @user</code> — shout</li>
+    <li><code>.shrug @user</code> — shrug</li>
+    <li><code>.shy @user</code> — shy</li>
+    <li><code>.sigh @user</code> — sigh</li>
+    <li><code>.sip @user</code> — sip</li>
+    <li><code>.sleep @user</code> — sleep</li>
+    <li><code>.slowclap @user</code> — slow clap</li>
+    <li><code>.smack @user</code> — smack</li>
+    <li><code>.smile @user</code> — smile</li>
+    <li><code>.sneeze @user</code> — sneeze</li>
+    <li><code>.sorry @user</code> — sorry</li>
+    <li><code>.stare @user</code> — stare</li>
+    <li><code>.surprised @user</code> — surprised</li>
+    <li><code>.sweat @user</code> — sweat</li>
+    <li><code>.thumbsup @user</code> — thumbs up</li>
+    <li><code>.tired @user</code> — tired</li>
+    <li><code>.wave @user</code> — wave</li>
+    <li><code>.wink @user</code> — wink</li>
+    <li><code>.woah @user</code> — woah</li>
+    <li><code>.yawn @user</code> — yawn</li>
+    <li><code>.yay @user</code> — yay</li>
+    <li><code>.yes @user</code> — yes</li>
+  </ul>
+</div>
 {% endblock %}

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Your servers{% endblock %}
 {% block body %}
-<h1>Your servers</h1>
-<p class="lede">Servers where you have Manage Server. Invite the bot if it is not there yet.</p>
+<div class="page-head">{{ ui.cat_icon('server') }}<div><h1 class="page-title">Your servers</h1>
+<p class="lede">Servers where you have Administrator. Invite the bot if it is not there yet.</p></div></div>
 {% if not bot_ready %}
   <p class="muted">The bot is still starting, so membership may be incomplete for a moment.</p>
 {% endif %}
@@ -18,13 +18,13 @@
         </span>
       </div>
       {% if s.present %}
-        <a class="btn" href="/servers/{{ s.id }}">Manage</a>
+        <a class="uk-btn uk-btn-primary btn" href="/servers/{{ s.id }}">Manage</a>
       {% else %}
-        <a class="btn green" href="{{ s.invite }}" target="_blank" rel="noopener">Invite</a>
+        <a class="uk-btn uk-btn-primary btn green" href="{{ s.invite }}" target="_blank" rel="noopener">Invite</a>
       {% endif %}
     </div>
   {% else %}
-    <div class="card muted">No servers found where you have Manage Server. Try logging in again after you get that permission.</div>
+    <div class="uk-card card muted">No servers found where you have Administrator. Try logging in again after you get that permission.</div>
   {% endfor %}
 </div>
 {% endblock %}

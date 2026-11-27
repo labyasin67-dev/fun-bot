@@ -8,12 +8,14 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils import COLOR, DANGER, SUCCESS, embed as make_embed
+from utils import COLOR, DANGER, NO_MENTIONS, SUCCESS, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
 
 DEFAULT_WELCOME = "Welcome to {server}, {mention}! You are member #{membercount}."
+DEFAULT_LEAVE = "{username} has left {server}."
+LEAVE_PLACEHOLDERS = "{user} {username} {server} {membercount}"
 
 
 def render_welcome(template: str, member: discord.Member) -> str:
@@ -24,6 +26,20 @@ def render_welcome(template: str, member: discord.Member) -> str:
         .replace("{mention}", member.mention)
         .replace("{server}", guild.name)
         .replace("{membercount}", str(guild.member_count or len(guild.members)))
+    )
+
+
+
+def render_leave(template: str, user: discord.abc.User, guild: discord.Guild) -> str:
+    username = getattr(user, "name", None) or str(user)
+    mention = getattr(user, "mention", f"<@{getattr(user, 'id', 0)}>")
+    count = guild.member_count or len(guild.members)
+    return (
+        (template or DEFAULT_LEAVE)
+        .replace("{user}", mention)
+        .replace("{username}", username)
+        .replace("{server}", guild.name)
+        .replace("{membercount}", str(count))
     )
 
 
@@ -115,6 +131,34 @@ class Welcome(commands.Cog):
         text = render_welcome((settings["welcome_message"] if settings else None) or DEFAULT_WELCOME, member)
         await channel.send(embed=self._welcome_embed(member, text))
         return channel
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member) -> None:
+        """Optional leave message (Messages panel). Off unless enabled there."""
+        if member.bot:
+            return
+        settings = await self.bot.db.get_settings(member.guild.id)
+        if not settings or not int(settings["leave_enabled"] or 0):
+            return
+        channel_id = settings["leave_channel_id"]
+        if not channel_id:
+            return
+        channel = member.guild.get_channel(int(channel_id))
+        if not isinstance(channel, discord.TextChannel):
+            return
+        # Bans also fire this event; the ban announcement handles those separately.
+        try:
+            await member.guild.fetch_ban(member)
+            return
+        except discord.HTTPException:
+            pass
+        text = render_leave(settings["leave_message"] or DEFAULT_LEAVE, member, member.guild)
+        e = make_embed("Member left", text)
+        e.set_thumbnail(url=member.display_avatar.url)
+        try:
+            await channel.send(embed=e, allowed_mentions=NO_MENTIONS)
+        except discord.HTTPException:
+            pass
 
 
 async def setup(bot: SocializeBot) -> None:

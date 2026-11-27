@@ -17,7 +17,7 @@ LOOKUP_MONTHLY = "bot_monthly_usd"
 LOOKUP_YEARLY = "bot_yearly_usd"
 
 # Commands that still work on a server without Premium.
-EXEMPT_ROOTS = frozenset({"help", "ping", "premium"})
+EXEMPT_ROOTS = frozenset({"help", "ping", "premium", "games"})
 
 ACTIVE_STATUSES = frozenset({"active", "trialing"})
 
@@ -58,7 +58,7 @@ def pricing_url() -> str:
 
 
 def premium_needed_message() -> str:
-    return f"This server needs Fun bot Premium — subscribe at {pricing_url()}"
+    return f"This server needs Meowchi Cafe Premium — subscribe at {pricing_url()}"
 
 
 def command_is_exempt(name: str | None) -> bool:

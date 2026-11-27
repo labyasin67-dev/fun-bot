@@ -118,11 +118,11 @@ class Premium(commands.Cog):
             return
         # Fall through is silent for unknown errors here; command error handler covers prefix.
 
-    @commands.hybrid_group(name="premium", description="Fun bot Premium status and owner grants.", invoke_without_command=True)
+    @commands.hybrid_group(name="premium", description="Meowchi Cafe Premium status and owner grants.", invoke_without_command=True)
     async def premium(self, ctx: commands.Context) -> None:
         await self.status(ctx)
 
-    @premium.command(name="status", description="Show this server's Fun bot Premium status.")
+    @premium.command(name="status", description="Show this server's Meowchi Cafe Premium status.")
     async def status(self, ctx: commands.Context) -> None:
         if ctx.guild is None:
             await ctx.send(embed=make_embed("Server only", "Check premium status in a server.", color=DANGER), ephemeral=True)
@@ -142,7 +142,7 @@ class Premium(commands.Cog):
         if not access.allowed:
             lines.append(f"\nSubscribe at {premium_needed_message().rsplit(' at ', 1)[-1]}")
         color = SUCCESS if access.allowed else WARNING
-        await ctx.send(embed=make_embed("Fun bot Premium", "\n".join(lines), color=color), ephemeral=True)
+        await ctx.send(embed=make_embed("Meowchi Cafe Premium", "\n".join(lines), color=color), ephemeral=True)
 
     @premium.command(name="grant", description="(Owner) Grant Premium to a server.")
     @is_app_owner()

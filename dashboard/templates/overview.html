@@ -1,14 +1,61 @@
 {% extends "base.html" %}
 {% block title %}{{ guild.name }} · Overview{% endblock %}
 {% block body %}
-<h1>Overview</h1>
-<p class="lede">Live status for this server.</p>
+<div class="page-head">{{ ui.cat_icon('overview') }}<div><h1 class="page-title">Overview</h1>
+<p class="lede">Live status for this server.</p></div></div>
 <div class="grid stats">
-  <div class="card"><div class="stat">{{ member_count }}</div><div class="stat-label">Members</div></div>
-  <div class="card"><div class="stat">{{ online_count }}</div><div class="stat-label">Online (approx.)</div></div>
-  <div class="card"><div class="stat">{{ bot_status }}</div><div class="stat-label">Bot · {{ latency_ms }}ms</div></div>
+  {{ ui.stat(member_count, "Members", "users") }}
+  {{ ui.stat(online_count, "Online (approx.)", "activity") }}
+  {{ ui.stat(bot_status, "Bot · " ~ latency_ms ~ "ms", "bot") }}
 </div>
-<div class="card" style="margin-top:14px">
+<h2 class="cat-heading">Find a setting</h2>
+<div class="cat-grid">
+  <section class="uk-card card cat-card">
+    <h3>{{ ui.cat_icon('moderation') }}Moderation &amp; Safety</h3>
+    <p class="faint">Review cases, flagged joins and member reports.</p>
+    <div class="cat-links">
+      <a href="/servers/{{ guild.id }}/moderation">Moderation</a>
+      <a href="/servers/{{ guild.id }}/alts">Alt detection</a>
+      <a href="/servers/{{ guild.id }}/reports">Reports</a>
+      <a href="/servers/{{ guild.id }}/auditlogs">Audit Logs</a>
+    </div>
+  </section>
+  <section class="uk-card card cat-card">
+    <h3>{{ ui.cat_icon('customroles') }}Roles</h3>
+    <p class="faint">Member-made roles and button roles.</p>
+    <div class="cat-links">
+      <a href="/servers/{{ guild.id }}/customroles">Custom Roles</a>
+      <a href="/servers/{{ guild.id }}/selfroles">Self roles</a>
+    </div>
+  </section>
+  <section class="uk-card card cat-card">
+    <h3>{{ ui.cat_icon('levels') }}Community</h3>
+    <p class="faint">Levels, welcome and leave messages, games and channels.</p>
+    <div class="cat-links">
+      <a href="/servers/{{ guild.id }}/levels">Levels</a>
+      <a href="/servers/{{ guild.id }}/welcome">Messages</a>
+      <a href="/servers/{{ guild.id }}/games">Games</a>
+      <a href="/servers/{{ guild.id }}/channels">Channels</a>
+    </div>
+  </section>
+  <section class="uk-card card cat-card">
+    <h3>{{ ui.cat_icon('youtube') }}Creator Integration</h3>
+    <p class="faint">YouTube upload alerts and scheduled posts.</p>
+    <div class="cat-links">
+      <a href="/servers/{{ guild.id }}/youtube">Creator Integration</a>
+    </div>
+  </section>
+  <section class="uk-card card cat-card">
+    <h3>{{ ui.cat_icon('billing') }}Premium &amp; Billing</h3>
+    <p class="faint">Plan, renewal and subscription for this server.</p>
+    <div class="cat-links">
+      <a href="/servers/{{ guild.id }}/billing">Billing</a>
+      <a href="/pricing">Pricing</a>
+    </div>
+  </section>
+</div>
+
+<div class="uk-card card" style="margin-top:14px">
   <h2>Assigned channels</h2>
   {% for key, label in {
     'alts':'Alt alerts','modlog':'Mod log','levelups':'Level-ups','welcome':'Welcome','games':'Games','counting':'Counting'
@@ -22,6 +69,6 @@
       {% endif %}
     </p>
   {% endfor %}
-  <a class="btn secondary" href="/servers/{{ guild.id }}/channels">Edit channels</a>
+  <a class="uk-btn uk-btn-secondary btn secondary" href="/servers/{{ guild.id }}/channels">Edit channels</a>
 </div>
 {% endblock %}

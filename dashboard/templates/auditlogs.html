@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chansel %}
+{% block title %}Audit Logs · {{ guild.name }}{% endblock %}
+{% block body %}
+<div class="page-head">{{ ui.cat_icon('auditlogs') }}<div><h1 class="page-title">Audit Logs</h1>
+<p class="lede">Pick a channel and choose exactly which server events are logged. Nothing is logged until a channel is set and an event is ticked.</p></div></div>
+
+{% if not audit_ready %}
+<div class="uk-card card"><p class="muted">Audit logs are still starting. Refresh in a moment.</p></div>
+{% else %}
+{% if not can_view_audit %}
+<div class="uk-card card audit-warn">
+  <strong>Moderator names need one more permission.</strong>
+  <p class="faint">Give the bot the <em>View Audit Log</em> permission to show who did bans, kicks, role and channel changes. Without it those entries say the moderator is unavailable.</p>
+</div>
+{% endif %}
+
+<form method="post" class="audit-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="uk-card card">
+    <h2>Log channel <span class="pill {% if audit_channel_id and audit_events %}pill-on{% else %}pill-off{% endif %}" style="margin-left:8px">{% if audit_channel_id and audit_events %}Logging{% elif audit_channel_id %}No events ticked{% else %}Paused{% endif %}</span></h2>
+    <div class="field">
+      <label class="uk-form-label">Send audit logs to</label>
+      {{ chansel('channel_id', grouped, selected=audit_channel_id, empty_label='Not set (logging paused)') }}
+    </div>
+    <p class="faint">Use a private staff channel: message edits and deletes include the message text.</p>
+    <label class="audit-check" style="margin-top:12px">
+      <input class="uk-checkbox" type="checkbox" name="log_admins" value="1" {% if log_admins %}checked{% endif %}>
+      <span>Log actions by admins and the server owner</span>
+    </label>
+    <p class="faint">When this is off, actions by the server owner or anyone with Administrator are not posted. This is on by default.</p>
+  </div>
+
+  <div class="audit-groups">
+    {% for group, items in audit_groups %}
+    <section class="uk-card card audit-group">
+      <h3>{{ group }}</h3>
+      {% for key, label in items %}
+      <label class="audit-check">
+        <input class="uk-checkbox" type="checkbox" name="ev_{{ key }}" value="1" {% if key in audit_events %}checked{% endif %}>
+        <span>{{ label }}</span>
+      </label>
+      {% if key == 'message_delete' %}
+      <label class="audit-check">
+        <input class="uk-checkbox" type="checkbox" name="log_admin_deletes" value="1" {% if log_admin_deletes %}checked{% endif %}>
+        <span>Log messages deleted by admins and the server owner</span>
+      </label>
+      {% endif %}
+      {% endfor %}
+    </section>
+    {% endfor %}
+  </div>
+
+  <div class="uk-card card audit-actions">
+    <button class="uk-btn uk-btn-primary btn" type="submit" name="action" value="save">Save</button>
+    <button class="uk-btn uk-btn-secondary btn secondary" type="submit" name="action" value="all" formnovalidate>Turn all on</button>
+    <button class="uk-btn uk-btn-secondary btn secondary" type="submit" name="action" value="none" formnovalidate>Turn all off</button>
+    <button class="uk-btn uk-btn-secondary btn secondary" type="submit" name="action" value="test" formnovalidate>Send test message</button>
+    <p class="faint">“Save” stores the channel and the ticks above. “Turn all on/off” and “Send test” use the saved channel. You can also use <code>.auditlog channel #ch</code> and <code>.auditlog list</code>.</p>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

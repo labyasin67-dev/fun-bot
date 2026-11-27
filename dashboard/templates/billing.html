@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Billing · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Billing</h1>
-<p class="lede">Fun bot Premium is billed per server.</p>
-<div class="card">
+<div class="page-head">{{ ui.cat_icon('billing') }}<div><h1 class="page-title">Billing</h1>
+<p class="lede">Meowchi Cafe Premium is billed per server.</p></div></div>
+<div class="uk-card card">
   <p><strong>Status:</strong> {{ status_text }}</p>
   <p><strong>Plan:</strong> {{ plan_text }}</p>
   <p><strong>Renewal:</strong> {{ renewal_text }}</p>
@@ -11,11 +11,11 @@
   {% if payments_ready and customer_id %}
     <form method="post" action="/servers/{{ guild.id }}/billing/portal">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button class="btn" type="submit">Manage billing</button>
+      <button class="uk-btn uk-btn-primary btn" type="submit">Manage billing</button>
     </form>
     <p class="faint">Opens the Stripe customer portal to update payment details or cancel.</p>
   {% elif not access.allowed %}
-    <p><a class="btn" href="/pricing">Upgrade on the pricing page</a></p>
+    <p><a class="uk-btn uk-btn-primary btn" href="/pricing">Upgrade on the pricing page</a></p>
   {% endif %}
 </div>
 {% endblock %}

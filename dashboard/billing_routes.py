@@ -11,6 +11,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from dashboard import dashboard_url
+from site_pages import CONTACT_KEY, load_site_page, save_site_page
 from premium import format_renewal, guild_access, owner_ids_from_env, status_label
 from stripe_billing import (
     construct_event,
@@ -42,6 +43,7 @@ def register_billing_routes(app) -> None:
         _guild_or_redirect,
     )
     from dashboard.auth import (
+        can_manage_guild,
         current_user,
         flash,
         managed_guilds,
@@ -122,8 +124,8 @@ def register_billing_routes(app) -> None:
             flash(request, "error", "Pick a server.")
             return RedirectResponse(f"/subscribe?plan={plan}", status_code=303)
         guild_id = int(raw)
-        if not any(int(g["id"]) == guild_id for g in managed_guilds(request)):
-            flash(request, "error", "You need Manage Server in that community.")
+        if not can_manage_guild(request, guild_id):
+            flash(request, "error", "You need Administrator in that community.")
             return RedirectResponse(f"/subscribe?plan={plan}", status_code=303)
         bot = _bot(request)
         if bot is None or bot.get_guild(guild_id) is None:
@@ -271,6 +273,7 @@ def register_billing_routes(app) -> None:
             grants=grants,
             stripe_subs=subs,
             format_renewal=format_renewal,
+            contact_body=await load_site_page(db, CONTACT_KEY),
         )
 
     @app.post("/admin")
@@ -325,4 +328,14 @@ def register_billing_routes(app) -> None:
                 flash(request, "ok", "Grant revoked.")
             else:
                 flash(request, "error", "That grant was not found or was already revoked.")
+        elif action == "save_page":
+            key = str(form.get("page_key") or "").strip()
+            body = str(form.get("body") or "")
+            if key != CONTACT_KEY:
+                flash(request, "error", "Unknown page.")
+            elif not body.strip():
+                flash(request, "error", "That page cannot be empty. Paste the text you want to publish.")
+            else:
+                await save_site_page(bot.db, key, body[:20000])
+                flash(request, "ok", "Contact Us page saved and published.")
         return RedirectResponse("/admin", status_code=303)

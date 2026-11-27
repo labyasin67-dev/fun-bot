@@ -2,39 +2,39 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Reports · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Reports</h1>
-<p class="lede">Members can report a message or a person with <code>.report</code> or the <strong>Report Message</strong> right-click menu. By default, reports are posted as an embed in your tickets channel. A private ticket channel is optional.</p>
+<div class="page-head">{{ ui.cat_icon('reports') }}<div><h1 class="page-title">Reports</h1>
+<p class="lede">Members can report a message or a person with <code>.report</code> or the <strong>Report Message</strong> right-click menu. By default, reports are posted as an embed in your tickets channel. A private ticket channel is optional.</p></div></div>
 
-<div class="card">
+<div class="uk-card card">
   <h2>Settings</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="settings">
     <div class="field" style="flex:0 0 140px">
-      <label>Feature</label>
-      <select name="enabled">
+      <label class="uk-form-label">Feature</label>
+      <select class="uk-select" name="enabled">
         <option value="1" {% if enabled %}selected{% endif %}>On</option>
         <option value="0" {% if not enabled %}selected{% endif %}>Off</option>
       </select>
     </div>
     <div class="field">
-      <label>Delivery</label>
-      <select name="mode">
+      <label class="uk-form-label">Delivery</label>
+      <select class="uk-select" name="mode">
         <option value="channel" {% if mode != 'ticket' %}selected{% endif %}>Tickets channel (default)</option>
         <option value="ticket" {% if mode == 'ticket' %}selected{% endif %}>Private ticket channel</option>
       </select>
     </div>
     <div class="field">
-      <label>Tickets channel</label>
+      <label class="uk-form-label">Tickets channel</label>
       {{ chansel('alert_channel_id', grouped, selected=alert_channel_id, empty_label='Not set') }}
     </div>
     <div class="field">
-      <label>Closed tickets channel</label>
+      <label class="uk-form-label">Closed tickets channel</label>
       {{ chansel('closed_channel_id', grouped, selected=closed_channel_id, empty_label='Not set') }}
     </div>
     <div class="field">
-      <label>Ticket category (optional)</label>
-      <select name="category_id">
+      <label class="uk-form-label">Ticket category (optional)</label>
+      <select class="uk-select" name="category_id">
         <option value="">No category</option>
         {% for cat in categories %}
           <option value="{{ cat.id }}" {% if category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
@@ -42,15 +42,15 @@
       </select>
     </div>
     <div class="field">
-      <label>Staff role</label>
-      <select name="staff_role_id">
+      <label class="uk-form-label">Staff role</label>
+      <select class="uk-select" name="staff_role_id">
         <option value="">Don't ping a role</option>
         {% for role in assignable %}
           <option value="{{ role.id }}" {% if staff_role_id == role.id %}selected{% endif %}>@{{ role.name }}</option>
         {% endfor %}
       </select>
     </div>
-    <button class="btn" type="submit">Save</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Save</button>
   </form>
   <p class="faint">When this is off, <code>.report</code> tells members that reports are disabled. New reports go to the tickets channel (or a ticket under the category, in ticket mode). When a report is approved, denied or closed, a summary is posted to the closed tickets channel and the original is removed. Only the staff role is pinged for new reports. Decision reasons are sent to the reporter by DM.</p>
 </div>
@@ -77,10 +77,10 @@
 {%- endmacro %}
 
 {% macro report_section(title, status, items, count, page, pages, page_key) %}
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>{{ title }} <span class="pill">{{ count }}</span></h2>
   {% if items %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr>
       <th>#</th>
       <th>Reporter</th>
@@ -89,48 +89,61 @@
       <th>Message</th>
       <th>Claimed by</th>
       <th>{% if status == 'open' %}Opened{% else %}Decision{% endif %}</th>
-      {% if status == 'open' %}<th></th>{% endif %}
+      <th></th>
     </tr>
     {% for item in items %}
       <tr>
-        <td>{{ item.id }}</td>
-        <td>{{ person(item.reporter) }}</td>
-        <td>{{ person(item.reported) }}</td>
-        <td>{{ item.reason or "—" }}</td>
-        <td>{% if item.message_link %}<a href="{{ item.message_link }}" target="_blank" rel="noopener">Open</a>{% else %}—{% endif %}</td>
-        <td>{{ person(item.claimed) }}{% if item.claimed_at %}<br><span class="muted">{{ item.claimed_at }}</span>{% endif %}</td>
-        <td>
+        <td data-label="#">{{ item.id }}</td>
+        <td data-label="Reporter">{{ person(item.reporter) }}</td>
+        <td data-label="Reported">{{ person(item.reported) }}</td>
+        <td data-label="Reason">{{ item.reason or "—" }}</td>
+        <td data-label="Message">{% if item.message_link %}<a href="{{ item.message_link }}" target="_blank" rel="noopener">Open</a>{% else %}—{% endif %}</td>
+        <td data-label="Claimed by">{{ person(item.claimed) }}{% if item.claimed_at %}<br><span class="muted">{{ item.claimed_at }}</span>{% endif %}</td>
+        <td data-label="{{ 'Opened' if status == 'open' else 'Decision' }}">
           {% if status == 'open' %}
             {{ item.created }}
+          {% elif status == 'withdrawn' %}
+            Withdrawn by reporter
+            {% if item.decided_at %}<br><span class="muted">{{ item.decided_at }}</span>{% endif %}
+          {% elif status == 'cancelled' %}
+            Cancelled by {{ person(item.decided) }}
+            {% if item.decided_at %}<br><span class="muted">{{ item.decided_at }}</span>{% endif %}
+            {% if item.decision_reason %}<br>{{ item.decision_reason }}{% endif %}
           {% else %}
             {{ person(item.decided) }}
             {% if item.decided_at %}<br><span class="muted">{{ item.decided_at }}</span>{% endif %}
             {% if item.decision_reason %}<br>{{ item.decision_reason }}{% endif %}
           {% endif %}
         </td>
-        {% if status == 'open' %}
-        <td>
+        <td data-label="">
+          {% if status == 'open' %}
           <form method="post" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="approve">
             <input type="hidden" name="ticket_id" value="{{ item.id }}">
-            <input type="text" name="reason" maxlength="500" placeholder="Reason (optional)" style="width:140px">
-            <button class="btn green small" type="submit">Approve</button>
+            <input class="uk-input" type="text" name="reason" maxlength="500" placeholder="Reason (optional)" style="width:140px">
+            <button class="uk-btn uk-btn-primary uk-btn-sm btn green small" type="submit">Approve</button>
           </form>
           <form method="post" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="deny">
             <input type="hidden" name="ticket_id" value="{{ item.id }}">
-            <input type="text" name="reason" maxlength="500" placeholder="Reason (optional)" style="width:140px">
-            <button class="btn danger small" type="submit">Deny</button>
+            <input class="uk-input" type="text" name="reason" maxlength="500" placeholder="Reason (optional)" style="width:140px">
+            <button class="uk-btn uk-btn-destructive uk-btn-sm btn danger small" type="submit">Deny</button>
+          </form>
+          {% endif %}
+          <form method="post" style="display:inline" onsubmit="return confirm('Delete report #{{ item.id }}? This cannot be undone.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="ticket_id" value="{{ item.id }}">
+            <button class="uk-btn uk-btn-destructive uk-btn-sm btn danger small" type="submit">Delete</button>
           </form>
         </td>
-        {% endif %}
       </tr>
       {% if owner_view %}
       <tr>
-        <td colspan="{% if status == 'open' %}8{% else %}7{% endif %}">
-          <div class="muted" style="margin-bottom:6px">Owner-only comments</div>
+        <td colspan="8">
+          <div class="muted" style="margin-bottom:6px">Staff comments (visible to server administrators)</div>
           {% if item.notes %}
             <ul class="notes" style="margin:0 0 8px;padding-left:18px">
               {% for note in item.notes %}
@@ -149,9 +162,9 @@
             <input type="hidden" name="action" value="note">
             <input type="hidden" name="ticket_id" value="{{ item.id }}">
             <div class="field" style="flex:1">
-              <input type="text" name="body" maxlength="2000" placeholder="Add a private comment (only you can see this)" required>
+              <input class="uk-input" type="text" name="body" maxlength="2000" placeholder="Add a private comment (visible to this server's administrators)" required>
             </div>
-            <button class="btn secondary" type="submit">Add comment</button>
+            <button class="uk-btn uk-btn-secondary btn secondary" type="submit">Add comment</button>
           </form>
         </td>
       </tr>
@@ -168,38 +181,70 @@
 {{ report_section("Open", "open", open_items, open_count, open_page, open_pages, "open") }}
 {{ report_section("Approved", "approved", approved_items, approved_count, approved_page, approved_pages, "approved") }}
 {{ report_section("Denied", "denied", denied_items, denied_count, denied_page, denied_pages, "denied") }}
+{{ report_section("Withdrawn", "withdrawn", withdrawn_items, withdrawn_count, withdrawn_page, withdrawn_pages, "withdrawn") }}
+{{ report_section("Cancelled", "cancelled", cancelled_items, cancelled_count, cancelled_page, cancelled_pages, "cancelled") }}
 {% if closed_count %}
 {{ report_section("Closed", "closed", closed_items, closed_count, closed_page, closed_pages, "closed") }}
 {% endif %}
 
-<div class="card" style="margin-top:14px">
+{% if owner_view %}
+<div class="uk-card card" style="margin-top:14px">
+  <h2>Removed warnings</h2>
+  {% if removed_warnings %}
+  <table class="uk-table uk-table-divider uk-table-hover table">
+    <tr>
+      <th>Warning</th>
+      <th>User</th>
+      <th>Original reason</th>
+      <th>Removed by</th>
+      <th>Removal reason</th>
+      <th>Removed</th>
+    </tr>
+    {% for item in removed_warnings %}
+      <tr>
+        <td data-label="Warning">#{{ item.warning_id }}</td>
+        <td data-label="User">{{ item.user }}</td>
+        <td data-label="Original reason">{{ item.original_reason }}</td>
+        <td data-label="Removed by">{{ item.removed_by }}</td>
+        <td data-label="Removal reason">{{ item.removal_reason }}</td>
+        <td data-label="Removed">{{ item.removed_at }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p class="muted">No warnings have been removed yet.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="uk-card card" style="margin-top:14px">
   <h2>Blocked reporters</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="block">
     <div class="field">
-      <label>Discord user ID</label>
-      <input type="text" name="user_id" placeholder="User ID or @mention" required>
+      <label class="uk-form-label">Discord user ID</label>
+      <input class="uk-input" type="text" name="user_id" placeholder="User ID or @mention" required>
     </div>
     <div class="field">
-      <label>Reason (optional)</label>
-      <input type="text" name="reason" maxlength="200">
+      <label class="uk-form-label">Reason (optional)</label>
+      <input class="uk-input" type="text" name="reason" maxlength="200">
     </div>
-    <button class="btn danger" type="submit">Block</button>
+    <button class="uk-btn uk-btn-destructive btn danger" type="submit">Block</button>
   </form>
   {% if blocks %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>Member</th><th>Reason</th><th></th></tr>
     {% for item in blocks %}
       <tr>
-        <td>{{ item.name }}<br><span class="muted">{{ item.user_id }}</span></td>
-        <td>{{ item.reason or "—" }}</td>
-        <td>
+        <td data-label="Member">{{ item.name }}</td>
+        <td data-label="Reason">{{ item.reason or "—" }}</td>
+        <td data-label="">
           <form method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="unblock">
             <input type="hidden" name="user_id" value="{{ item.user_id }}">
-            <button class="btn" type="submit">Unblock</button>
+            <button class="uk-btn uk-btn-primary btn" type="submit">Unblock</button>
           </form>
         </td>
       </tr>

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import io
 import logging
+import struct
+import zlib
 import re
 import time
 from typing import TYPE_CHECKING
@@ -128,6 +131,69 @@ def format_colour_pair(primary: discord.Colour | int, secondary: discord.Colour 
     return f"`{colour_hex(primary)}` → `{colour_hex(secondary)}`"
 
 
+def _colour_value(colour: discord.Colour | int) -> int:
+    return colour.value if isinstance(colour, discord.Colour) else int(colour)
+
+
+def gradient_preview_png(primary: discord.Colour | int, secondary: discord.Colour | int | None = None, *, width: int = 320, height: int = 48) -> io.BytesIO:
+    """Build a small RGB PNG of a solid bar or a two-colour gradient (no extra deps)."""
+    def rgb(value: int) -> tuple[int, int, int]:
+        value = int(value) & 0xFFFFFF
+        return (value >> 16) & 255, (value >> 8) & 255, value & 255
+
+    r1, g1, b1 = rgb(_colour_value(primary))
+    r2, g2, b2 = rgb(_colour_value(secondary) if secondary is not None else _colour_value(primary))
+    raw = bytearray()
+    for _y in range(height):
+        raw.append(0)
+        for x in range(width):
+            t = x / (width - 1) if width > 1 else 0
+            raw.extend((
+                int(r1 + (r2 - r1) * t),
+                int(g1 + (g2 - g1) * t),
+                int(b1 + (b2 - b1) * t),
+            ))
+    compressed = zlib.compress(bytes(raw), 9)
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", compressed) + chunk(b"IEND", b"")
+    buf = io.BytesIO(png)
+    buf.seek(0)
+    return buf
+
+
+def attach_colour_preview(embed: discord.Embed, primary: discord.Colour | int, secondary: discord.Colour | int | None = None) -> discord.File:
+    value = _colour_value(primary)
+    if embed.colour is None or embed.colour.value == 0:
+        embed.colour = discord.Colour(value)
+    embed.set_image(url="attachment://gradient.png")
+    return discord.File(gradient_preview_png(primary, secondary), filename="gradient.png")
+
+
+def role_colour_snapshot(role: discord.Role | None, row) -> tuple[str, discord.Colour | int | None, discord.Colour | int | None]:
+    name = role.name if role is not None else f"deleted ({row['role_id']})"
+    primary = role.colour if role is not None else None
+    secondary = getattr(role, "secondary_colour", None) if role is not None else None
+    if secondary is None and row["secondary_colour"] is not None:
+        secondary = int(row["secondary_colour"])
+    return name, primary, secondary
+
+
+def describe_removed_role(name: str, primary, secondary, *, holder_id: int | None) -> str:
+    if primary is not None:
+        colours = f"**Colour:** {format_colour_pair(primary, secondary)}"
+    else:
+        colours = "**Colour:** —"
+    lines = [f"**Role:** {name}", colours]
+    if holder_id is not None:
+        lines.append(f"**Also removed from:** <@{holder_id}> (they were holding it through `.role give`)")
+    return "\n".join(lines)
+
+
+
 def guild_has_gradients(guild: discord.Guild) -> bool:
     return "ENHANCED_ROLE_COLORS" in (guild.features or [])
 
@@ -185,10 +251,12 @@ async def edit_role_colours(
     return False
 
 
-async def reply(dest, embed: discord.Embed, *, ephemeral: bool = False, view: discord.ui.View | None = None) -> None:
+async def reply(dest, embed: discord.Embed, *, ephemeral: bool = False, view: discord.ui.View | None = None, file: discord.File | None = None) -> None:
     kwargs = {"embed": embed, "allowed_mentions": NO_MENTIONS, "ephemeral": ephemeral}
     if view is not None:
         kwargs["view"] = view
+    if file is not None:
+        kwargs["file"] = file
     if isinstance(dest, discord.Interaction):
         if dest.response.is_done():
             kwargs.pop("ephemeral", None)
@@ -206,16 +274,11 @@ async def member_level(db, guild_id: int, user_id: int) -> int:
 
 
 def placement_position(guild: discord.Guild, settings) -> int | None:
+    """Highest position the bot can assign: immediately under its top role."""
     me = guild.me
     if me is None or me.top_role is None:
         return None
-    ceiling = me.top_role.position
-    anchor_id = settings["anchor_role_id"] if settings and settings["anchor_role_id"] else None
-    if anchor_id:
-        anchor = guild.get_role(int(anchor_id))
-        if anchor is not None and 0 < anchor.position < ceiling:
-            ceiling = anchor.position
-    pos = ceiling - 1
+    pos = me.top_role.position - 1
     return pos if pos >= 1 else None
 
 
@@ -224,7 +287,7 @@ async def place_role(role: discord.Role, settings) -> None:
     if pos is None:
         return
     try:
-        await role.edit(position=pos, reason="Place custom role below the bot or anchor role")
+        await role.edit(position=pos, reason="Place custom role just under the bot's highest role")
     except discord.HTTPException:
         log.warning("Could not move custom role %s in guild %s", role.id, role.guild.id)
 
@@ -269,6 +332,53 @@ async def restrict_user(
     return removed
 
 
+def holder_id_of(row) -> int:
+    raw = row["holder_id"] if "holder_id" in row.keys() else None
+    return int(raw) if raw else int(row["user_id"])
+
+
+def given_custom_roles_held(member_role_ids: set[int], rows, *, member_id: int):
+    """Custom roles owned by someone else that this member currently holds."""
+    found = []
+    held = set(member_role_ids)
+    for row in rows:
+        if int(row["user_id"]) == int(member_id):
+            continue
+        if int(row["role_id"]) not in held:
+            continue
+        found.append(row)
+    return found
+
+
+async def member_owns_or_holds(db, guild_id: int, user_id: int):
+    owned = await db.get_custom_role(guild_id, user_id)
+    if owned is not None:
+        return owned
+    return await db.get_custom_role_held(guild_id, user_id)
+
+
+async def transfer_custom_role(bot: SocializeBot, guild: discord.Guild, row, to_member: discord.Member | None, *, reason: str) -> str | None:
+    role = guild.get_role(int(row["role_id"]))
+    if role is None:
+        return "That custom role no longer exists."
+    current = guild.get_member(holder_id_of(row))
+    if current is not None and role in current.roles:
+        try:
+            await current.remove_roles(role, reason=reason)
+        except discord.HTTPException:
+            return "I couldn't remove the role from the current holder."
+    if to_member is not None:
+        try:
+            await to_member.add_roles(role, reason=reason)
+        except discord.HTTPException:
+            return "I couldn't give the role to that member."
+        await bot.db.set_custom_role_holder(guild.id, int(row["user_id"]), to_member.id)
+    else:
+        await bot.db.set_custom_role_holder(guild.id, int(row["user_id"]), int(row["user_id"]))
+    return None
+
+
+
 async def find_linked_user_ids(bot: SocializeBot, guild: discord.Guild, user: discord.abc.User) -> set[int]:
     created = user.created_at.timestamp() if getattr(user, "created_at", None) else None
     linked: set[int] = set()
@@ -283,15 +393,19 @@ async def find_linked_user_ids(bot: SocializeBot, guild: discord.Guild, user: di
         if other is not None and abs(float(other) - created) <= ALT_LINK_WINDOW:
             linked.add(uid)
     for row in await bot.db.list_custom_roles(guild.id):
-        uid = int(row["user_id"])
-        if uid == user.id or uid in linked:
-            continue
-        member = guild.get_member(uid)
-        other = None
-        if member is not None and member.created_at:
-            other = member.created_at.timestamp()
-        if other is not None and abs(other - created) <= ALT_LINK_WINDOW:
-            linked.add(uid)
+        holder_raw = row["holder_id"] if "holder_id" in row.keys() else None
+        uids = {int(row["user_id"])}
+        if holder_raw:
+            uids.add(int(holder_raw))
+        for uid in uids:
+            if uid == user.id or uid in linked:
+                continue
+            member = guild.get_member(uid)
+            other = None
+            if member is not None and member.created_at:
+                other = member.created_at.timestamp()
+            if other is not None and abs(other - created) <= ALT_LINK_WINDOW:
+                linked.add(uid)
     return linked
 
 
@@ -318,8 +432,20 @@ async def enforce_custom_roles_on_alt_flag(bot: SocializeBot, member: discord.Me
     linked = await find_linked_user_ids(bot, member.guild, member)
     if not linked:
         return
+    group = {member.id, *linked}
+    for uid in group:
+        held = await bot.db.get_custom_role_held(member.guild.id, uid)
+        if held is None:
+            continue
+        owner_id = int(held["user_id"])
+        if owner_id == uid:
+            continue
+        owner = member.guild.get_member(owner_id)
+        await transfer_custom_role(
+            bot, member.guild, held, owner, reason="Returned because linked alt accounts cannot share a custom role"
+        )
     owners: list[tuple[int, float]] = []
-    for uid in {member.id, *linked}:
+    for uid in group:
         row = await bot.db.get_custom_role(member.guild.id, uid)
         if row is not None:
             owners.append((uid, float(row["created_at"])))
@@ -370,12 +496,33 @@ async def refuse_if_flagged_alt(bot: SocializeBot, member: discord.Member) -> st
 
 
 
-class CreateCustomRoleModal(discord.ui.Modal, title="Create custom role"):
+ICON_MAX_BYTES = 256 * 1024
+ICON_TYPES = {"image/png", "image/jpeg", "image/jpg"}
+ICON_EXTS = (".png", ".jpg", ".jpeg")
+
+
+def guild_has_role_icons(guild: discord.Guild) -> bool:
+    return "ROLE_ICONS" in (guild.features or [])
+
+
+async def read_role_icon(attachment: discord.Attachment) -> tuple[bytes | None, str | None]:
+    name = (attachment.filename or "").lower()
+    ctype = (attachment.content_type or "").split(";")[0].strip().lower()
+    if ctype not in ICON_TYPES and not name.endswith(ICON_EXTS):
+        return None, "The role icon must be a PNG or JPG file."
+    if attachment.size and int(attachment.size) > ICON_MAX_BYTES:
+        return None, "The role icon must be 256 KB or smaller."
+    data = await attachment.read()
+    if len(data) > ICON_MAX_BYTES:
+        return None, "The role icon must be 256 KB or smaller."
+    return data, None
+
+
+class CreateCustomRoleModal(discord.ui.Modal, title="Customize Role"):
     def __init__(self, cog: CustomRoles, *, default_name: str | None = None) -> None:
         super().__init__()
         self.cog = cog
         self.name_input = discord.ui.TextInput(
-            label="Name",
             placeholder="Your role name",
             default=(default_name or "")[:32],
             min_length=1,
@@ -383,28 +530,54 @@ class CreateCustomRoleModal(discord.ui.Modal, title="Create custom role"):
             required=True,
         )
         self.colour1_input = discord.ui.TextInput(
-            label="Colour 1 (hex)",
-            placeholder="#ff0000",
+            placeholder="#A0BAF2",
             min_length=6,
             max_length=8,
             required=True,
         )
         self.colour2_input = discord.ui.TextInput(
-            label="Colour 2 (hex, optional)",
-            placeholder="#0000ff for a gradient",
+            placeholder="#00ffcc",
             required=False,
             max_length=8,
         )
-        self.add_item(self.name_input)
-        self.add_item(self.colour1_input)
-        self.add_item(self.colour2_input)
+        self.icon_upload = discord.ui.FileUpload(required=False, min_values=0, max_values=1)
+        self.add_item(discord.ui.Label(
+            text="Role Name",
+            description="Choose the name displayed for your custom role.",
+            component=self.name_input,
+        ))
+        self.add_item(discord.ui.Label(
+            text="Hex Color",
+            description="Enter a color such as #A0BAF2.",
+            component=self.colour1_input,
+        ))
+        self.add_item(discord.ui.Label(
+            text="Second Hex Color",
+            description="Optional second colour for a gradient.",
+            component=self.colour2_input,
+        ))
+        self.add_item(discord.ui.Label(
+            text="Role Icon (Optional)",
+            description="Leave empty for no new icon.",
+            component=self.icon_upload,
+        ))
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        icon = None
+        uploads = list(self.icon_upload.values)
+        if uploads:
+            if not interaction.response.is_done():
+                await interaction.response.defer()
+            icon, err = await read_role_icon(uploads[0])
+            if err:
+                await reply(interaction, make_embed("Invalid icon", err, color=DANGER), ephemeral=True)
+                return
         await self.cog.complete_create(
             interaction,
             name=str(self.name_input.value),
             colour=str(self.colour1_input.value),
             colour2=str(self.colour2_input.value or "").strip() or None,
+            icon=icon,
         )
 
 
@@ -414,9 +587,163 @@ class OpenCreateFormView(discord.ui.View):
         self.cog = cog
         self.default_name = default_name
 
-    @discord.ui.button(label="Open form", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Customize Role", style=discord.ButtonStyle.primary)
     async def open_form(self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
         await interaction.response.send_modal(CreateCustomRoleModal(self.cog, default_name=self.default_name))
+
+
+def visible_profile_roles(
+    member: discord.Member,
+    *,
+    custom_role_id: int | None,
+    hidden: set[int],
+) -> list[discord.Role]:
+    roles = [role for role in member.roles if not role.is_default() and role.id not in hidden]
+    custom = None
+    if custom_role_id:
+        custom = next((role for role in roles if role.id == int(custom_role_id)), None)
+    rest = [role for role in roles if custom is None or role.id != custom.id]
+    rest.sort(key=lambda role: role.position, reverse=True)
+    return ([custom] + rest) if custom is not None else rest
+
+
+class HideRolesView(discord.ui.View):
+    def __init__(self, cog: "CustomRoles", member: discord.Member, roles: list[discord.Role], hidden: set[int]) -> None:
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.member = member
+        options = []
+        for role in roles[:25]:
+            options.append(
+                discord.SelectOption(
+                    label=role.name[:100],
+                    value=str(role.id),
+                    default=role.id in hidden,
+                    description="Hidden from profile" if role.id in hidden else "Shown on profile",
+                )
+            )
+        select = discord.ui.Select(
+            placeholder="Select roles to hide from your profile",
+            min_values=0,
+            max_values=len(options),
+            options=options,
+        )
+        select.callback = self.on_select
+        self.add_item(select)
+
+    async def on_select(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != self.member.id:
+            await interaction.response.send_message("Only you can change your hidden roles.", ephemeral=True)
+            return
+        if interaction.guild is None:
+            await interaction.response.send_message("This only works in a server.", ephemeral=True)
+            return
+        values = [int(v) for v in (interaction.data or {}).get("values", [])]
+        await self.cog.bot.db.set_profile_hidden_roles(interaction.guild.id, self.member.id, values)
+        hidden = set(values)
+        hidden_mentions = [role.mention for role in self.member.roles if role.id in hidden]
+        body = "Those roles will stay hidden from `.profile` in this server. Discord itself still shows them."
+        if hidden_mentions:
+            body += "\n**Hidden:** " + " ".join(hidden_mentions[:20])
+        await interaction.response.edit_message(
+            embed=make_embed("Profile roles updated", body, color=SUCCESS),
+            view=None,
+        )
+
+
+class RemoveGivenRolesView(discord.ui.View):
+    def __init__(self, cog: "CustomRoles", member: discord.Member, items: list[tuple]) -> None:
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.member = member
+        self.items = {int(role.id): row for row, role in items}
+        options = []
+        for row, role in items[:25]:
+            owner_id = int(row["user_id"])
+            options.append(
+                discord.SelectOption(
+                    label=role.name[:100],
+                    value=str(role.id),
+                    description=f"Owned by {owner_id}"[:100],
+                )
+            )
+        select = discord.ui.Select(
+            placeholder="Select custom roles to remove from yourself",
+            min_values=1,
+            max_values=len(options),
+            options=options,
+        )
+        select.callback = self.on_select
+        self.add_item(select)
+
+    async def on_select(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != self.member.id:
+            await interaction.response.send_message("Only you can remove roles from yourself.", ephemeral=True)
+            return
+        guild = interaction.guild
+        if guild is None or not isinstance(interaction.user, discord.Member):
+            await interaction.response.send_message("This only works in a server.", ephemeral=True)
+            return
+        member = guild.get_member(self.member.id) or interaction.user
+        values = [int(v) for v in (interaction.data or {}).get("values", [])]
+        rows = await self.cog.bot.db.list_custom_roles(guild.id)
+        allowed = {
+            int(row["role_id"]): row
+            for row in given_custom_roles_held({role.id for role in member.roles}, rows, member_id=member.id)
+        }
+        removed = []
+        errors = []
+        for role_id in values:
+            row = allowed.get(role_id)
+            if row is None:
+                errors.append(f"`{role_id}` isn't a custom role someone else gave you.")
+                continue
+            err = await drop_given_custom_role(self.cog.bot, guild, member, row)
+            role = guild.get_role(role_id)
+            name = role.mention if role else f"`{role_id}`"
+            if err:
+                errors.append(f"{name}: {err}")
+            else:
+                removed.append(name)
+        parts = []
+        if removed:
+            parts.append("Removed: " + " ".join(removed))
+        if errors:
+            parts.append("\n".join(errors))
+        title = "Custom roles removed" if removed else "Couldn't remove those roles"
+        color = SUCCESS if removed and not errors else (WARNING if removed else DANGER)
+        await interaction.response.edit_message(
+            embed=make_embed(title, "\n".join(parts) or "Nothing was removed.", color=color),
+            view=None,
+        )
+
+
+async def drop_given_custom_role(bot: "SocializeBot", guild: discord.Guild, member: discord.Member, row) -> str | None:
+    """Remove a custom role owned by someone else from this member. Does not touch staff or server roles."""
+    owner_id = int(row["user_id"])
+    if owner_id == member.id:
+        return "That's your own custom role."
+    role = guild.get_role(int(row["role_id"]))
+    if role is None:
+        return "That custom role no longer exists."
+    if role not in member.roles:
+        return "You don't have that role."
+    stored = await bot.db.get_custom_role_by_role_id(guild.id, role.id)
+    if stored is None or int(stored["user_id"]) == member.id:
+        return "That isn't a custom role someone else gave you."
+    me = guild.me
+    if me is not None and me.top_role <= role:
+        return "My highest role is too low to remove that custom role."
+    if holder_id_of(stored) == member.id:
+        owner = guild.get_member(owner_id)
+        return await transfer_custom_role(
+            bot, guild, stored, owner if owner is not None else None, reason=f"Dropped with .roleremoveme by {member}"
+        )
+    try:
+        await member.remove_roles(role, reason=f"Dropped with .roleremoveme by {member}")
+    except discord.HTTPException:
+        return "I couldn't remove that role."
+    return None
 
 
 class CustomRoles(commands.Cog):
@@ -424,6 +751,17 @@ class CustomRoles(commands.Cog):
 
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
+
+    async def cog_load(self) -> None:
+        for guild in list(self.bot.guilds):
+            try:
+                settings = await self.bot.db.get_customrole_settings(guild.id)
+                for row in await self.bot.db.list_custom_roles(guild.id):
+                    role = guild.get_role(int(row["role_id"]))
+                    if role is not None:
+                        await place_role(role, settings)
+            except Exception:
+                log.warning("Could not reposition custom roles in guild %s", getattr(guild, "id", "?"), exc_info=True)
 
     @commands.hybrid_group(name="role", description="Custom roles, or add and remove a role.", invoke_without_command=True)
     @commands.guild_only()
@@ -434,11 +772,15 @@ class CustomRoles(commands.Cog):
                 "• `.role create <name> [#hex1] [#hex2]` — make your custom role; two colours make a gradient\n"
                 "• `.role create` — open a form for the name and colours\n"
                 "• `.role name <new name>` / `.role colour <hex>` / `.role gradient #hex1 #hex2`\n"
-                "• `.role delete` / `.role info`\n"
+                "• `.role delete` / `.role remove` — delete your own custom role\n"
+                "• `.role info`\n"
+                "• `.role give @user @role` / `.role take @user`\n"
+                "• `.roleremoveme` — drop a custom role someone gave you\n"
                 "• `.role add @user @role` / `.role remove @user [@role]` — (manage roles)\n"
                 "• `.role toggle on|off` / `.role minlevel <n>` — (manage roles)\n"
                 "• `.role restrict @user [reason]` / `.role unrestrict @user`\n"
-                "• `.role remove @user` — take away their custom role\n"
+                "• `.role remove @user` — (manage roles) take away their custom role\n"
+                "• `.role manage` — hide roles from your `.profile`\n"
                 "• `.role list` — show custom roles and restrictions",
             ),
             allowed_mentions=NO_MENTIONS,
@@ -448,7 +790,7 @@ class CustomRoles(commands.Cog):
     @commands.guild_only()
     @commands.bot_has_guild_permissions(manage_roles=True)
     @app_commands.describe(
-        name="Name of your custom role. Leave empty to use the form.",
+        name="Name of your custom role. Leave empty to open the Customize Role form.",
         colour="Optional hex colour, like #ff0000.",
         colour2="Optional second hex colour to make a gradient.",
     )
@@ -472,14 +814,14 @@ class CustomRoles(commands.Cog):
             await reply(
                 ctx,
                 make_embed(
-                    "Create a custom role",
-                    "Tap the button below to open a form for the name, a colour, and an optional second colour for a gradient.",
+                    "Customize Role",
+                    "Tap **Customize Role** to set the name, a hex colour, an optional second colour for a gradient, and an optional icon (PNG or JPG, max 256 KB).",
                 ),
                 view=OpenCreateFormView(self, default_name=name),
             )
             return
         if not name:
-            await reply(ctx, make_embed("Missing name", "Give the role a name, or run `.role create` with no arguments to use the form.", color=DANGER), ephemeral=True)
+            await reply(ctx, make_embed("Missing name", "Give the role a name, or run `.role create` with no arguments to open the Customize Role form.", color=DANGER), ephemeral=True)
             return
         await self.complete_create(ctx, name=name, colour=colour, colour2=colour2)
 
@@ -494,6 +836,9 @@ class CustomRoles(commands.Cog):
             role = guild.get_role(int(existing["role_id"]))
             mention = role.mention if role else "your custom role"
             return f"You already have {mention}. Use `.role name`, `.role colour` or `.role gradient` to edit it, or `.role delete` to remove it."
+        held = await self.bot.db.get_custom_role_held(guild.id, member.id)
+        if held is not None and int(held["user_id"]) != member.id:
+            return "You're already holding someone else's custom role. They can take it back with `.role take`, or wait until you no longer hold one."
         min_level = int(settings["min_level"] or 0)
         level = await member_level(self.bot.db, guild.id, member.id)
         if level < min_level:
@@ -513,6 +858,7 @@ class CustomRoles(commands.Cog):
         name: str,
         colour: str | None,
         colour2: str | None,
+        icon: bytes | None = None,
     ) -> None:
         guild = dest.guild if isinstance(dest, commands.Context) else dest.guild
         author = dest.author if isinstance(dest, commands.Context) else dest.user
@@ -560,18 +906,36 @@ class CustomRoles(commands.Cog):
             return
         stored_secondary = secondary.value if used_gradient and secondary is not None else None
         await self.bot.db.add_custom_role(guild.id, author.id, role.id, secondary_colour=stored_secondary)
+        icon_note = ""
+        if icon:
+            if not guild_has_role_icons(guild):
+                icon_note = " This server doesn't have role icons, so the icon wasn't applied."
+            else:
+                try:
+                    await role.edit(display_icon=icon, reason=f"Custom role icon set by {author} ({author.id})")
+                except discord.HTTPException:
+                    icon_note = " The role was created, but I couldn't set the icon."
+        preview_secondary = secondary if used_gradient else None
         if secondary is not None and not used_gradient:
             detail = (
                 f"You now have {role.mention} in `{colour_hex(primary)}`. {GRADIENT_BOOST_NOTE}"
             )
+            colour = WARNING
         elif used_gradient and secondary is not None:
             detail = (
                 f"You now have {role.mention} with a gradient {format_colour_pair(primary, secondary)}. "
                 "This is the only custom role you can have."
             )
+            colour = SUCCESS
         else:
-            detail = f"You now have {role.mention}. This is the only custom role you can have."
-        await reply(dest, make_embed("Custom role created", detail, color=SUCCESS))
+            detail = f"You now have {role.mention}"
+            if primary and primary.value:
+                detail += f" in `{colour_hex(primary)}`"
+            detail += ". This is the only custom role you can have."
+            colour = SUCCESS
+        embed = make_embed("Custom role created", detail + icon_note, color=colour)
+        preview = attach_colour_preview(embed, primary, preview_secondary)
+        await reply(dest, embed, file=preview)
 
     @role.command(name="name", description="Rename your custom role.")
     @commands.guild_only()
@@ -612,7 +976,8 @@ class CustomRoles(commands.Cog):
             await reply(ctx, make_embed("Couldn't change that colour", "Check my permissions and try again.", color=DANGER), ephemeral=True)
             return
         await self.bot.db.set_custom_role_secondary(ctx.guild.id, ctx.author.id, None)
-        await reply(ctx, make_embed("Colour updated", f"{role.mention} is now `{colour_hex(parsed)}`.", color=SUCCESS))
+        embed = make_embed("Colour updated", f"{role.mention} is now `{colour_hex(parsed)}`.", color=SUCCESS)
+        await reply(ctx, embed, file=attach_colour_preview(embed, parsed))
 
     @role.command(name="gradient", description="Give your custom role a two-colour gradient.")
     @commands.guild_only()
@@ -637,20 +1002,16 @@ class CustomRoles(commands.Cog):
             return
         if not used:
             await self.bot.db.set_custom_role_secondary(ctx.guild.id, ctx.author.id, None)
-            await reply(
-                ctx,
-                make_embed(
-                    "Gradient not available",
-                    f"{role.mention} is now `{colour_hex(primary)}`. {GRADIENT_BOOST_NOTE}",
-                    color=WARNING,
-                ),
+            embed = make_embed(
+                "Gradient not available",
+                f"{role.mention} is now `{colour_hex(primary)}`. {GRADIENT_BOOST_NOTE}",
+                color=WARNING,
             )
+            await reply(ctx, embed, file=attach_colour_preview(embed, primary))
             return
         await self.bot.db.set_custom_role_secondary(ctx.guild.id, ctx.author.id, secondary.value)
-        await reply(
-            ctx,
-            make_embed("Gradient updated", f"{role.mention} is now {format_colour_pair(primary, secondary)}.", color=SUCCESS),
-        )
+        embed = make_embed("Gradient updated", f"{role.mention} is now {format_colour_pair(primary, secondary)}.", color=SUCCESS)
+        await reply(ctx, embed, file=attach_colour_preview(embed, primary, secondary))
 
     @role.command(name="delete", description="Delete your custom role.")
     @commands.guild_only()
@@ -670,13 +1031,18 @@ class CustomRoles(commands.Cog):
     async def role_info(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         assert ctx.guild
         target = member or ctx.author
-        row = await self.bot.db.get_custom_role(ctx.guild.id, target.id)
+        row = await member_owns_or_holds(self.bot.db, ctx.guild.id, target.id)
         if row is None:
             whose = "You don't" if target == ctx.author else f"{target.mention} doesn't"
             await ctx.send(embed=make_embed("No custom role", f"{whose} have a custom role in this server.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         role = ctx.guild.get_role(int(row["role_id"]))
         created = int(float(row["created_at"]))
+        owner_id = int(row["user_id"])
+        held_by = holder_id_of(row)
+        held_line = ""
+        if held_by != owner_id:
+            held_line = f"\n**Owner:** <@{owner_id}>\n**Held by:** <@{held_by}>"
         if role:
             secondary = getattr(role, "secondary_colour", None)
             if secondary is None and row["secondary_colour"] is not None:
@@ -686,6 +1052,7 @@ class CustomRoles(commands.Cog):
                 f"**Role:** {role.mention}\n"
                 f"**Colour:** {format_colour_pair(role.colour, secondary)}\n"
                 f"**Created:** <t:{created}:F>"
+                f"{held_line}"
             )
         else:
             stored = colour_hex_optional(row["secondary_colour"])
@@ -695,8 +1062,90 @@ class CustomRoles(commands.Cog):
                 f"**Role:** deleted (`{row['role_id']}`)\n"
                 f"{colour_line}"
                 f"**Created:** <t:{created}:F>"
+                f"{held_line}"
             )
         await ctx.send(embed=make_embed("Custom role", body), allowed_mentions=NO_MENTIONS)
+
+    @role.command(name="give", description="Hand a custom role to another member.")
+    @commands.guild_only()
+    @commands.bot_has_guild_permissions(manage_roles=True)
+    @app_commands.describe(member="Who should receive the custom role.", role="The custom role to give.")
+    async def role_give(self, ctx: commands.Context, member: discord.Member, role: discord.Role) -> None:
+        assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
+        if member.bot:
+            await ctx.send(embed=make_embed("Can't do that", "Bots can't hold a custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        if member.id == ctx.author.id:
+            await ctx.send(embed=make_embed("Can't do that", "You already have your own custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        row = await self.bot.db.get_custom_role_by_role_id(ctx.guild.id, role.id)
+        if row is None:
+            await ctx.send(embed=make_embed("Not a custom role", "You can only give a custom role created with `.role create`.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        owner_id = int(row["user_id"])
+        staff = ctx.author.guild_permissions.manage_roles
+        if not staff and ctx.author.id != owner_id:
+            await ctx.send(embed=make_embed("Not yours", "You can only give your own custom role. Staff with Manage Roles can give any custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        settings = await self.bot.db.get_customrole_settings(ctx.guild.id)
+        if not staff and not int(settings["give_enabled"] if "give_enabled" in settings.keys() else 1):
+            await ctx.send(embed=make_embed("Giving is off", "Staff have turned off `.role give` in this server.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        if await self.bot.db.is_custom_role_restricted(ctx.guild.id, ctx.author.id):
+            await ctx.send(embed=make_embed("Restricted", "You can't give a custom role while you're restricted.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        if await self.bot.db.is_custom_role_restricted(ctx.guild.id, member.id):
+            await ctx.send(embed=make_embed("Restricted", f"{member.mention} is restricted from custom roles, so they can't receive one.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        if not staff and await self.bot.db.is_custom_role_give_blocked(ctx.guild.id, ctx.author.id):
+            await ctx.send(embed=make_embed("Blocked", "You're blocked from using `.role give`.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        if holder_id_of(row) == member.id:
+            await ctx.send(embed=make_embed("Already holding it", f"{member.mention} already holds that role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        linked = await find_linked_user_ids(self.bot, ctx.guild, member)
+        for uid in linked:
+            if await self.bot.db.get_custom_role(ctx.guild.id, uid) is not None:
+                await ctx.send(embed=make_embed("Can't give that", f"{member.mention} is linked to an account that already has a custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+                return
+        if ctx.guild.me.top_role <= role:
+            await ctx.send(embed=make_embed("Can't do that", "My highest role is too low to move that custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        err = await transfer_custom_role(self.bot, ctx.guild, row, member, reason=f"Given by {ctx.author}")
+        if err:
+            await ctx.send(embed=make_embed("Couldn't give the role", err, color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        await ctx.send(embed=make_embed("Custom role given", f"{role.mention} is now held by {member.mention}. The owner can take it back with `.role take`.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
+
+    @role.command(name="take", description="Take a custom role back from a member.")
+    @commands.guild_only()
+    @commands.bot_has_guild_permissions(manage_roles=True)
+    @app_commands.describe(member="The member who currently holds the custom role.")
+    async def role_take(self, ctx: commands.Context, member: discord.Member) -> None:
+        assert ctx.guild and isinstance(ctx.author, discord.Member)
+        row = await self.bot.db.get_custom_role_held(ctx.guild.id, member.id)
+        if row is None:
+            await ctx.send(embed=make_embed("Not holding one", f"{member.mention} isn't holding a custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        owner_id = int(row["user_id"])
+        staff = ctx.author.guild_permissions.manage_roles
+        if not staff and ctx.author.id != owner_id:
+            await ctx.send(embed=make_embed("Not yours", "You can only take back your own custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        if holder_id_of(row) == owner_id:
+            await ctx.send(embed=make_embed("Already with the owner", "That custom role is already with its owner.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        owner = ctx.guild.get_member(owner_id)
+        if owner is None:
+            await ctx.send(embed=make_embed("Owner left", "The owner of that custom role is no longer in the server. Staff can remove it with `.role remove`.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        err = await transfer_custom_role(self.bot, ctx.guild, row, owner, reason=f"Taken back by {ctx.author}")
+        if err:
+            await ctx.send(embed=make_embed("Couldn't take the role back", err, color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        role = ctx.guild.get_role(int(row["role_id"]))
+        mention = role.mention if role else "The custom role"
+        await ctx.send(embed=make_embed("Custom role returned", f"{mention} is back with {owner.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
 
     @role.command(name="add", description="Give a member a role.")
     @commands.guild_only()
@@ -715,20 +1164,61 @@ class CustomRoles(commands.Cog):
         await member.add_roles(role, reason=f"Added by {ctx.author}")
         await ctx.send(embed=make_embed("Role added", f"Gave {role.mention} to {member.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
 
-    @role.command(name="remove", description="Remove a member's custom role, or a specific role.")
+    @role.command(name="remove", description="Delete your custom role, or (staff) remove a member's role.")
     @commands.guild_only()
-    @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
-    @app_commands.describe(member="The member to update.", role="Leave empty to remove their custom role.")
-    async def role_remove(self, ctx: commands.Context, member: discord.Member, role: discord.Role | None = None) -> None:
+    @app_commands.describe(member="Leave empty to delete your own custom role. Staff can name a member.", role="Staff only: a specific role to remove from that member.")
+    async def role_remove(self, ctx: commands.Context, member: discord.Member | None = None, role: discord.Role | None = None) -> None:
         assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
+        staff = ctx.author.guild_permissions.manage_roles
+
+        if member is None and role is None:
+            existing = await self.bot.db.get_custom_role(ctx.guild.id, ctx.author.id)
+            if existing is None:
+                await ctx.send(embed=make_embed("No custom role", "You don't have a custom role to remove. Staff can use `.role remove @member`.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+                return
+            discord_role = ctx.guild.get_role(int(existing["role_id"]))
+            name, primary, secondary = role_colour_snapshot(discord_role, existing)
+            holder = holder_id_of(existing)
+            also = holder if holder != ctx.author.id else None
+            await remove_stored_custom_role(self.bot, ctx.guild, ctx.author.id, reason=f"Deleted by owner {ctx.author}")
+            body = describe_removed_role(name, primary, secondary, holder_id=also)
+            embed = make_embed("Custom role removed", body, color=SUCCESS)
+            file = attach_colour_preview(embed, primary, secondary) if primary is not None else None
+            await reply(ctx, embed, file=file)
+            return
+
+        if not staff:
+            await ctx.send(embed=make_embed("Staff only", "To delete your own custom role, use `.role remove` with no one mentioned. Removing someone else's role needs Manage Roles.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        if member is None:
+            await ctx.send(embed=make_embed("Who?", "Mention a member, or use `.role remove` with no arguments to delete your own custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
         if role is None:
             existing = await self.bot.db.get_custom_role(ctx.guild.id, member.id)
             if existing is None:
                 await ctx.send(embed=make_embed("No custom role", f"{member.mention} doesn't have a custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
                 return
+            discord_role = ctx.guild.get_role(int(existing["role_id"]))
+            name, primary, secondary = role_colour_snapshot(discord_role, existing)
+            holder = holder_id_of(existing)
+            also = holder if holder != member.id else None
             await remove_stored_custom_role(self.bot, ctx.guild, member.id, reason=f"Removed by {ctx.author}")
-            await ctx.send(embed=make_embed("Custom role removed", f"Removed the custom role from {member.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
+            body = describe_removed_role(name, primary, secondary, holder_id=also)
+            embed = make_embed("Custom role removed", f"Removed **{name}** from {member.mention}.\n" + body, color=SUCCESS)
+            file = attach_colour_preview(embed, primary, secondary) if primary is not None else None
+            await reply(ctx, embed, file=file)
+            try:
+                await member.send(
+                    embed=make_embed(
+                        "Custom role removed",
+                        f"Your custom role **{name}** was removed in **{ctx.guild.name}**.",
+                        color=WARNING,
+                    ),
+                    allowed_mentions=NO_MENTIONS,
+                )
+            except discord.HTTPException:
+                pass
             return
         err = can_manage_role(ctx.author, ctx.guild.me, role)
         if err:
@@ -795,6 +1285,95 @@ class CustomRoles(commands.Cog):
             return
         await ctx.send(embed=make_embed("Restriction lifted", f"{member.mention} can create a custom role again if they meet the requirements.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
 
+    @role.command(name="manage", description="Choose which of your roles are hidden from your .profile.")
+    @commands.guild_only()
+    async def role_manage(self, ctx: commands.Context) -> None:
+        assert ctx.guild and isinstance(ctx.author, discord.Member)
+        hidden = set(await self.bot.db.get_profile_hidden_roles(ctx.guild.id, ctx.author.id))
+        held = await member_owns_or_holds(self.bot.db, ctx.guild.id, ctx.author.id)
+        custom_id = int(held["role_id"]) if held is not None else None
+        roles = [role for role in ctx.author.roles if not role.is_default()]
+        roles.sort(key=lambda role: (0 if custom_id and role.id == custom_id else 1, -role.position))
+        if not roles:
+            await reply(ctx, make_embed("No roles", "You don't have any roles I can hide on your profile.", color=DANGER), ephemeral=True)
+            return
+        extra = ""
+        if len(roles) > 25:
+            roles = roles[:25]
+            extra = " Only the first 25 roles are listed, with your custom role first if you have one."
+        await reply(
+            ctx,
+            make_embed(
+                "Hide roles from your profile",
+                "Select the roles that should be hidden on `.profile` in this server."
+                " This does not hide them in Discord."
+                + extra,
+            ),
+            ephemeral=True,
+            view=HideRolesView(self, ctx.author, roles, hidden),
+        )
+
+    @commands.hybrid_command(name="profile", description="Show a member's profile and visible roles.")
+    @commands.guild_only()
+    @app_commands.describe(member="Optional member to look up.")
+    async def profile(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
+        assert ctx.guild
+        target = member or ctx.author
+        hidden = set(await self.bot.db.get_profile_hidden_roles(ctx.guild.id, target.id))
+        held = await member_owns_or_holds(self.bot.db, ctx.guild.id, target.id)
+        custom_id = int(held["role_id"]) if held is not None else None
+        roles = visible_profile_roles(target, custom_role_id=custom_id, hidden=hidden)
+        role_line = " ".join(role.mention for role in roles) if roles else "None shown"
+        if len(role_line) > 1000:
+            role_line = " ".join(role.mention for role in roles[:30])
+            if len(roles) > 30:
+                role_line += f" … +{len(roles) - 30} more"
+        body = (
+            f"**Member:** {target.mention} (`{target.id}`)\n"
+            f"**Username:** @{target.name}\n"
+            f"**Roles:** {role_line}"
+        )
+        await reply(ctx, make_embed(f"{target.display_name}'s profile", body), ephemeral=False)
+
+    @commands.hybrid_command(name="roleremoveme", description="Remove a custom role someone else gave you.")
+    @commands.guild_only()
+    @commands.bot_has_guild_permissions(manage_roles=True)
+    async def roleremoveme(self, ctx: commands.Context) -> None:
+        assert ctx.guild and isinstance(ctx.author, discord.Member)
+        rows = await self.bot.db.list_custom_roles(ctx.guild.id)
+        held_rows = given_custom_roles_held({role.id for role in ctx.author.roles}, rows, member_id=ctx.author.id)
+        items = []
+        for row in held_rows:
+            role = ctx.guild.get_role(int(row["role_id"]))
+            if role is not None:
+                items.append((row, role))
+        if not items:
+            await reply(
+                ctx,
+                make_embed(
+                    "No given custom roles",
+                    "You don't have any custom roles that someone else gave you. This command can't remove your own custom role or server roles.",
+                    color=DANGER,
+                ),
+                ephemeral=True,
+            )
+            return
+        extra = ""
+        if len(items) > 25:
+            items = items[:25]
+            extra = " Only the first 25 are listed."
+        await reply(
+            ctx,
+            make_embed(
+                "Remove given custom roles",
+                "Select any custom roles other members gave you that you want to remove from yourself."
+                " Server and staff roles can't be removed this way."
+                + extra,
+            ),
+            ephemeral=True,
+            view=RemoveGivenRolesView(self, ctx.author, items),
+        )
+
     @role.command(name="list", description="List custom roles and restrictions in this server.")
     @commands.guild_only()
     @commands.has_guild_permissions(manage_roles=True)
@@ -804,13 +1383,17 @@ class CustomRoles(commands.Cog):
         rows = await self.bot.db.list_custom_roles(ctx.guild.id)
         restricted = await self.bot.db.list_custom_role_restrictions(ctx.guild.id)
         state = "on" if int(settings["enabled"] or 0) else "off"
-        lines = [f"Feature is **{state}**. Minimum level: **{int(settings['min_level'] or 0)}**."]
+        give_state = "on" if int(settings["give_enabled"] if "give_enabled" in settings.keys() else 1) else "off"
+        lines = [f"Feature is **{state}**. Giving roles is **{give_state}**. Minimum level: **{int(settings['min_level'] or 0)}**."]
         if rows:
             lines.append("\n**Custom roles**")
             for row in rows[:25]:
                 role = ctx.guild.get_role(int(row["role_id"]))
                 mention = role.mention if role else f"deleted (`{row['role_id']}`)"
-                lines.append(f"• <@{int(row['user_id'])}> — {mention}")
+                held_by = holder_id_of(row)
+                owner_id = int(row["user_id"])
+                extra = f" (held by <@{held_by}>)" if held_by != owner_id else ""
+                lines.append(f"• <@{owner_id}> — {mention}{extra}")
             if len(rows) > 25:
                 lines.append(f"…and {len(rows) - 25} more")
         else:
@@ -839,14 +1422,25 @@ class CustomRoles(commands.Cog):
     async def on_member_remove(self, member: discord.Member) -> None:
         if member.bot:
             return
-        row = await self.bot.db.get_custom_role(member.guild.id, member.id)
-        if row is None:
+        owned = await self.bot.db.get_custom_role(member.guild.id, member.id)
+        if owned is not None:
+            await remove_stored_custom_role(
+                self.bot,
+                member.guild,
+                member.id,
+                reason=f"Custom role owner left ({member.id})",
+            )
             return
-        await remove_stored_custom_role(
+        held = await self.bot.db.get_custom_role_held(member.guild.id, member.id)
+        if held is None or int(held["user_id"]) == member.id:
+            return
+        owner = member.guild.get_member(int(held["user_id"]))
+        await transfer_custom_role(
             self.bot,
             member.guild,
-            member.id,
-            reason=f"Custom role owner left ({member.id})",
+            held,
+            owner,
+            reason=f"Holder left ({member.id}); returned to owner",
         )
 
     @commands.Cog.listener()

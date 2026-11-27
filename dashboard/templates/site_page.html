@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} · {% if page_title == "Contact Us" %}Meowchi Cafe{% else %}Fun bot{% endif %}{% endblock %}
+{% block body %}
+<article class="uk-card legal card">
+  {{ body_html | safe }}
+</article>
+{% endblock %}

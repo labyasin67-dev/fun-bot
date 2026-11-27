@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
+import time
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from cogs.channels import post_modlog
-from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
+from utils import COLOR, DANGER, NO_MENTIONS, SUCCESS, WARNING, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -19,6 +21,14 @@ if TYPE_CHECKING:
 DURATION_RE = re.compile(r"^(\d+)\s*([smhd])$", re.IGNORECASE)
 UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 MAX_TIMEOUT = 28 * 24 * 3600
+
+DEFAULT_BAN_DM = "You were banned from {server}.\nReason: {reason}"
+DEFAULT_BAN_ANNOUNCE = "{user} was banned from {server}.\nReason: {reason}"
+BAN_PLACEHOLDERS = "{user} {username} {server} {reason} {moderator}"
+
+
+class ModerationActionError(Exception):
+    """A user-facing reason a staff action could not be completed."""
 
 
 def parse_duration(text: str) -> timedelta | None:
@@ -64,6 +74,254 @@ async def try_dm(user: discord.abc.User, embed: discord.Embed) -> bool:
         return True
     except discord.HTTPException:
         return False
+
+
+# --- Dashboard moderation panel helpers (added; the commands below are unchanged) ---
+
+def render_ban_message(
+    template: str | None,
+    *,
+    user: discord.abc.User,
+    guild: discord.Guild,
+    reason: str,
+    moderator: discord.abc.User | None,
+    default: str = DEFAULT_BAN_DM,
+) -> str:
+    username = getattr(user, "name", None) or str(user)
+    mention = getattr(user, "mention", f"<@{user.id}>")
+    if moderator is None:
+        mod_name = "Unknown"
+    else:
+        mod_name = getattr(moderator, "mention", None) or str(moderator)
+    return (
+        (template or default)
+        .replace("{user}", mention)
+        .replace("{username}", username)
+        .replace("{server}", guild.name)
+        .replace("{reason}", reason or "No reason provided.")
+        .replace("{moderator}", mod_name)
+    )
+
+
+async def send_ban_dm(
+    member: discord.abc.User,
+    guild: discord.Guild,
+    reason: str,
+    moderator: discord.abc.User | None,
+    settings: Any,
+) -> bool:
+    why = reason or "No reason provided."
+    enabled = bool(settings and int(settings["ban_dm_enabled"] or 0))
+    if enabled:
+        text = render_ban_message(
+            settings["ban_dm_message"] if settings else None,
+            user=member,
+            guild=guild,
+            reason=why,
+            moderator=moderator,
+            default=DEFAULT_BAN_DM,
+        )
+        return await try_dm(member, make_embed("You were banned", text, color=DANGER))
+    return await try_dm(
+        member,
+        make_embed("You were banned", f"You were banned from **{guild.name}**.\nReason: {why}", color=DANGER),
+    )
+
+
+def _require_bot_member(guild: discord.Guild) -> discord.Member:
+    if guild.me is None:
+        raise ModerationActionError("I'm still starting up in this server. Try again in a moment.")
+    return guild.me
+
+
+def _require_hierarchy(actor: discord.Member, target: discord.Member, guild: discord.Guild) -> None:
+    err = hierarchy_error(actor, target, _require_bot_member(guild))
+    if err:
+        raise ModerationActionError(err)
+
+
+async def perform_ban(
+    bot: Any,
+    guild: discord.Guild,
+    actor: discord.Member,
+    member: discord.Member,
+    reason: str | None,
+    *,
+    recent_bot_bans: dict[tuple[int, int], float] | None = None,
+) -> tuple[bool, str]:
+    _require_hierarchy(actor, member, guild)
+    if not guild.me.guild_permissions.ban_members:
+        raise ModerationActionError("I need the Ban Members permission.")
+    why = reason or "No reason provided."
+    settings = await bot.db.get_settings(guild.id)
+    dm_ok = await send_ban_dm(member, guild, why, actor, settings)
+    if recent_bot_bans is not None:
+        recent_bot_bans[(guild.id, member.id)] = time.time()
+    try:
+        await member.ban(reason=f"{actor} : {why}", delete_message_seconds=0)
+    except discord.Forbidden:
+        if recent_bot_bans is not None:
+            recent_bot_bans.pop((guild.id, member.id), None)
+        raise ModerationActionError("I don't have permission to ban that member.")
+    except discord.HTTPException:
+        if recent_bot_bans is not None:
+            recent_bot_bans.pop((guild.id, member.id), None)
+        raise ModerationActionError("Discord rejected the ban. Try again in a moment.")
+    await post_modlog(
+        bot,
+        guild,
+        "Member banned",
+        f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {actor.mention}\n**Reason:** {why}",
+        color=DANGER,
+    )
+    extra = "" if dm_ok else " I couldn't DM them."
+    return dm_ok, f"**{member}** was banned. Reason: {why}.{extra}"
+
+
+async def perform_unban(bot: Any, guild: discord.Guild, actor: discord.Member, user_id: int) -> str:
+    if not _require_bot_member(guild).guild_permissions.ban_members:
+        raise ModerationActionError("I need the Ban Members permission.")
+    try:
+        await guild.unban(discord.Object(id=user_id), reason=f"Unbanned by {actor}")
+    except discord.NotFound:
+        raise ModerationActionError("I couldn't find a ban for that user ID.")
+    except discord.Forbidden:
+        raise ModerationActionError("I don't have permission to unban that user.")
+    except discord.HTTPException:
+        raise ModerationActionError("Discord rejected the unban. Try again in a moment.")
+    await post_modlog(
+        bot,
+        guild,
+        "Member unbanned",
+        f"**User:** <@{user_id}> (`{user_id}`)\n**Staff:** {actor.mention}",
+        color=SUCCESS,
+    )
+    return f"<@{user_id}> (`{user_id}`) can join again."
+
+
+async def perform_kick(
+    bot: Any,
+    guild: discord.Guild,
+    actor: discord.Member,
+    member: discord.Member,
+    reason: str | None,
+) -> str:
+    _require_hierarchy(actor, member, guild)
+    if not guild.me.guild_permissions.kick_members:
+        raise ModerationActionError("I need the Kick Members permission.")
+    why = reason or "No reason provided."
+    dm_ok = await try_dm(
+        member,
+        make_embed("You were kicked", f"You were kicked from **{guild.name}**.\nReason: {why}", color=DANGER),
+    )
+    try:
+        await member.kick(reason=f"{actor} : {why}")
+    except discord.Forbidden:
+        raise ModerationActionError("I don't have permission to kick that member.")
+    except discord.HTTPException:
+        raise ModerationActionError("Discord rejected the kick. Try again in a moment.")
+    created = member.created_at.timestamp() if member.created_at else None
+    await bot.db.add_alt_mod_action(guild.id, member.id, "kick", created)
+    await post_modlog(
+        bot,
+        guild,
+        "Member kicked",
+        f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {actor.mention}\n**Reason:** {why}",
+        color=DANGER,
+    )
+    extra = "" if dm_ok else " I couldn't DM them."
+    return f"**{member}** was kicked. Reason: {why}.{extra}"
+
+
+async def perform_timeout(
+    bot: Any,
+    guild: discord.Guild,
+    actor: discord.Member,
+    member: discord.Member,
+    duration: str,
+    reason: str | None,
+) -> str:
+    _require_hierarchy(actor, member, guild)
+    if not guild.me.guild_permissions.moderate_members:
+        raise ModerationActionError("I need the Timeout Members permission.")
+    delta = parse_duration(duration)
+    if delta is None:
+        raise ModerationActionError("Use a number followed by s, m, h or d — for example `10m`, `1h`, `1d`. Max 28 days.")
+    why = reason or "No reason provided."
+    dm_ok = await try_dm(
+        member,
+        make_embed(
+            "You were muted",
+            f"You were muted in **{guild.name}** for **{format_delta(delta)}**.\nReason: {why}",
+            color=WARNING,
+        ),
+    )
+    try:
+        await member.timeout(delta, reason=f"{actor} : {why}")
+    except discord.Forbidden:
+        raise ModerationActionError("I don't have permission to mute that member.")
+    except discord.HTTPException:
+        raise ModerationActionError("Discord rejected the mute. Try again in a moment.")
+    await post_modlog(
+        bot,
+        guild,
+        "Member muted",
+        f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {actor.mention}\n**Duration:** {format_delta(delta)}\n**Reason:** {why}",
+        color=WARNING,
+    )
+    extra = "" if dm_ok else " I couldn't DM them."
+    return f"**{member}** is muted for **{format_delta(delta)}**. Reason: {why}.{extra}"
+
+
+async def perform_warn(
+    bot: Any,
+    guild: discord.Guild,
+    actor: discord.Member,
+    member: discord.Member,
+    reason: str | None,
+) -> str:
+    _require_hierarchy(actor, member, guild)
+    why = reason or "No reason provided."
+    count_before = len(await bot.db.get_warnings(guild.id, member.id))
+    warning_id = await bot.db.add_warning(guild.id, member.id, actor.id, why)
+    total = count_before + 1
+    await try_dm(member, make_embed("You were warned", f"You were warned in **{guild.name}**.\nReason: {why}", color=WARNING))
+    await post_modlog(
+        bot,
+        guild,
+        "Member warned",
+        f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {actor.mention}\n**Reason:** {why}\n**Warnings:** {total}",
+        color=WARNING,
+    )
+    return f"**{member}** was warned. Reason: {why}\nWarning **#{warning_id}**. They now have **{total}** warning{'s' if total != 1 else ''}."
+
+
+def _staff_username(user: Any) -> str | None:
+    if user is None:
+        return None
+    return getattr(user, "name", None) or getattr(user, "global_name", None) or getattr(user, "display_name", None)
+
+
+async def perform_clearwarns(
+    bot: Any,
+    guild: discord.Guild,
+    member_label: str,
+    user_id: int,
+    *,
+    actor: Any = None,
+    reason: str | None = None,
+    user_name: str | None = None,
+) -> str:
+    member = guild.get_member(int(user_id)) if guild is not None else None
+    removed = await bot.db.clear_warnings(
+        guild.id,
+        user_id,
+        removed_by=int(getattr(actor, "id", 0) or 0),
+        removed_by_name=_staff_username(actor),
+        user_name=user_name or _staff_username(member),
+        removal_reason=reason,
+    )
+    return f"Removed **{removed}** warning{'s' if removed != 1 else ''} from **{member_label}**."
 
 
 class Moderation(commands.Cog):
@@ -176,21 +434,81 @@ class Moderation(commands.Cog):
         await member.timeout(None, reason=f"Timeout removed by {ctx.author}")
         await ctx.send(embed=make_embed("Timeout removed", f"**{member}** can speak again.", color=SUCCESS))
 
-    @commands.hybrid_command(name="warn", description="Warn a member and log the reason.")
+    @commands.hybrid_group(name="warn", description="Warn a member and log the reason.", invoke_without_command=True)
     @commands.guild_only()
     @commands.has_permissions(moderate_members=True)
     @app_commands.describe(member="The member to warn.", reason="Why they're being warned.")
     async def warn(self, ctx: commands.Context, member: discord.Member, *, reason: str | None = None) -> None:
+        if ctx.invoked_subcommand is not None:
+            return
         if not await self._target_check(ctx, member):
             return
         why = reason or "No reason provided."
         assert ctx.guild
         count_before = len(await self.bot.db.get_warnings(ctx.guild.id, member.id))
-        await self.bot.db.add_warning(ctx.guild.id, member.id, ctx.author.id, why)
+        warning_id = await self.bot.db.add_warning(ctx.guild.id, member.id, ctx.author.id, why)
         total = count_before + 1
         await try_dm(member, make_embed("You were warned", f"You were warned in **{ctx.guild.name}**.\nReason: {why}", color=WARNING))
-        await ctx.send(embed=make_embed("Member warned", f"**{member}** was warned. Reason: {why}\nThey now have **{total}** warning{'s' if total != 1 else ''}.", color=SUCCESS))
-        await post_modlog(self.bot, ctx.guild, "Member warned", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}\n**Warnings:** {total}", color=WARNING)
+        await ctx.send(embed=make_embed("Member warned", f"**{member}** was warned. Reason: {why}\nWarning **#{warning_id}**. They now have **{total}** warning{'s' if total != 1 else ''}.", color=SUCCESS))
+        await post_modlog(self.bot, ctx.guild, "Member warned", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}\n**Warning ID:** {warning_id}\n**Warnings:** {total}", color=WARNING)
+
+    @warn.command(name="remove", description="Remove one warning from a member.")
+    @commands.guild_only()
+    @commands.has_permissions(moderate_members=True)
+    @app_commands.describe(
+        member="The member to remove a warning from.",
+        warning="The warning id, or latest.",
+        reason="Optional reason for removing the warning.",
+    )
+    async def warn_remove(
+        self,
+        ctx: commands.Context,
+        member: discord.Member,
+        warning: str | None = None,
+        *,
+        reason: str | None = None,
+    ) -> None:
+        assert ctx.guild
+        raw = (warning or "").strip()
+        rest = (reason or "").strip()
+        if not raw or raw.lower() in {"latest", "last", "recent"}:
+            selector = "latest"
+            why = rest or None
+        elif raw.isdigit():
+            selector = raw
+            why = rest or None
+        else:
+            selector = "latest"
+            why = " ".join(part for part in (raw, rest) if part) or None
+        record = {
+            "removed_by": ctx.author.id,
+            "removed_by_name": _staff_username(ctx.author),
+            "user_name": _staff_username(member),
+            "removal_reason": why,
+        }
+        if selector == "latest":
+            row = await self.bot.db.delete_latest_warning(ctx.guild.id, member.id, **record)
+            if row is None:
+                await ctx.send(embed=make_embed("No warnings", f"**{member}** has no warnings to remove.", color=DANGER), ephemeral=True)
+                return
+        else:
+            warning_id = int(selector)
+            rows = await self.bot.db.get_warnings(ctx.guild.id, member.id)
+            row = next((r for r in rows if int(r["id"]) == warning_id), None)
+            if row is None:
+                await ctx.send(embed=make_embed("Warning not found", f"**{member}** has no warning **#{warning_id}** in this server.", color=DANGER), ephemeral=True)
+                return
+            await self.bot.db.delete_warning(ctx.guild.id, member.id, warning_id, **record)
+        left = len(await self.bot.db.get_warnings(ctx.guild.id, member.id))
+        original = row["reason"] or "No reason provided."
+        extra = f"\n**Removed because:** {why}" if why else ""
+        await ctx.send(
+            embed=make_embed(
+                "Warning removed",
+                f"Removed warning **#{row['id']}** from **{member}**. Original reason: {original}{extra}\nThey now have **{left}** warning{'s' if left != 1 else ''}.",
+                color=SUCCESS,
+            )
+        )
 
     @commands.hybrid_command(name="warnings", description="List a member's warnings.")
     @commands.guild_only()
@@ -203,19 +521,27 @@ class Moderation(commands.Cog):
             await ctx.send(embed=make_embed("Warnings", f"**{member}** has no warnings."))
             return
         lines = []
-        for i, row in enumerate(rows, start=1):
+        for row in rows:
             reason = row["reason"] or "No reason provided."
-            lines.append(f"**{i}.** {reason} — by <@{row['moderator_id']}>")
+            lines.append(f"**#{row['id']}.** {reason} — by <@{row['moderator_id']}>")
         await ctx.send(embed=make_embed(f"Warnings for {member}", "\n".join(lines[:25])))
 
     @commands.hybrid_command(name="clearwarns", description="Clear all warnings for a member.")
     @commands.guild_only()
     @commands.has_permissions(moderate_members=True)
-    @app_commands.describe(member="The member whose warnings should be cleared.")
-    async def clearwarns(self, ctx: commands.Context, member: discord.Member) -> None:
+    @app_commands.describe(member="The member whose warnings should be cleared.", reason="Optional reason for clearing the warnings.")
+    async def clearwarns(self, ctx: commands.Context, member: discord.Member, *, reason: str | None = None) -> None:
         assert ctx.guild
-        removed = await self.bot.db.clear_warnings(ctx.guild.id, member.id)
-        await ctx.send(embed=make_embed("Warnings cleared", f"Removed **{removed}** warning{'s' if removed != 1 else ''} from **{member}**.", color=SUCCESS))
+        summary = await perform_clearwarns(
+            self.bot,
+            ctx.guild,
+            str(member),
+            member.id,
+            actor=ctx.author,
+            reason=reason,
+            user_name=_staff_username(member),
+        )
+        await ctx.send(embed=make_embed("Warnings cleared", summary, color=SUCCESS))
 
     @commands.hybrid_command(name="purge", description="Delete a number of recent messages in this channel.")
     @commands.guild_only()
@@ -286,6 +612,63 @@ class Moderation(commands.Cog):
         overwrite.send_messages = None
         await target.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Unlocked by {ctx.author}")
         await ctx.send(embed=make_embed("Channel unlocked", f"{target.mention} is unlocked.", color=SUCCESS))
+
+    # --- Added: ban announcement (Messages panel) and .mute/.unmute names ---
+
+    async def _ban_audit(
+        self, guild: discord.Guild, user: discord.abc.User
+    ) -> tuple[discord.abc.User | None, str | None]:
+        await asyncio.sleep(0.8)
+        try:
+            async for entry in guild.audit_logs(limit=6, action=discord.AuditLogAction.ban):
+                if entry.target and getattr(entry.target, "id", None) == user.id:
+                    return entry.user, entry.reason
+        except discord.HTTPException:
+            pass
+        return None, None
+
+    @commands.Cog.listener("on_member_ban")
+    async def ban_announcement(self, guild: discord.Guild, user: discord.User) -> None:
+        settings = await self.bot.db.get_settings(guild.id)
+        if not settings or not int(settings["ban_announce_enabled"] or 0):
+            return
+        channel_id = settings["ban_announce_channel_id"]
+        if not channel_id:
+            return
+        channel = guild.get_channel(int(channel_id))
+        if not isinstance(channel, discord.TextChannel):
+            return
+        moderator, reason = await self._ban_audit(guild, user)
+        text = render_ban_message(
+            settings["ban_announce_message"],
+            user=user,
+            guild=guild,
+            reason=reason or "No reason provided.",
+            moderator=moderator,
+            default=DEFAULT_BAN_ANNOUNCE,
+        )
+        try:
+            await channel.send(embed=make_embed("Member banned", text, color=DANGER), allowed_mentions=NO_MENTIONS)
+        except discord.HTTPException:
+            pass
+
+    @commands.hybrid_command(name="mute", description="Mute (timeout) a member. Duration examples: 10m, 1h, 1d.")
+    @commands.guild_only()
+    @commands.has_permissions(moderate_members=True)
+    @commands.bot_has_permissions(moderate_members=True)
+    @app_commands.describe(member="The member to mute.", duration="How long, for example 10m, 1h or 1d.", reason="Optional reason.")
+    async def mute(self, ctx: commands.Context, member: discord.Member, duration: str, *, reason: str | None = None) -> None:
+        """Same as .timeout; runs the existing timeout command."""
+        await ctx.invoke(self.timeout, member, duration, reason=reason)
+
+    @commands.hybrid_command(name="unmute", description="Unmute a member (remove their timeout).")
+    @commands.guild_only()
+    @commands.has_permissions(moderate_members=True)
+    @commands.bot_has_permissions(moderate_members=True)
+    @app_commands.describe(member="The member to unmute.")
+    async def unmute(self, ctx: commands.Context, member: discord.Member) -> None:
+        """Same as .untimeout; runs the existing untimeout command."""
+        await ctx.invoke(self.untimeout, member)
 
 
 async def setup(bot: SocializeBot) -> None:

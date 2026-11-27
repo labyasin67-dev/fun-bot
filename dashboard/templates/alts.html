@@ -2,70 +2,70 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Alt detection · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Alt detection</h1>
-<p class="lede">Score new accounts on join, review the log, and take action without leaving this page.</p>
+<div class="page-head">{{ ui.cat_icon('alts') }}<div><h1 class="page-title">Alt detection</h1>
+<p class="lede">Score new accounts on join, review the log, and take action without leaving this page.</p></div></div>
 
-<form method="post" class="card">
+<form method="post" class="uk-card card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="action" value="save">
   <div class="field">
-    <label>Status</label>
-    <select name="enabled">
+    <label class="uk-form-label">Status</label>
+    <select class="uk-select" name="enabled">
       <option value="1" {% if cfg['enabled'] %}selected{% endif %}>On</option>
       <option value="0" {% if not cfg['enabled'] %}selected{% endif %}>Off</option>
     </select>
   </div>
   <div class="field">
-    <label>Minimum account age (days)</label>
-    <input type="number" name="min_age_days" min="0" max="365" value="{{ cfg['min_age_days'] or 7 }}">
+    <label class="uk-form-label">Minimum account age (days)</label>
+    <input class="uk-input" type="number" name="min_age_days" min="0" max="365" value="{{ cfg['min_age_days'] or 7 }}">
   </div>
   <div class="field">
-    <label>Action on high-risk joins</label>
-    <select name="alt_action">
+    <label class="uk-form-label">Action on high-risk joins</label>
+    <select class="uk-select" name="alt_action">
       {% for act in actions %}
         <option value="{{ act }}" {% if (cfg['action'] or 'log') == act %}selected{% endif %}>{{ act }}</option>
       {% endfor %}
     </select>
   </div>
   <div class="field">
-    <label>Alert channel</label>
+    <label class="uk-form-label">Alert channel</label>
     {{ chansel('log_channel_id', grouped, selected=log_id) }}
   </div>
   <div class="field">
-    <label>Quarantine role</label>
-    <select name="quarantine_role_id">
+    <label class="uk-form-label">Quarantine role</label>
+    <select class="uk-select" name="quarantine_role_id">
       <option value="">Not set</option>
       {% for role in assignable %}
         <option value="{{ role.id }}" {% if cfg['quarantine_role_id'] and cfg['quarantine_role_id'] == role.id %}selected{% endif %}>@{{ role.name }}</option>
       {% endfor %}
     </select>
   </div>
-  <button class="btn" type="submit">Save settings</button>
+  <button class="uk-btn uk-btn-primary btn" type="submit">Save settings</button>
 </form>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Alt Detection Log</h2>
   <p class="faint">{{ total_flags }} flagged join{% if total_flags != 1 %}s{% endif %} — newest first.</p>
   <form method="get" class="filters">
     <div class="field">
-      <label>Search</label>
-      <input type="text" name="q" value="{{ log_q }}" placeholder="Name, user ID, or signal">
+      <label class="uk-form-label">Search</label>
+      <input class="uk-input" type="text" name="q" value="{{ log_q }}" placeholder="Name, user ID, or signal">
     </div>
     <div class="field" style="flex:0 0 180px">
-      <label>Risk level</label>
-      <select name="risk">
+      <label class="uk-form-label">Risk level</label>
+      <select class="uk-select" name="risk">
         <option value="">All</option>
         <option value="High risk" {% if log_risk=='High risk' %}selected{% endif %}>High risk</option>
         <option value="Medium risk" {% if log_risk=='Medium risk' %}selected{% endif %}>Medium risk</option>
         <option value="Low risk" {% if log_risk=='Low risk' %}selected{% endif %}>Low risk</option>
       </select>
     </div>
-    <button class="btn secondary" type="submit">Filter</button>
+    <button class="uk-btn uk-btn-secondary btn secondary" type="submit">Filter</button>
   </form>
 
   {% if flags %}
   <div class="table-wrap">
-  <table class="table log-table">
+  <table class="uk-table uk-table-divider uk-table-hover table log-table">
     <tr>
       <th>User</th>
       <th>Account age</th>
@@ -78,7 +78,7 @@
     </tr>
     {% for item in flags %}
       <tr>
-        <td>
+        <td data-label="User">
           <div class="user-cell">
             {% if item.avatar %}<img class="avatar-sm" src="{{ item.avatar }}" alt="">{% else %}<span class="avatar-sm ph">?</span>{% endif %}
             <div>
@@ -88,23 +88,23 @@
             </div>
           </div>
         </td>
-        <td>{{ item.age }}</td>
-        <td class="faint">{{ fmt_time(item.joined) }}</td>
-        <td>
+        <td data-label="Account age">{{ item.age }}</td>
+        <td class="faint" data-label="Joined">{{ fmt_time(item.joined) }}</td>
+        <td data-label="Score">
           <span class="risk {% if 'High' in item.verdict %}high{% elif 'Medium' in item.verdict %}med{% else %}low{% endif %}">
             {{ item.score }} · {{ item.verdict }}
           </span>
         </td>
-        <td class="signals">
+        <td class="signals" data-label="Signals">
           <ul>
             {% for reason in item.reasons %}
               <li>{{ reason }}</li>
             {% endfor %}
           </ul>
         </td>
-        <td>{{ item.action }}</td>
-        <td><span class="pill {% if item.status_key in ['banned','kicked'] %}bad{% elif item.status_key in ['whitelisted','in_server'] %}on{% endif %}">{{ item.status }}</span></td>
-        <td class="log-actions">
+        <td data-label="Action">{{ item.action }}</td>
+        <td data-label="Status"><span class="pill {% if item.status_key in ['banned','kicked'] %}bad{% elif item.status_key in ['whitelisted','in_server'] %}on{% endif %}">{{ item.status }}</span></td>
+        <td class="log-actions" data-label="">
           {% if item.status_key != 'whitelisted' %}
           {% for review, label in [('kick','Kick'),('ban','Ban'),('timeout','Timeout 1h'),('safe','Mark Safe')] %}
             {% if not (review in ['kick','timeout'] and item.status_key in ['banned','kicked','left']) %}
@@ -117,7 +117,7 @@
               <input type="hidden" name="q" value="{{ log_q }}">
               <input type="hidden" name="risk" value="{{ log_risk }}">
               <input type="hidden" name="page" value="{{ page }}">
-              <button class="btn {% if review=='ban' %}danger{% elif review=='safe' %}green{% else %}secondary{% endif %} small" type="submit">{{ label }}</button>
+              <button class="uk-btn uk-btn-sm btn {% if review=='ban' %}danger{% elif review=='safe' %}green{% else %}secondary{% endif %} small" type="submit">{{ label }}</button>
             </form>
             {% endif %}
             {% endif %}
@@ -133,11 +133,11 @@
   {% if pages > 1 %}
   <nav class="pager">
     {% if page > 1 %}
-      <a class="btn secondary small" href="/servers/{{ guild.id }}/alts?q={{ log_q | urlencode }}&risk={{ log_risk | urlencode }}&page={{ page-1 }}">Previous</a>
+      <a class="uk-btn uk-btn-secondary uk-btn-sm btn secondary small" href="/servers/{{ guild.id }}/alts?q={{ log_q | urlencode }}&risk={{ log_risk | urlencode }}&page={{ page-1 }}">Previous</a>
     {% endif %}
     <span class="muted">Page {{ page }} of {{ pages }}</span>
     {% if page < pages %}
-      <a class="btn secondary small" href="/servers/{{ guild.id }}/alts?q={{ log_q | urlencode }}&risk={{ log_risk | urlencode }}&page={{ page+1 }}">Next</a>
+      <a class="uk-btn uk-btn-secondary uk-btn-sm btn secondary small" href="/servers/{{ guild.id }}/alts?q={{ log_q | urlencode }}&risk={{ log_risk | urlencode }}&page={{ page+1 }}">Next</a>
     {% endif %}
   </nav>
   {% endif %}
@@ -146,29 +146,29 @@
   {% endif %}
 </div>
 
-<div class="card" style="margin-top:14px">
+<div class="uk-card card" style="margin-top:14px">
   <h2>Whitelist</h2>
   <form method="post" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="whitelist_add">
     <div class="field">
-      <label>Discord user ID</label>
-      <input type="text" name="user_id" inputmode="numeric" placeholder="123456789012345678" required>
+      <label class="uk-form-label">Discord user ID</label>
+      <input class="uk-input" type="text" name="user_id" inputmode="numeric" placeholder="123456789012345678" required>
     </div>
-    <button class="btn" type="submit">Add</button>
+    <button class="uk-btn uk-btn-primary btn" type="submit">Add</button>
   </form>
   {% if whitelist %}
-  <table class="table">
+  <table class="uk-table uk-table-divider uk-table-hover table">
     <tr><th>User</th><th></th></tr>
     {% for row in whitelist %}
       <tr>
-        <td>{{ member_name(row['user_id']) }} <span class="faint">({{ row['user_id'] }})</span></td>
-        <td>
+        <td data-label="User">{{ member_name(row['user_id']) }} <span class="faint">({{ row['user_id'] }})</span></td>
+        <td data-label="">
           <form method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="whitelist_remove">
             <input type="hidden" name="user_id" value="{{ row['user_id'] }}">
-            <button class="btn danger" type="submit">Remove</button>
+            <button class="uk-btn uk-btn-destructive btn danger" type="submit">Remove</button>
           </form>
         </td>
       </tr>

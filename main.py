@@ -57,6 +57,10 @@ EXTENSIONS = (
     "cogs.premium",
     "cogs.youtube",
     "cogs.fun_commands",
+    "cogs.creator_alerts",
+    "cogs.levels_switch",
+    "cogs.audit_logs",
+    "cogs.afk",
 )
 
 

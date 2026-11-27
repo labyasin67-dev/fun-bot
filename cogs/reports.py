@@ -28,12 +28,16 @@ STATUS_LABELS = {
     "approved": "Approved",
     "denied": "Denied",
     "closed": "Closed",
+    "withdrawn": "Withdrawn",
+    "cancelled": "Cancelled",
 }
 STATUS_COLORS = {
     "open": WARNING,
     "approved": SUCCESS,
     "denied": DANGER,
     "closed": COLOR,
+    "withdrawn": COLOR,
+    "cancelled": DANGER,
 }
 
 
@@ -87,16 +91,53 @@ def format_ts(ts: float | None) -> str:
     return time.strftime("%Y-%m-%d %H:%M", time.localtime(float(ts)))
 
 
+def _cached_username(guild: discord.Guild, user_id: int | None, stored_name: str | None = None) -> str | None:
+    if user_id:
+        member = guild.get_member(int(user_id))
+        if member is not None:
+            return member.name or member.display_name or stored_name
+        state = getattr(guild, "_state", None)
+        user = state.get_user(int(user_id)) if state is not None and hasattr(state, "get_user") else None
+        if user is not None:
+            return getattr(user, "name", None) or getattr(user, "global_name", None) or getattr(user, "display_name", None) or stored_name
+    return stored_name
+
+
+def format_report_user(guild: discord.Guild, user_id, stored_name: str | None = None) -> str:
+    """Mention plus @username and id for the report embed: '<@id> @username (id)'."""
+    if not user_id:
+        if stored_name:
+            return stored_name if str(stored_name).startswith("@") else f"@{stored_name}"
+        return "—"
+    name = _cached_username(guild, int(user_id), stored_name)
+    mention = f"<@{int(user_id)}>"
+    uid = int(user_id)
+    if name:
+        uname = name if str(name).startswith("@") else f"@{name}"
+        return f"{mention} {uname} ({uid})"
+    return f"{mention} ({uid})"
+
+
+def format_claimer(guild: discord.Guild, user_id, stored_name: str | None = None) -> str:
+    """@username (user ID) for a claimed report."""
+    if not user_id:
+        return stored_name or "—"
+    name = _cached_username(guild, int(user_id), stored_name)
+    if name:
+        uname = name if str(name).startswith("@") else f"@{name}"
+        return f"{uname} ({int(user_id)})"
+    return str(int(user_id))
+
+
 def build_report_embed(guild: discord.Guild, row) -> discord.Embed:
     status = str(row["status"] or "open")
-    reporter = row["reporter_name"] or f"ID {row['reporter_id']}"
-    reported = row["reported_name"] or (f"ID {row['reported_user_id']}" if row["reported_user_id"] else "—")
+    reporter = format_report_user(guild, row["reporter_id"], row["reporter_name"])
+    reported = format_report_user(guild, row["reported_user_id"], row["reported_name"]) if row["reported_user_id"] or row["reported_name"] else "—"
     reason = row["reason"] or "No reason given."
     desc = (
-        f"**Reporter:** {reporter} (`{row['reporter_id']}`)\n"
-        f"**Reported:** {reported}"
-        + (f" (`{row['reported_user_id']}`)" if row["reported_user_id"] else "")
-        + f"\n**Reason:** {reason}"
+        f"**Reporter:** {reporter}\n"
+        f"**Reported:** {reported}\n"
+        f"**Reason:** {reason}"
     )
     e = make_embed(
         f"Report #{int(row['id'])} — {STATUS_LABELS.get(status, status)}",
@@ -111,13 +152,23 @@ def build_report_embed(guild: discord.Guild, row) -> discord.Embed:
             body += f"\n[Jump to message]({link})"
         e.add_field(name="Message", value=body[:1024], inline=False)
     if row["claimed_by"]:
-        who = row["claimed_by_name"] or f"ID {row['claimed_by']}"
+        who = format_claimer(guild, row["claimed_by"], row["claimed_by_name"])
         when = format_ts(row["claimed_at"])
         e.add_field(name="Claimed by", value=f"{who}{(' · ' + when) if when else ''}", inline=False)
     if status in {"approved", "denied"} and row["decided_by"]:
         who = row["decided_by_name"] or f"ID {row['decided_by']}"
         when = format_ts(row["decided_at"])
         decision = f"{who}{(' · ' + when) if when else ''}"
+        if row["decision_reason"]:
+            decision += f"\nReason: {row['decision_reason']}"
+        e.add_field(name="Decision", value=decision[:1024], inline=False)
+    elif status == "withdrawn":
+        when = format_ts(row["decided_at"])
+        e.add_field(name="Decision", value=f"Withdrawn by reporter{(' · ' + when) if when else ''}", inline=False)
+    elif status == "cancelled":
+        who = format_claimer(guild, row["decided_by"], row["decided_by_name"]) if row["decided_by"] else "an administrator"
+        when = format_ts(row["decided_at"])
+        decision = f"Cancelled by {who}{(' · ' + when) if when else ''}"
         if row["decision_reason"]:
             decision += f"\nReason: {row['decision_reason']}"
         e.add_field(name="Decision", value=decision[:1024], inline=False)
@@ -128,10 +179,11 @@ def build_report_embed(guild: discord.Guild, row) -> discord.Embed:
 def build_report_view(ticket_id: int, *, status: str, has_ticket: bool) -> discord.ui.View:
     view = discord.ui.View(timeout=None)
     open_ = status == "open"
-    decided = status in {"approved", "denied"}
+    decided = status in {"approved", "denied", "withdrawn", "cancelled"}
     view.add_item(ReportButton("claim", ticket_id, "Claim", discord.ButtonStyle.secondary, disabled=not open_))
     view.add_item(ReportButton("approve", ticket_id, "Approve", discord.ButtonStyle.success, disabled=not open_))
     view.add_item(ReportButton("deny", ticket_id, "Deny", discord.ButtonStyle.danger, disabled=not open_))
+    view.add_item(ReportButton("cancel", ticket_id, "Cancel report", discord.ButtonStyle.secondary, disabled=not open_))
     if has_ticket and status != "closed":
         view.add_item(ReportButton("close", ticket_id, "Close ticket", discord.ButtonStyle.secondary, disabled=False))
     if not open_ and not (has_ticket and status != "closed"):
@@ -141,14 +193,15 @@ def build_report_view(ticket_id: int, *, status: str, has_ticket: bool) -> disco
     return view
 
 
-class ReportButton(discord.ui.DynamicItem[discord.ui.Button], template=r"report:(?P<action>claim|approve|deny|close):(?P<ticket_id>[0-9]+)"):
+class ReportButton(discord.ui.DynamicItem[discord.ui.Button], template=r"report:(?P<action>claim|approve|deny|close|cancel):(?P<ticket_id>[0-9]+)"):
     def __init__(self, action: str, ticket_id: int, label: str | None = None, style: discord.ButtonStyle | None = None, *, disabled: bool = False) -> None:
-        labels = {"claim": "Claim", "approve": "Approve", "deny": "Deny", "close": "Close ticket"}
+        labels = {"claim": "Claim", "approve": "Approve", "deny": "Deny", "close": "Close ticket", "cancel": "Cancel report"}
         styles = {
             "claim": discord.ButtonStyle.secondary,
             "approve": discord.ButtonStyle.success,
             "deny": discord.ButtonStyle.danger,
             "close": discord.ButtonStyle.secondary,
+            "cancel": discord.ButtonStyle.secondary,
         }
         self.action = action
         self.ticket_id = ticket_id
@@ -192,10 +245,59 @@ class ReasonModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         reason = str(self.reason.value or "").strip() or None
-        if self.action in {"approve", "deny"} and self.ticket_id is not None:
+        if self.action in {"approve", "deny", "cancel"} and self.ticket_id is not None:
             await self.cog.finish_decision(interaction, self.ticket_id, self.action, reason)
             return
         await self.cog.finish_submit(interaction, message=self.message, target=self.target, reason=reason)
+
+
+def is_guild_admin_or_owner(member: discord.Member, guild: discord.Guild) -> bool:
+    try:
+        if int(getattr(guild, "owner_id", 0) or 0) == int(member.id):
+            return True
+    except (TypeError, ValueError):
+        pass
+    return bool(member.guild_permissions.administrator)
+
+
+def withdraw_view(ticket_id: int, *, stage: str = "withdraw") -> discord.ui.View:
+    view = discord.ui.View(timeout=None)
+    if stage == "confirm":
+        view.add_item(WithdrawReportButton("confirm", ticket_id, "Yes, withdraw", discord.ButtonStyle.danger))
+        view.add_item(WithdrawReportButton("back", ticket_id, "Go back", discord.ButtonStyle.secondary))
+    else:
+        view.add_item(WithdrawReportButton("withdraw", ticket_id, "Withdraw report", discord.ButtonStyle.danger))
+    return view
+
+
+class WithdrawReportButton(discord.ui.DynamicItem[discord.ui.Button], template=r"report:dm:(?P<action>withdraw|confirm|back):(?P<ticket_id>[0-9]+)"):
+    def __init__(self, action: str, ticket_id: int, label: str | None = None, style: discord.ButtonStyle | None = None) -> None:
+        labels = {"withdraw": "Withdraw report", "confirm": "Yes, withdraw", "back": "Go back"}
+        styles = {
+            "withdraw": discord.ButtonStyle.danger,
+            "confirm": discord.ButtonStyle.danger,
+            "back": discord.ButtonStyle.secondary,
+        }
+        self.action = action
+        self.ticket_id = ticket_id
+        super().__init__(
+            discord.ui.Button(
+                label=label or labels[action],
+                style=style or styles[action],
+                custom_id=f"report:dm:{action}:{ticket_id}",
+            )
+        )
+
+    @classmethod
+    async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Button, match: object) -> WithdrawReportButton:
+        return cls(str(match["action"]), int(match["ticket_id"]))  # type: ignore[index]
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        cog: Reports | None = interaction.client.get_cog("Reports")  # type: ignore[assignment]
+        if cog is None:
+            await interaction.response.send_message("This report action is unavailable right now.", ephemeral=True)
+            return
+        await cog.handle_withdraw_button(interaction, self.action, self.ticket_id)
 
 
 class Reports(commands.Cog):
@@ -204,6 +306,7 @@ class Reports(commands.Cog):
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
         bot.add_dynamic_items(ReportButton)
+        bot.add_dynamic_items(WithdrawReportButton)
         self._ctx_menu = app_commands.ContextMenu(name="Report Message", callback=self.context_report)
         bot.tree.add_command(self._ctx_menu)
 
@@ -339,6 +442,28 @@ class Reports(commands.Cog):
             ephemeral=True,
             delete_command=True,
         )
+        await self._dm_report_copy(author, guild, ticket_id, reported_id, reported_name, reason)
+
+    async def _dm_report_copy(
+        self,
+        user: discord.abc.User,
+        guild: discord.Guild,
+        ticket_id: int,
+        reported_id: int | None,
+        reported_name: str | None,
+        reason: str | None,
+    ) -> None:
+        reported = format_claimer(guild, reported_id, reported_name) if reported_id or reported_name else "—"
+        why = (reason or "").strip() or "No reason provided."
+        embed = make_embed(
+            "Your report",
+            f"**Server:** {guild.name}\n**Reported:** {reported}\n**Reason:** {why}\n**Report ID:** #{ticket_id}",
+        )
+        try:
+            message = await user.send(embed=embed, view=withdraw_view(ticket_id), allowed_mentions=NO_MENTIONS)
+        except discord.HTTPException:
+            return
+        await self.bot.db.set_report_dm_message(ticket_id, message.channel.id, message.id)
 
     async def _deliver(self, guild: discord.Guild, settings, ticket_id: int) -> None:
         row = await self.bot.db.get_report_ticket(ticket_id, guild.id)
@@ -421,6 +546,20 @@ class Reports(commands.Cog):
         if row is None:
             await interaction.response.send_message("That report no longer exists.", ephemeral=True)
             return
+        if action == "cancel":
+            if not is_guild_admin_or_owner(interaction.user, interaction.guild):
+                await interaction.response.send_message(
+                    "Only the server owner or an administrator can cancel a report.",
+                    ephemeral=True,
+                )
+                return
+            if str(row["status"]) != "open":
+                await interaction.response.send_message("This report is no longer open.", ephemeral=True)
+                return
+            await interaction.response.send_modal(
+                ReasonModal(self, title="Cancel report", ticket_id=ticket_id, action="cancel")
+            )
+            return
         if action in {"approve", "deny"}:
             if str(row["status"]) != "open":
                 await interaction.response.send_message("This report has already been decided.", ephemeral=True)
@@ -448,6 +587,32 @@ class Reports(commands.Cog):
         if row is None or str(row["status"]) != "open":
             await interaction.response.send_message("This report is no longer open.", ephemeral=True)
             return
+        if action == "cancel":
+            if not is_guild_admin_or_owner(interaction.user, interaction.guild):
+                await interaction.response.send_message(
+                    "Only the server owner or an administrator can cancel a report.",
+                    ephemeral=True,
+                )
+                return
+            uid, _display, avatar = snapshot(interaction.user)
+            name = getattr(interaction.user, "name", None) or _display
+            await self.bot.db.decide_report_ticket(
+                ticket_id,
+                status="cancelled",
+                decided_by=uid or interaction.user.id,
+                decided_by_name=name,
+                decided_by_avatar=avatar,
+                decision_reason=reason,
+            )
+            await interaction.response.send_message(f"Report #{ticket_id} was cancelled.", ephemeral=True)
+            await self.archive_report(interaction.guild, ticket_id, interaction.user)
+            why = f"\n**Reason:** {reason}" if reason else ""
+            await self._edit_reporter_dm(
+                ticket_id,
+                title="Report cancelled",
+                body=f"Your report **#{ticket_id}** in **{interaction.guild.name}** was cancelled.{why}",
+            )
+            return
         status = "approved" if action == "approve" else "denied"
         uid, name, avatar = snapshot(interaction.user)
         if not row["claimed_by"]:
@@ -463,6 +628,59 @@ class Reports(commands.Cog):
         await self.notify_reporter(interaction.guild, ticket_id, approved=(status == "approved"), reason=reason)
         await interaction.response.send_message(f"Report #{ticket_id} was {status}.", ephemeral=True)
         await self.archive_report(interaction.guild, ticket_id, interaction.user)
+
+    async def handle_withdraw_button(self, interaction: discord.Interaction, action: str, ticket_id: int) -> None:
+        row = await self.bot.db.get_report_ticket(ticket_id)
+        if row is None:
+            await interaction.response.send_message("That report no longer exists.", ephemeral=True)
+            return
+        if int(row["reporter_id"]) != int(interaction.user.id):
+            await interaction.response.send_message("Only the person who sent this report can withdraw it.", ephemeral=True)
+            return
+        if str(row["status"]) != "open":
+            await interaction.response.send_message("This report is no longer open, so it can't be withdrawn.", ephemeral=True)
+            return
+        if action == "withdraw":
+            await interaction.response.edit_message(view=withdraw_view(ticket_id, stage="confirm"))
+            return
+        if action == "back":
+            await interaction.response.edit_message(view=withdraw_view(ticket_id, stage="withdraw"))
+            return
+        uid, _display, avatar = snapshot(interaction.user)
+        name = getattr(interaction.user, "name", None) or _display
+        await self.bot.db.decide_report_ticket(
+            ticket_id,
+            status="withdrawn",
+            decided_by=uid or interaction.user.id,
+            decided_by_name=name,
+            decided_by_avatar=avatar,
+            decision_reason=None,
+        )
+        guild = self.bot.get_guild(int(row["guild_id"]))
+        if guild is not None:
+            await self.archive_report(guild, ticket_id, interaction.user)
+        server = guild.name if guild is not None else "the server"
+        embed = make_embed(
+            "Report withdrawn",
+            f"Your report **#{ticket_id}** in **{server}** was withdrawn.",
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+    async def _edit_reporter_dm(self, ticket_id: int, *, title: str, body: str) -> None:
+        row = await self.bot.db.get_report_ticket(ticket_id)
+        if row is None:
+            return
+        keys = set(row.keys()) if hasattr(row, "keys") else set()
+        channel_id = row["reporter_dm_channel_id"] if "reporter_dm_channel_id" in keys else None
+        message_id = row["reporter_dm_message_id"] if "reporter_dm_message_id" in keys else None
+        if not channel_id or not message_id:
+            return
+        try:
+            channel = self.bot.get_channel(int(channel_id)) or await self.bot.fetch_channel(int(channel_id))
+            message = await channel.fetch_message(int(message_id))
+            await message.edit(embed=make_embed(title, body), view=None, allowed_mentions=NO_MENTIONS)
+        except (discord.HTTPException, AttributeError, TypeError):
+            return
 
     async def apply_decision(
         self,
@@ -571,6 +789,21 @@ class Reports(commands.Cog):
                 )
             except discord.HTTPException:
                 pass
+
+    async def delete_report(self, guild: discord.Guild, ticket_id: int) -> str | None:
+        row = await self.bot.db.get_report_ticket(ticket_id, guild.id)
+        if row is None:
+            return "That report was not found."
+        await self._delete_message(guild, row["message_channel_id"], row["message_id"])
+        await self._delete_message(guild, row["announce_channel_id"], row["announce_message_id"])
+        ticket_ch = guild.get_channel(int(row["channel_id"])) if row["channel_id"] else None
+        if isinstance(ticket_ch, discord.TextChannel):
+            try:
+                await ticket_ch.delete(reason=f"Report #{ticket_id} removed from the dashboard")
+            except discord.HTTPException:
+                pass
+        await self.bot.db.delete_report_ticket(ticket_id, guild.id)
+        return None
 
     async def close_ticket(self, guild: discord.Guild, ticket_id: int, actor: discord.abc.User, *, actor_name: str | None = None, actor_avatar: str | None = None) -> str | None:
         row = await self.bot.db.get_report_ticket(ticket_id, guild.id)
