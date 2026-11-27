@@ -547,7 +547,7 @@ COLOR_PRESETS = [
     ("Teal", "#008080"),
     ("Black", "#2C2F33"),
     ("White", "#FFFFFF"),
-    ("Gold", "#FFD700"),
+    ("Gold", "#B8860B"),
     ("Lavender", "#E6E6FA"),
     ("Mint", "#98FF98"),
     ("Peach", "#FFDAB9"),
@@ -607,7 +607,7 @@ class RoleColorPickerView(discord.ui.View):
         )
         self.colour2_select.add_option(
             label="None",
-            value="",
+            value="#NONE",
             description="No second colour",
         )
         for name, hex_val in COLOR_PRESETS:
@@ -639,7 +639,7 @@ class RoleColorPickerView(discord.ui.View):
 
     async def _on_colour2_select(self, interaction: discord.Interaction) -> None:
         val = self.colour2_select.values[0]
-        self.selected_colour2 = None if val in ("", "__custom__") else val
+        self.selected_colour2 = None if val in ("#NONE", "__custom__") else val
         await interaction.response.defer()
 
     async def _on_create(self, interaction: discord.Interaction) -> None:
