@@ -119,6 +119,12 @@ class Roles(commands.Cog):
             await ctx.send(embed=make_embed("Panel is full", "You can have at most 25 self-roles.", color=DANGER), ephemeral=True)
             return
         await self.bot.db.add_self_role(ctx.guild.id, role.id, (label or role.name)[:80], emoji)
+        try:
+            me = ctx.guild.me
+            if me is not None and me.top_role is not None:
+                await role.edit(position=1, reason="Place self-role near the bottom so custom roles show on top")
+        except discord.HTTPException:
+            pass
         await ctx.send(embed=make_embed("Self-role added", f"{role.mention} is on the panel. Run `.selfrole panel` to post or refresh it.", color=SUCCESS))
 
     @selfrole.command(name="remove", description="Remove a role from the self-role panel.")

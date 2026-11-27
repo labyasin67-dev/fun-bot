@@ -292,6 +292,19 @@ async def place_role(role: discord.Role, settings) -> None:
         log.warning("Could not move custom role %s in guild %s", role.id, role.guild.id)
 
 
+async def place_self_role_low(role: discord.Role) -> None:
+    """Move a self-role/server-given role near the bottom so custom creator roles sit above it."""
+    me = role.guild.me
+    if me is None or me.top_role is None:
+        return
+    # Put it just above the @everyone role (position 1), but not below it.
+    pos = 1
+    try:
+        await role.edit(position=pos, reason="Place self-role near the bottom so custom roles show on top")
+    except discord.HTTPException:
+        log.warning("Could not move self-role %s to bottom in guild %s", role.id, role.guild.id)
+
+
 async def delete_guild_role(guild: discord.Guild, role_id: int, *, reason: str) -> bool:
     role = guild.get_role(role_id)
     if role is None:
@@ -765,8 +778,16 @@ class CustomRoles(commands.Cog):
                     role = guild.get_role(int(row["role_id"]))
                     if role is not None:
                         await place_role(role, settings)
+                # Reposition self-roles to the bottom so custom creator roles show on top.
+                for row in await self.bot.db.self_roles(guild.id):
+                    role = guild.get_role(int(row["role_id"]))
+                    if role is not None:
+                        try:
+                            await role.edit(position=1, reason="Place self-role near the bottom so custom roles show on top")
+                        except discord.HTTPException:
+                            pass
             except Exception:
-                log.warning("Could not reposition custom roles in guild %s", getattr(guild, "id", "?"), exc_info=True)
+                log.warning("Could not reposition roles in guild %s", getattr(guild, "id", "?"), exc_info=True)
 
     @commands.hybrid_group(name="role", description="Custom roles, or add and remove a role.", invoke_without_command=True)
     @commands.guild_only()
