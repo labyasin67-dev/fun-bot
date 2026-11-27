@@ -16,10 +16,11 @@ from discord.ext import commands
 
 from cogs import banks
 from cogs.game_ui import (
+    DEFAULT_PLAYERS,
     countdown_field,
     game_embed,
     game_footer,
-    games_menu_embed,
+    game_menu_line,
     result_embed,
 )
 from cogs.sessions import (
@@ -83,34 +84,6 @@ MENU_GAMES = [
     ("trivia", "💡", "Trivia", "A multiple-choice question for the channel."),
     ("hilo", "📈", "HILO", "Will the next number be higher or lower?"),
     ("uno", "🃏", "UNO", "Multiplayer UNO for 2–10 players."),
-]
-
-# Presentation-only metadata used by the menu. Rules live in the classes below.
-MENU_CATEGORIES = [
-    {
-        "key": "quick",
-        "emoji": "⚡",
-        "label": "Quick reflex",
-        "games": ["buttonhunt", "reaction", "colorhunt", "sequencehunt", "hilo"],
-    },
-    {
-        "key": "word",
-        "emoji": "🔤",
-        "label": "Word games",
-        "games": ["backwards", "scramble", "word", "capital", "nickname"],
-    },
-    {
-        "key": "trivia",
-        "emoji": "🧠",
-        "label": "Trivia & knowledge",
-        "games": ["celebrity", "landmark", "pattern", "missingemoji", "emojieq", "flag", "language", "trivia"],
-    },
-    {
-        "key": "multi",
-        "emoji": "👥",
-        "label": "Multiplayer",
-        "games": ["diceduel", "redlight", "uno"],
-    },
 ]
 
 # Only games that differ from the default "1+ players" need an entry; the menu
@@ -177,8 +150,20 @@ def command_for_title(title: str) -> str:
 
 
 def build_menu_embed(games: list) -> discord.Embed:
-    """Compact menu: one line per game, grouped by category."""
-    return games_menu_embed(games, MENU_CATEGORIES, GAME_META, command_for=command_name)
+    """Compact menu: one line per game, stacked alphabetically."""
+    ordered = sorted(games, key=lambda g: g[2])
+    embed = game_embed("Choose a game to drop", emoji="🎮", phase="play")
+    lines = [
+        game_menu_line(
+            emoji,
+            game_title,
+            command_name(key),
+            players=GAME_META.get(key, {}).get("players", DEFAULT_PLAYERS),
+        )
+        for key, emoji, game_title, _blurb in ordered
+    ]
+    embed.add_field(name="Games", value="\n".join(lines), inline=False)
+    return embed
 
 
 class GamesDropMenu(discord.ui.View):
