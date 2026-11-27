@@ -536,8 +536,132 @@ async def read_role_icon(attachment: discord.Attachment) -> tuple[bytes | None, 
     return data, None
 
 
+COLOR_PRESETS = [
+    ("Red", "#FF0000"),
+    ("Blue", "#0000FF"),
+    ("Green", "#00AA00"),
+    ("Yellow", "#FFD700"),
+    ("Purple", "#800080"),
+    ("Pink", "#FF69B4"),
+    ("Orange", "#FFA500"),
+    ("Teal", "#008080"),
+    ("Black", "#2C2F33"),
+    ("White", "#FFFFFF"),
+    ("Gold", "#FFD700"),
+    ("Lavender", "#E6E6FA"),
+    ("Mint", "#98FF98"),
+    ("Peach", "#FFDAB9"),
+    ("Navy", "#000080"),
+    ("Crimson", "#DC143C"),
+    ("Lime", "#32CD32"),
+    ("Magenta", "#FF00FF"),
+    ("Cyan", "#00FFFF"),
+    ("Silver", "#C0C0C0"),
+]
+
+
+class RoleColorPickerView(discord.ui.View):
+    """Pick preset colours for both role colours, then open the name modal."""
+
+    def __init__(
+        self,
+        cog: CustomRoles,
+        *,
+        default_name: str | None = None,
+        default_colour1: str | None = None,
+        default_colour2: str | None = None,
+    ) -> None:
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.default_name = default_name or ""
+        self.selected_colour1 = default_colour1
+        self.selected_colour2 = default_colour2
+
+        self.colour1_select = discord.ui.Select(
+            placeholder="Pick colour 1",
+            min_values=1,
+            max_values=1,
+        )
+        for name, hex_val in COLOR_PRESETS:
+            self.colour1_select.add_option(
+                label=name,
+                value=hex_val,
+                description=hex_val,
+            )
+        self.colour1_select.add_option(
+            label="Custom hex",
+            value="__custom__",
+            description="Type your own hex in the next step",
+        )
+        if default_colour1:
+            for option in self.colour1_select.options:
+                if option.value == default_colour1:
+                    option.default = True
+        self.colour1_select.callback = self._on_colour1_select
+        self.add_item(self.colour1_select)
+
+        self.colour2_select = discord.ui.Select(
+            placeholder="Pick colour 2 (optional)",
+            min_values=1,
+            max_values=1,
+        )
+        self.colour2_select.add_option(
+            label="None",
+            value="",
+            description="No second colour",
+        )
+        for name, hex_val in COLOR_PRESETS:
+            self.colour2_select.add_option(
+                label=name,
+                value=hex_val,
+                description=hex_val,
+            )
+        self.colour2_select.add_option(
+            label="Custom hex",
+            value="__custom__",
+            description="Type your own hex in the next step",
+        )
+        if default_colour2:
+            for option in self.colour2_select.options:
+                if option.value == default_colour2:
+                    option.default = True
+        self.colour2_select.callback = self._on_colour2_select
+        self.add_item(self.colour2_select)
+
+        self.create_button = discord.ui.Button(label="Create Role", style=discord.ButtonStyle.primary)
+        self.create_button.callback = self._on_create
+        self.add_item(self.create_button)
+
+    async def _on_colour1_select(self, interaction: discord.Interaction) -> None:
+        val = self.colour1_select.values[0]
+        self.selected_colour1 = None if val == "__custom__" else val
+        await interaction.response.defer()
+
+    async def _on_colour2_select(self, interaction: discord.Interaction) -> None:
+        val = self.colour2_select.values[0]
+        self.selected_colour2 = None if val in ("", "__custom__") else val
+        await interaction.response.defer()
+
+    async def _on_create(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_modal(
+            CreateCustomRoleModal(
+                self.cog,
+                default_name=self.default_name,
+                default_colour1=self.selected_colour1,
+                default_colour2=self.selected_colour2,
+            )
+        )
+
+
 class CreateCustomRoleModal(discord.ui.Modal, title="Customize Role"):
-    def __init__(self, cog: CustomRoles, *, default_name: str | None = None) -> None:
+    def __init__(
+        self,
+        cog: CustomRoles,
+        *,
+        default_name: str | None = None,
+        default_colour1: str | None = None,
+        default_colour2: str | None = None,
+    ) -> None:
         super().__init__()
         self.cog = cog
         self.name_input = discord.ui.TextInput(
@@ -552,11 +676,13 @@ class CreateCustomRoleModal(discord.ui.Modal, title="Customize Role"):
             min_length=6,
             max_length=8,
             required=True,
+            default=default_colour1,
         )
         self.colour2_input = discord.ui.TextInput(
             placeholder="#00ffcc",
             required=False,
             max_length=8,
+            default=default_colour2,
         )
         self.icon_upload = discord.ui.FileUpload(required=False, min_values=0, max_values=1)
         self.add_item(discord.ui.Label(
@@ -565,12 +691,12 @@ class CreateCustomRoleModal(discord.ui.Modal, title="Customize Role"):
             component=self.name_input,
         ))
         self.add_item(discord.ui.Label(
-            text="Hex Color",
-            description="Enter a color such as #A0BAF2.",
+            text="Hex Color 1",
+            description="Primary colour (e.g. #A0BAF2).",
             component=self.colour1_input,
         ))
         self.add_item(discord.ui.Label(
-            text="Second Hex Color",
+            text="Hex Color 2",
             description="Optional second colour for a gradient.",
             component=self.colour2_input,
         ))
@@ -597,17 +723,6 @@ class CreateCustomRoleModal(discord.ui.Modal, title="Customize Role"):
             colour2=str(self.colour2_input.value or "").strip() or None,
             icon=icon,
         )
-
-
-class OpenCreateFormView(discord.ui.View):
-    def __init__(self, cog: CustomRoles, *, default_name: str | None = None) -> None:
-        super().__init__(timeout=180)
-        self.cog = cog
-        self.default_name = default_name
-
-    @discord.ui.button(label="Customize Role", style=discord.ButtonStyle.primary)
-    async def open_form(self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
-        await interaction.response.send_modal(CreateCustomRoleModal(self.cog, default_name=self.default_name))
 
 
 def visible_profile_roles(
@@ -834,16 +949,14 @@ class CustomRoles(commands.Cog):
             return
         wants_form = not colour
         if wants_form:
-            if ctx.interaction is not None:
-                await ctx.interaction.response.send_modal(CreateCustomRoleModal(self, default_name=name))
-                return
             await reply(
                 ctx,
                 make_embed(
                     "Customize Role",
-                    "Tap **Customize Role** to set the name, a hex colour, an optional second colour for a gradient, and an optional icon (PNG or JPG, max 256 KB).",
+                    "Pick colours for your custom role, then enter the name in the next step.",
                 ),
-                view=OpenCreateFormView(self, default_name=name),
+                view=RoleColorPickerView(self, default_name=name),
+                ephemeral=True,
             )
             return
         if not name:
