@@ -1903,7 +1903,7 @@ class Arcade(commands.Cog):
 
         def factory(bot, channel, host_id):
             if flag_path.exists():
-                file = discord.File(flag_path, filename=f"{code}.png")
+                file = discord.File(flag_path, filename=f"{code}.jpg")
                 reveal = item["name"] + (f" {emoji}" if emoji else "")
                 return ChatGuessGame(
                     bot, channel, host_id,
@@ -1912,7 +1912,7 @@ class Arcade(commands.Cog):
                     answers=answers,
                     reveal=reveal,
                     hint=f"The name starts with **{item['name'][0].upper()}**.",
-                    image_url=f"attachment://{code}.png",
+                    image_url=f"attachment://{code}.jpg",
                     file=file,
                 )
             log.warning("Flag image missing for %s (%s); falling back to text-only prompt", item["name"], code)
