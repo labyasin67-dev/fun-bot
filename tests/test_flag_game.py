@@ -182,7 +182,7 @@ class FlagEmbedTests(unittest.TestCase):
         game.answers = ["Germany"]
         game.reveal = "Germany"
         game.hint = "The name starts with **G**."
-        game.image_url = "attachment://de.jpg"
+        game.image_url = "attachment://de.png"
         game.timeout = 120
         game.hint_at = None
         game.xp = 25
@@ -196,7 +196,7 @@ class FlagEmbedTests(unittest.TestCase):
         game.host_avatar = None
 
         e = game._embed(phase="play")
-        self.assertEqual(e.image, "attachment://de.jpg")
+        self.assertEqual(e.image, "attachment://de.png")
 
     def test_hint_embed_has_image(self):
         import cogs.arcade
@@ -207,7 +207,7 @@ class FlagEmbedTests(unittest.TestCase):
         game.answers = ["Germany"]
         game.reveal = "Germany"
         game.hint = "The name starts with **G**."
-        game.image_url = "attachment://de.jpg"
+        game.image_url = "attachment://de.png"
         game.timeout = 120
         game.hint_at = None
         game.xp = 25
@@ -221,7 +221,7 @@ class FlagEmbedTests(unittest.TestCase):
         game.host_avatar = None
 
         e = game._embed(phase="hint")
-        self.assertEqual(e.image, "attachment://de.jpg")
+        self.assertEqual(e.image, "attachment://de.png")
 
     def test_win_embed_drops_image(self):
         import cogs.arcade
@@ -232,7 +232,7 @@ class FlagEmbedTests(unittest.TestCase):
         game.answers = ["Germany"]
         game.reveal = "Germany"
         game.hint = None
-        game.image_url = "attachment://de.jpg"
+        game.image_url = "attachment://de.png"
         game.timeout = 120
         game.hint_at = None
         game.xp = 25
@@ -257,7 +257,7 @@ class FlagEmbedTests(unittest.TestCase):
         game.answers = ["Germany"]
         game.reveal = "Germany"
         game.hint = None
-        game.image_url = "attachment://de.jpg"
+        game.image_url = "attachment://de.png"
         game.timeout = 120
         game.hint_at = None
         game.xp = 25
@@ -282,7 +282,7 @@ class FlagEmbedTests(unittest.TestCase):
         game.answers = ["Germany"]
         game.reveal = "Germany"
         game.hint = "The name starts with **G**."
-        game.image_url = "attachment://de.jpg"
+        game.image_url = "attachment://de.png"
         game.timeout = 120
         game.hint_at = None
         game.xp = 25
@@ -311,13 +311,13 @@ class FlagEmbedTests(unittest.TestCase):
             self.assertNotIn("attachment://", text, phase)
 
     def test_game_embed_guard_drops_image_on_win_and_timeout(self):
-        embed = game_embed("Flag", "Prompt", phase="play", image="attachment://de.jpg")
-        self.assertEqual(embed.image, "attachment://de.jpg")
+        embed = game_embed("Flag", "Prompt", phase="play", image="attachment://de.png")
+        self.assertEqual(embed.image, "attachment://de.png")
 
-        embed = game_embed("Flag", "Prompt", phase="win", image="attachment://de.jpg")
+        embed = game_embed("Flag", "Prompt", phase="win", image="attachment://de.png")
         self.assertIsNone(embed.image)
 
-        embed = game_embed("Flag", "Prompt", phase="timeout", image="attachment://de.jpg")
+        embed = game_embed("Flag", "Prompt", phase="timeout", image="attachment://de.png")
         self.assertIsNone(embed.image)
 
 

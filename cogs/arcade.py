@@ -1888,11 +1888,11 @@ class Arcade(commands.Cog):
         item = random.choice(banks.flags())
         answers = [item["name"], *item.get("aliases", [])]
         code = item["code"]
-        flag_path = Path(banks.ROOT) / "data" / "flags" / f"{code}.jpg"
+        flag_path = Path(banks.ROOT) / "data" / "flags" / f"{code}.png"
         if not flag_path.exists():
             # Fall back to the CWD-relative layout so the flag image still
             # loads when the working directory differs from the repo root.
-            fallback = Path("data" / "flags" / f"{code}.jpg")
+            fallback = Path("data" / "flags" / f"{code}.png")
             if fallback.exists():
                 flag_path = fallback
         emoji = None
@@ -1903,7 +1903,7 @@ class Arcade(commands.Cog):
 
         def factory(bot, channel, host_id):
             if flag_path.exists():
-                file = discord.File(flag_path, filename=f"{code}.jpg")
+                file = discord.File(flag_path, filename=f"{code}.png")
                 reveal = item["name"] + (f" {emoji}" if emoji else "")
                 return ChatGuessGame(
                     bot, channel, host_id,
@@ -1912,7 +1912,7 @@ class Arcade(commands.Cog):
                     answers=answers,
                     reveal=reveal,
                     hint=f"The name starts with **{item['name'][0].upper()}**.",
-                    image_url=f"attachment://{code}.jpg",
+                    image_url=f"attachment://{code}.png",
                     file=file,
                 )
             log.warning("Flag image missing for %s (%s); falling back to text-only prompt", item["name"], code)
