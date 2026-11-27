@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy · Fun bot{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>Privacy Policy</h1>
+  <p class="faint">Last updated: November 26, 2026</p>
+
+  <h2>1. Information we collect</h2>
+  <p>Fun bot ("we", "us", "our") is a Discord bot. We collect only the data necessary to operate the bot and its dashboard:</p>
+  <ul>
+    <li><strong>Discord user IDs</strong> — to identify users and servers the bot is in.</li>
+    <li><strong>Guild (server) IDs</strong> — to scope settings per server.</li>
+    <li><strong>Channel IDs</strong> — for features like welcome messages, reports tickets, and game announcements.</li>
+    <li><strong>Role IDs</strong> — for custom roles and self-roles.</li>
+    <li><strong>Message content</strong> — temporarily processed in-memory for game responses and moderation; not stored permanently.</li>
+    <li><strong>OAuth tokens</strong> — Discord and YouTube OAuth access/refresh tokens stored encrypted to authenticate API calls on your behalf.</li>
+  </ul>
+
+  <h2>2. How we use your data</h2>
+  <p>We use collected data solely to operate and improve the bot:</p>
+  <ul>
+    <li>Running drop-in games, leveling, and XP tracking.</li>
+    <li>Sending welcome messages, reports, and moderation actions.</li>
+    <li>Managing custom roles and self-roles.</li>
+    <li>Posting scheduled YouTube videos (when you authorize YouTube access).</li>
+    <li>Rendering the dashboard.</li>
+  </ul>
+
+  <h2>3. Data sharing</h2>
+  <p>We do not sell your data. We do not share your data with third parties except:</p>
+  <ul>
+    <li><strong>Discord</strong> — via the Discord API to operate the bot.</li>
+    <li><strong>Google/YouTube</strong> — only when you explicitly authorize via `/youtube auth`, solely to post videos on your behalf.</li>
+    <li><strong>Legal requirements</strong> — if required by law or to protect safety.</li>
+  </ul>
+
+  <h2>4. Data retention</h2>
+  <ul>
+    <li>Game and XP data is retained while the bot is in your server; it is deleted when the bot leaves or is removed.</li>
+    <li>OAuth tokens are stored until you revoke them or remove the bot.</li>
+    <li>Report tickets and moderation logs are retained until deleted by server staff.</li>
+  </ul>
+
+  <h2>5. Your rights</h2>
+  <p>You may:</p>
+  <ul>
+    <li>Request deletion of your data by removing the bot from your server or contacting us.</li>
+    <li>Revoke OAuth access at any time via your Discord or Google account settings.</li>
+    <li>Contact us with questions about your data.</li>
+  </ul>
+
+  <h2>6. Security</h2>
+  <p>We use industry-standard measures to protect data, including encrypted storage of OAuth tokens and restricted access to production systems.</p>
+
+  <h2>7. Changes to this policy</h2>
+  <p>We may update this policy from time to time. Continued use of the bot after changes constitute acceptance of the updated policy.</p>
+
+  <h2>8. Contact</h2>
+  <p>Questions about this policy? Contact the bot owner through the Discord server or support channel listed on the bot's profile.</p>
+</div>
+{% endblock %}

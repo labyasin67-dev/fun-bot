@@ -8,7 +8,7 @@
       "United States of America"
     ],
     "code": "us",
-    "url": "https://flagcdn.com/w320/us.png"
+    "url": "http://flags.ox3.in/svg/us.svg"
   },
   {
     "name": "United Kingdom",
@@ -19,7 +19,7 @@
       "England"
     ],
     "code": "gb",
-    "url": "https://flagcdn.com/w320/gb.png"
+    "url": "http://flags.ox3.in/svg/gb.svg"
   },
   {
     "name": "France",
@@ -27,7 +27,7 @@
       "French Republic"
     ],
     "code": "fr",
-    "url": "https://flagcdn.com/w320/fr.png"
+    "url": "http://flags.ox3.in/svg/fr.svg"
   },
   {
     "name": "Germany",
@@ -35,34 +35,34 @@
       "Deutschland"
     ],
     "code": "de",
-    "url": "https://flagcdn.com/w320/de.png"
+    "url": "http://flags.ox3.in/svg/de.svg"
   },
   {
     "name": "Italy",
     "aliases": [],
     "code": "it",
-    "url": "https://flagcdn.com/w320/it.png"
+    "url": "http://flags.ox3.in/svg/it.svg"
   },
   {
     "name": "Spain",
     "aliases": [
-      "Espa\u00f1a",
+      "España",
       "Espana"
     ],
     "code": "es",
-    "url": "https://flagcdn.com/w320/es.png"
+    "url": "http://flags.ox3.in/svg/es.svg"
   },
   {
     "name": "Canada",
     "aliases": [],
     "code": "ca",
-    "url": "https://flagcdn.com/w320/ca.png"
+    "url": "http://flags.ox3.in/svg/ca.svg"
   },
   {
     "name": "Australia",
     "aliases": [],
     "code": "au",
-    "url": "https://flagcdn.com/w320/au.png"
+    "url": "http://flags.ox3.in/svg/au.svg"
   },
   {
     "name": "Japan",
@@ -71,7 +71,7 @@
       "Nihon"
     ],
     "code": "jp",
-    "url": "https://flagcdn.com/w320/jp.png"
+    "url": "http://flags.ox3.in/svg/jp.svg"
   },
   {
     "name": "China",
@@ -80,7 +80,7 @@
       "People's Republic of China"
     ],
     "code": "cn",
-    "url": "https://flagcdn.com/w320/cn.png"
+    "url": "http://flags.ox3.in/svg/cn.svg"
   },
   {
     "name": "India",
@@ -88,7 +88,7 @@
       "Bharat"
     ],
     "code": "in",
-    "url": "https://flagcdn.com/w320/in.png"
+    "url": "http://flags.ox3.in/svg/in.svg"
   },
   {
     "name": "Brazil",
@@ -96,16 +96,16 @@
       "Brasil"
     ],
     "code": "br",
-    "url": "https://flagcdn.com/w320/br.png"
+    "url": "http://flags.ox3.in/svg/br.svg"
   },
   {
     "name": "Mexico",
     "aliases": [
-      "M\u00e9xico",
+      "México",
       "Mexico"
     ],
     "code": "mx",
-    "url": "https://flagcdn.com/w320/mx.png"
+    "url": "http://flags.ox3.in/svg/mx.svg"
   },
   {
     "name": "South Africa",
@@ -113,7 +113,7 @@
       "RSA"
     ],
     "code": "za",
-    "url": "https://flagcdn.com/w320/za.png"
+    "url": "http://flags.ox3.in/svg/za.svg"
   },
   {
     "name": "South Korea",
@@ -123,7 +123,7 @@
       "ROK"
     ],
     "code": "kr",
-    "url": "https://flagcdn.com/w320/kr.png"
+    "url": "http://flags.ox3.in/svg/kr.svg"
   },
   {
     "name": "North Korea",
@@ -131,7 +131,7 @@
       "DPRK"
     ],
     "code": "kp",
-    "url": "https://flagcdn.com/w320/kp.png"
+    "url": "http://flags.ox3.in/svg/kp.svg"
   },
   {
     "name": "Russia",
@@ -139,31 +139,31 @@
       "Russian Federation"
     ],
     "code": "ru",
-    "url": "https://flagcdn.com/w320/ru.png"
+    "url": "http://flags.ox3.in/svg/ru.svg"
   },
   {
     "name": "Sweden",
     "aliases": [],
     "code": "se",
-    "url": "https://flagcdn.com/w320/se.png"
+    "url": "http://flags.ox3.in/svg/se.svg"
   },
   {
     "name": "Norway",
     "aliases": [],
     "code": "no",
-    "url": "https://flagcdn.com/w320/no.png"
+    "url": "http://flags.ox3.in/svg/no.svg"
   },
   {
     "name": "Finland",
     "aliases": [],
     "code": "fi",
-    "url": "https://flagcdn.com/w320/fi.png"
+    "url": "http://flags.ox3.in/svg/fi.svg"
   },
   {
     "name": "Denmark",
     "aliases": [],
     "code": "dk",
-    "url": "https://flagcdn.com/w320/dk.png"
+    "url": "http://flags.ox3.in/svg/dk.svg"
   },
   {
     "name": "Netherlands",
@@ -172,13 +172,13 @@
       "The Netherlands"
     ],
     "code": "nl",
-    "url": "https://flagcdn.com/w320/nl.png"
+    "url": "http://flags.ox3.in/svg/nl.svg"
   },
   {
     "name": "Belgium",
     "aliases": [],
     "code": "be",
-    "url": "https://flagcdn.com/w320/be.png"
+    "url": "http://flags.ox3.in/svg/be.svg"
   },
   {
     "name": "Switzerland",
@@ -186,19 +186,19 @@
       "Swiss"
     ],
     "code": "ch",
-    "url": "https://flagcdn.com/w320/ch.png"
+    "url": "http://flags.ox3.in/svg/ch.svg"
   },
   {
     "name": "Austria",
     "aliases": [],
     "code": "at",
-    "url": "https://flagcdn.com/w320/at.png"
+    "url": "http://flags.ox3.in/svg/at.svg"
   },
   {
     "name": "Portugal",
     "aliases": [],
     "code": "pt",
-    "url": "https://flagcdn.com/w320/pt.png"
+    "url": "http://flags.ox3.in/svg/pt.svg"
   },
   {
     "name": "Greece",
@@ -206,22 +206,22 @@
       "Hellas"
     ],
     "code": "gr",
-    "url": "https://flagcdn.com/w320/gr.png"
+    "url": "http://flags.ox3.in/svg/gr.svg"
   },
   {
     "name": "Turkey",
     "aliases": [
-      "T\u00fcrkiye",
+      "Türkiye",
       "Turkiye"
     ],
     "code": "tr",
-    "url": "https://flagcdn.com/w320/tr.png"
+    "url": "http://flags.ox3.in/svg/tr.svg"
   },
   {
     "name": "Poland",
     "aliases": [],
     "code": "pl",
-    "url": "https://flagcdn.com/w320/pl.png"
+    "url": "http://flags.ox3.in/svg/pl.svg"
   },
   {
     "name": "Ireland",
@@ -230,7 +230,7 @@
       "Eire"
     ],
     "code": "ie",
-    "url": "https://flagcdn.com/w320/ie.png"
+    "url": "http://flags.ox3.in/svg/ie.svg"
   },
   {
     "name": "New Zealand",
@@ -239,55 +239,55 @@
       "NZ"
     ],
     "code": "nz",
-    "url": "https://flagcdn.com/w320/nz.png"
+    "url": "http://flags.ox3.in/svg/nz.svg"
   },
   {
     "name": "Argentina",
     "aliases": [],
     "code": "ar",
-    "url": "https://flagcdn.com/w320/ar.png"
+    "url": "http://flags.ox3.in/svg/ar.svg"
   },
   {
     "name": "Chile",
     "aliases": [],
     "code": "cl",
-    "url": "https://flagcdn.com/w320/cl.png"
+    "url": "http://flags.ox3.in/svg/cl.svg"
   },
   {
     "name": "Colombia",
     "aliases": [],
     "code": "co",
-    "url": "https://flagcdn.com/w320/co.png"
+    "url": "http://flags.ox3.in/svg/co.svg"
   },
   {
     "name": "Peru",
     "aliases": [],
     "code": "pe",
-    "url": "https://flagcdn.com/w320/pe.png"
+    "url": "http://flags.ox3.in/svg/pe.svg"
   },
   {
     "name": "Egypt",
     "aliases": [],
     "code": "eg",
-    "url": "https://flagcdn.com/w320/eg.png"
+    "url": "http://flags.ox3.in/svg/eg.svg"
   },
   {
     "name": "Nigeria",
     "aliases": [],
     "code": "ng",
-    "url": "https://flagcdn.com/w320/ng.png"
+    "url": "http://flags.ox3.in/svg/ng.svg"
   },
   {
     "name": "Kenya",
     "aliases": [],
     "code": "ke",
-    "url": "https://flagcdn.com/w320/ke.png"
+    "url": "http://flags.ox3.in/svg/ke.svg"
   },
   {
     "name": "Morocco",
     "aliases": [],
     "code": "ma",
-    "url": "https://flagcdn.com/w320/ma.png"
+    "url": "http://flags.ox3.in/svg/ma.svg"
   },
   {
     "name": "Saudi Arabia",
@@ -295,7 +295,7 @@
       "KSA"
     ],
     "code": "sa",
-    "url": "https://flagcdn.com/w320/sa.png"
+    "url": "http://flags.ox3.in/svg/sa.svg"
   },
   {
     "name": "United Arab Emirates",
@@ -304,13 +304,13 @@
       "Emirates"
     ],
     "code": "ae",
-    "url": "https://flagcdn.com/w320/ae.png"
+    "url": "http://flags.ox3.in/svg/ae.svg"
   },
   {
     "name": "Israel",
     "aliases": [],
     "code": "il",
-    "url": "https://flagcdn.com/w320/il.png"
+    "url": "http://flags.ox3.in/svg/il.svg"
   },
   {
     "name": "Thailand",
@@ -318,7 +318,7 @@
       "Siam"
     ],
     "code": "th",
-    "url": "https://flagcdn.com/w320/th.png"
+    "url": "http://flags.ox3.in/svg/th.svg"
   },
   {
     "name": "Vietnam",
@@ -326,19 +326,19 @@
       "Viet Nam"
     ],
     "code": "vn",
-    "url": "https://flagcdn.com/w320/vn.png"
+    "url": "http://flags.ox3.in/svg/vn.svg"
   },
   {
     "name": "Indonesia",
     "aliases": [],
     "code": "id",
-    "url": "https://flagcdn.com/w320/id.png"
+    "url": "http://flags.ox3.in/svg/id.svg"
   },
   {
     "name": "Malaysia",
     "aliases": [],
     "code": "my",
-    "url": "https://flagcdn.com/w320/my.png"
+    "url": "http://flags.ox3.in/svg/my.svg"
   },
   {
     "name": "Philippines",
@@ -346,31 +346,31 @@
       "The Philippines"
     ],
     "code": "ph",
-    "url": "https://flagcdn.com/w320/ph.png"
+    "url": "http://flags.ox3.in/svg/ph.svg"
   },
   {
     "name": "Singapore",
     "aliases": [],
     "code": "sg",
-    "url": "https://flagcdn.com/w320/sg.png"
+    "url": "http://flags.ox3.in/svg/sg.svg"
   },
   {
     "name": "Pakistan",
     "aliases": [],
     "code": "pk",
-    "url": "https://flagcdn.com/w320/pk.png"
+    "url": "http://flags.ox3.in/svg/pk.svg"
   },
   {
     "name": "Bangladesh",
     "aliases": [],
     "code": "bd",
-    "url": "https://flagcdn.com/w320/bd.png"
+    "url": "http://flags.ox3.in/svg/bd.svg"
   },
   {
     "name": "Ukraine",
     "aliases": [],
     "code": "ua",
-    "url": "https://flagcdn.com/w320/ua.png"
+    "url": "http://flags.ox3.in/svg/ua.svg"
   },
   {
     "name": "Czech Republic",
@@ -378,55 +378,55 @@
       "Czechia"
     ],
     "code": "cz",
-    "url": "https://flagcdn.com/w320/cz.png"
+    "url": "http://flags.ox3.in/svg/cz.svg"
   },
   {
     "name": "Hungary",
     "aliases": [],
     "code": "hu",
-    "url": "https://flagcdn.com/w320/hu.png"
+    "url": "http://flags.ox3.in/svg/hu.svg"
   },
   {
     "name": "Romania",
     "aliases": [],
     "code": "ro",
-    "url": "https://flagcdn.com/w320/ro.png"
+    "url": "http://flags.ox3.in/svg/ro.svg"
   },
   {
     "name": "Croatia",
     "aliases": [],
     "code": "hr",
-    "url": "https://flagcdn.com/w320/hr.png"
+    "url": "http://flags.ox3.in/svg/hr.svg"
   },
   {
     "name": "Iceland",
     "aliases": [],
     "code": "is",
-    "url": "https://flagcdn.com/w320/is.png"
+    "url": "http://flags.ox3.in/svg/is.svg"
   },
   {
     "name": "Jamaica",
     "aliases": [],
     "code": "jm",
-    "url": "https://flagcdn.com/w320/jm.png"
+    "url": "http://flags.ox3.in/svg/jm.svg"
   },
   {
     "name": "Cuba",
     "aliases": [],
     "code": "cu",
-    "url": "https://flagcdn.com/w320/cu.png"
+    "url": "http://flags.ox3.in/svg/cu.svg"
   },
   {
     "name": "Ghana",
     "aliases": [],
     "code": "gh",
-    "url": "https://flagcdn.com/w320/gh.png"
+    "url": "http://flags.ox3.in/svg/gh.svg"
   },
   {
     "name": "Ethiopia",
     "aliases": [],
     "code": "et",
-    "url": "https://flagcdn.com/w320/et.png"
+    "url": "http://flags.ox3.in/svg/et.svg"
   },
   {
     "name": "Vatican City",
@@ -435,6 +435,6 @@
       "Holy See"
     ],
     "code": "va",
-    "url": "https://flagcdn.com/w320/va.png"
+    "url": "http://flags.ox3.in/svg/va.svg"
   }
 ]
