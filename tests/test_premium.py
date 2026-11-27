@@ -137,7 +137,8 @@ class PremiumAccessTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(command_is_exempt("premium"))
         self.assertTrue(command_is_exempt("premium status"))
         self.assertTrue(command_is_exempt("premium grant"))
-        self.assertFalse(command_is_exempt("games"))
+        self.assertTrue(command_is_exempt("games"))
+        self.assertTrue(command_is_exempt(".games"))
         self.assertFalse(command_is_exempt("ban"))
 
     def test_subscription_effective_helper(self):

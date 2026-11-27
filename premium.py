@@ -17,7 +17,7 @@ LOOKUP_MONTHLY = "bot_monthly_usd"
 LOOKUP_YEARLY = "bot_yearly_usd"
 
 # Commands that still work on a server without Premium.
-EXEMPT_ROOTS = frozenset({"help", "ping", "premium"})
+EXEMPT_ROOTS = frozenset({"help", "ping", "premium", "games"})
 
 ACTIVE_STATUSES = frozenset({"active", "trialing"})
 

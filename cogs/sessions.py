@@ -187,7 +187,22 @@ async def end_game_message(message, result_embed, view=None) -> None:
         pass
 
 
+def clean_send_kwargs(kwargs: dict) -> dict:
+    """Drop file/files/attachments=None so discord.py does not call None.to_dict()."""
+    if kwargs.get("file", ...) is None:
+        kwargs.pop("file", None)
+    if kwargs.get("files", ...) is None:
+        kwargs.pop("files", None)
+    attachments = kwargs.get("attachments", ...)
+    if attachments is None:
+        kwargs.pop("attachments", None)
+    elif attachments is not ...:
+        kwargs["attachments"] = [item for item in attachments if item is not None]
+    return kwargs
+
+
 async def send_dest(dest: discord.Interaction | Any, **kwargs) -> discord.Message | None:
+    kwargs = clean_send_kwargs(kwargs)
     if isinstance(dest, discord.Interaction):
         if dest.response.is_done():
             msg = await dest.followup.send(**kwargs)
