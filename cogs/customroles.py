@@ -373,6 +373,11 @@ async def transfer_custom_role(bot: SocializeBot, guild: discord.Guild, row, to_
         except discord.HTTPException:
             return "I couldn't give the role to that member."
         await bot.db.set_custom_role_holder(guild.id, int(row["user_id"]), to_member.id)
+        try:
+            settings = await bot.db.get_customrole_settings(guild.id)
+            await place_role(role, settings)
+        except Exception:
+            log.warning("Could not reposition custom role %s in guild %s", role.id, guild.id, exc_info=True)
     else:
         await bot.db.set_custom_role_holder(guild.id, int(row["user_id"]), int(row["user_id"]))
     return None
