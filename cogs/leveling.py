@@ -392,8 +392,8 @@ class Leveling(commands.Cog):
         if member.bot:
             await ctx.send(embed=make_embed("Can't do that", "Bots don't earn levels.", color=DANGER), ephemeral=True)
             return
-        if level < 1 or level > 1000:
-            await ctx.send(embed=make_embed("Invalid level", "Level must be between 1 and 1000.", color=DANGER), ephemeral=True)
+        if level < 0 or level > 1000:
+            await ctx.send(embed=make_embed("Invalid level", "Level must be between 0 and 1000.", color=DANGER), ephemeral=True)
             return
         target_xp = xp_for_level(level)
         old, new = await self.bot.db.set_xp(ctx.guild.id, member.id, target_xp)
