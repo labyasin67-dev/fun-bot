@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import discord
 from discord.ext import commands
 
 from premium import CREDIT
-from utils import COLOR, DANGER, SUCCESS, embed as make_embed
+from cogs.v2 import build_game_layout
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -195,32 +194,32 @@ class Help(commands.Cog):
         if command:
             cmd = self.bot.get_command(command.lower())
             if cmd is None:
-                await ctx.send(embed=make_embed("Unknown command", f"I don't have a command called `{command}`. Try `.help`.", color=DANGER), ephemeral=True)
+                await ctx.send(view=build_game_layout("Unknown command", f"I don't have a command called `{command}`. Try `.help`."))
                 return
             usage = f".{cmd.qualified_name}"
             if cmd.signature:
                 usage += f" {cmd.signature}"
             desc = cmd.help or cmd.description or "No description."
-            e = make_embed(f"Help: .{cmd.qualified_name}", f"{desc}\n\nUsage: `{usage}`", footer=CREDIT)
+            body = f"{desc}\n\nUsage: `{usage}`"
             if isinstance(cmd, commands.Group) and cmd.commands:
                 subs = "\n".join(f"• `.{c.qualified_name}` — {c.description or c.help or '—'}" for c in sorted(cmd.commands, key=lambda c: c.name))
-                e.add_field(name="Subcommands", value=subs, inline=False)
-            await ctx.send(embed=e)
+                body = f"{body}\n\n**Subcommands**\n{subs}"
+            body = f"{body}\n\n{CREDIT}"
+            await ctx.send(view=build_game_layout(f"Help: .{cmd.qualified_name}", body))
             return
 
-        e = make_embed(
-            "Help",
-            "Every command works with a `.` prefix or as a slash command, for example `.games` and `/games`.",
+        body = (
+            "Every command works with a `.` prefix or as a slash command, for example `.games` and `/games`."
         )
-        for title, body in HELP_SECTIONS:
-            e.add_field(name=title, value=body, inline=False)
-        e.set_footer(text=CREDIT)
-        await ctx.send(embed=e)
+        for title, body_text in HELP_SECTIONS:
+            body = f"{body}\n\n**{title}**\n{body_text}"
+        body = f"{body}\n\n{CREDIT}"
+        await ctx.send(view=build_game_layout("Help", body))
 
     @commands.hybrid_command(name="ping", description="Check that the bot is online.")
     async def ping(self, ctx: commands.Context) -> None:
         latency = round(self.bot.latency * 1000)
-        await ctx.send(embed=make_embed("Pong", f"Latency: **{latency}ms**."))
+        await ctx.send(view=build_game_layout("Pong", f"Latency: **{latency}ms**."))
 
     @commands.hybrid_command(name="sync", description="Resync slash commands (bot owner only).")
     @commands.is_owner()
@@ -228,8 +227,10 @@ class Help(commands.Cog):
         if ctx.interaction:
             await ctx.defer(ephemeral=True)
         synced = await self.bot.tree.sync()
-        await ctx.send(embed=make_embed("Commands synced", f"Synced **{len(synced)}** slash commands.", color=SUCCESS), ephemeral=True)
+        await ctx.send(view=build_game_layout("Commands synced", f"Synced **{len(synced)}** slash commands.", phase="win"))
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Help(bot))
+
+

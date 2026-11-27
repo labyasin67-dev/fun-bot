@@ -17,10 +17,9 @@ from premium import (
     guild_access,
     owner_ids_from_env,
     premium_needed_message,
-    premium_required,
     status_label,
 )
-from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
+from cogs.v2 import build_game_layout
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -107,12 +106,12 @@ class Premium(commands.Cog):
         err = getattr(error, "original", error)
         if isinstance(err, PremiumRequired) or isinstance(error, PremiumRequired):
             msg = str(err) or premium_needed_message()
-            embed = make_embed("Premium required", msg, color=WARNING)
+            layout = build_game_layout("Premium required", msg)
             try:
                 if interaction.response.is_done():
-                    await interaction.followup.send(embed=embed, ephemeral=True)
+                    await interaction.followup.send(view=layout, ephemeral=True)
                 else:
-                    await interaction.response.send_message(embed=embed, ephemeral=True)
+                    await interaction.response.send_message(view=layout, ephemeral=True)
             except discord.HTTPException:
                 pass
             return
@@ -125,7 +124,7 @@ class Premium(commands.Cog):
     @premium.command(name="status", description="Show this server's Fun bot Premium status.")
     async def status(self, ctx: commands.Context) -> None:
         if ctx.guild is None:
-            await ctx.send(embed=make_embed("Server only", "Check premium status in a server.", color=DANGER), ephemeral=True)
+            await ctx.send(view=build_game_layout("Server only", "Check premium status in a server.", phase="lose"), ephemeral=True)
             return
         access = await guild_access(
             self.bot.db,
@@ -141,8 +140,7 @@ class Premium(commands.Cog):
             lines.append(f"**Note:** {access.detail}")
         if not access.allowed:
             lines.append(f"\nSubscribe at {premium_needed_message().rsplit(' at ', 1)[-1]}")
-        color = SUCCESS if access.allowed else WARNING
-        await ctx.send(embed=make_embed("Fun bot Premium", "\n".join(lines), color=color), ephemeral=True)
+        await ctx.send(view=build_game_layout("Fun bot Premium", "\n".join(lines), phase="win" if access.allowed else "hint"), ephemeral=True)
 
     @premium.command(name="grant", description="(Owner) Grant Premium to a server.")
     @is_app_owner()
@@ -150,7 +148,7 @@ class Premium(commands.Cog):
         expires = None
         if days is not None:
             if days <= 0:
-                await ctx.send(embed=make_embed("Invalid duration", "Days must be a positive number, or omit it for lifetime.", color=DANGER), ephemeral=True)
+                await ctx.send(view=build_game_layout("Invalid duration", "Days must be a positive number, or omit it for lifetime."), ephemeral=True)
                 return
             expires = time.time() + days * 86400
         grant_id = await self.bot.db.add_premium_grant(
@@ -162,10 +160,9 @@ class Premium(commands.Cog):
         )
         until = format_renewal(expires)
         await ctx.send(
-            embed=make_embed(
+            view=build_game_layout(
                 "Premium granted",
                 f"Grant **#{grant_id}** on server `{guild_id}` until **{until}**.",
-                color=SUCCESS,
             ),
             ephemeral=True,
         )
@@ -175,9 +172,9 @@ class Premium(commands.Cog):
     async def revoke(self, ctx: commands.Context, guild_id: int) -> None:
         n = await self.bot.db.revoke_guild_grants(guild_id)
         if n:
-            await ctx.send(embed=make_embed("Premium revoked", f"Revoked **{n}** manual grant(s) for `{guild_id}`.", color=SUCCESS), ephemeral=True)
+            await ctx.send(view=build_game_layout("Premium revoked", f"Revoked **{n}** manual grant(s) for `{guild_id}`."), ephemeral=True)
         else:
-            await ctx.send(embed=make_embed("Nothing to revoke", f"No active manual grants for `{guild_id}`.", color=WARNING), ephemeral=True)
+            await ctx.send(view=build_game_layout("Nothing to revoke", f"No active manual grants for `{guild_id}`."), ephemeral=True)
 
     @premium.command(name="list", description="(Owner) List active subscriptions and manual grants.")
     @is_app_owner()
@@ -200,10 +197,11 @@ class Premium(commands.Cog):
                 lines.append(f"• #{g['id']} {target} until {end}{note}")
         if not lines:
             lines.append("No active subscriptions or grants.")
-        e = make_embed("Premium list", "\n".join(lines), color=COLOR)
-        e.set_footer(text=CREDIT)
-        await ctx.send(embed=e, ephemeral=True)
+        lines.append(CREDIT)
+        await ctx.send(view=build_game_layout("Premium list", "\n".join(lines)), ephemeral=True)
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Premium(bot))
+
+

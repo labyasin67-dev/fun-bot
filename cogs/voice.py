@@ -9,7 +9,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
+from cogs.v2 import build_game_layout
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -187,27 +187,25 @@ class Voice(commands.Cog):
             return None
         return "Only the channel owner can do that."
 
-    def panel_embed(self, channel: discord.VoiceChannel, owner_id: int) -> discord.Embed:
-        e = make_embed(
-            "Voice channel controls",
+    def panel_layout(self, channel: discord.VoiceChannel, owner_id: int):
+        lines = [
             f"Owner: <@{owner_id}>\n\n"
             "Use the buttons below, or:\n"
             "`.vc lock` · `.vc unlock` · `.vc limit <n>` · `.vc rename <name>`\n"
             "`.vc kick @user` · `.vc permit @user` · `.vc claim`",
-        )
-        e.add_field(name="Channel", value=channel.mention, inline=True)
-        limit = "Unlimited" if not channel.user_limit else str(channel.user_limit)
-        e.add_field(name="Limit", value=limit, inline=True)
-        return e
+            f"**Channel:** {channel.mention}",
+            f"**Limit:** {'Unlimited' if not channel.user_limit else channel.user_limit}",
+        ]
+        return build_game_layout("Voice channel controls", "\n".join(lines))
 
-    async def _reply(self, dest: commands.Context | discord.Interaction, *, embed: discord.Embed | None = None, content: str | None = None, ephemeral: bool = False) -> None:
+    async def _reply(self, dest: commands.Context | discord.Interaction, *, view=None, ephemeral: bool = False) -> None:
         if isinstance(dest, discord.Interaction):
             if dest.response.is_done():
-                await dest.followup.send(content=content, embed=embed, ephemeral=ephemeral)
+                await dest.followup.send(view=view, ephemeral=ephemeral)
             else:
-                await dest.response.send_message(content=content, embed=embed, ephemeral=ephemeral)
+                await dest.response.send_message(view=view, ephemeral=ephemeral)
         else:
-            await dest.send(content=content, embed=embed, ephemeral=ephemeral)
+            await dest.send(view=view, ephemeral=ephemeral)
 
     @commands.hybrid_command(name="setupjtc", description="Create or set a Join to Create voice channel and category.")
     @commands.guild_only()
@@ -249,14 +247,7 @@ class Voice(commands.Cog):
             jtc_channel_id=channel.id,
             jtc_category_id=category.id,
         )
-        await ctx.send(
-            embed=make_embed(
-                "Join to Create is ready",
-                f"Members who join {channel.mention} will get their own temporary voice channel in **{category.name}**.\n"
-                "Owners can use `.vc` commands or the control panel posted in the channel chat.",
-                color=SUCCESS,
-            )
-        )
+        await ctx.send(view=build_game_layout("Join to Create is ready", f"Members who join {channel.mention} will get their own temporary voice channel in **{category.name}**.\nOwners can use `.vc` commands or the control panel posted in the channel chat."))
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
@@ -339,7 +330,7 @@ class Voice(commands.Cog):
             pass
 
         try:
-            msg = await channel.send(embed=self.panel_embed(channel, member.id), view=VoiceControlView(self))
+            msg = await channel.send(view=self.panel_layout(channel, member.id))
             await self.bot.db.set_panel_message(channel.id, msg.id)
         except discord.HTTPException:
             pass
@@ -369,7 +360,7 @@ class Voice(commands.Cog):
         user = dest.user if isinstance(dest, discord.Interaction) else dest.author
         guild = dest.guild
         if not isinstance(user, discord.Member) or guild is None:
-            await self._reply(dest, embed=make_embed("Server only", "Use this in a server.", color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Server only", "Use this in a server."), ephemeral=True)
             return None, None
         channel = user.voice.channel if user.voice else None
         if isinstance(channel, discord.VoiceChannel):
@@ -383,11 +374,7 @@ class Voice(commands.Cog):
                 return user, found
         await self._reply(
             dest,
-            embed=make_embed(
-                "No temporary channel",
-                "Join the Join to Create voice channel first, then use this from your personal channel.",
-                color=DANGER,
-            ),
+            view=build_game_layout("No temporary channel", "Join the Join to Create voice channel first, then use this from your personal channel."),
             ephemeral=True,
         )
         return user, None
@@ -396,7 +383,7 @@ class Voice(commands.Cog):
         user = dest.user if isinstance(dest, discord.Interaction) else dest.author
         err = await self.owner_error(user, channel)
         if err:
-            await self._reply(dest, content=err, ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Error", err), ephemeral=True)
             return
         row = await self.bot.db.get_temp_voice(channel.id)
         owner_id = int(row["owner_id"]) if row else user.id
@@ -411,88 +398,88 @@ class Voice(commands.Cog):
         try:
             await channel.edit(overwrites=overwrites, reason="Lock temporary voice channel")
         except discord.HTTPException as e:
-            await self._reply(dest, embed=make_embed("Couldn't lock", str(e), color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Couldn't lock", str(e)), ephemeral=True)
             return
         await self.bot.db.set_temp_locked(channel.id, True)
-        await self._reply(dest, embed=make_embed("Channel locked", f"{channel.mention} is locked. Use `.vc permit @user` to let someone in.", color=SUCCESS), ephemeral=True)
+        await self._reply(dest, view=build_game_layout("Channel locked", f"{channel.mention} is locked. Use `.vc permit @user` to let someone in."), ephemeral=True)
 
     async def unlock_channel(self, dest: commands.Context | discord.Interaction, channel: discord.VoiceChannel) -> None:
         user = dest.user if isinstance(dest, discord.Interaction) else dest.author
         err = await self.owner_error(user, channel)
         if err:
-            await self._reply(dest, content=err, ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Error", err), ephemeral=True)
             return
         overwrites = channel.overwrites
         overwrites[channel.guild.default_role] = discord.PermissionOverwrite(connect=True, view_channel=True)
         try:
             await channel.edit(overwrites=overwrites, reason="Unlock temporary voice channel")
         except discord.HTTPException as e:
-            await self._reply(dest, embed=make_embed("Couldn't unlock", str(e), color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Couldn't unlock", str(e)), ephemeral=True)
             return
         await self.bot.db.set_temp_locked(channel.id, False)
-        await self._reply(dest, embed=make_embed("Channel unlocked", f"{channel.mention} is open again.", color=SUCCESS), ephemeral=True)
+        await self._reply(dest, view=build_game_layout("Channel unlocked", f"{channel.mention} is open again."), ephemeral=True)
 
     async def set_limit(self, dest: commands.Context | discord.Interaction, channel: discord.VoiceChannel, limit: int) -> None:
         user = dest.user if isinstance(dest, discord.Interaction) else dest.author
         err = await self.owner_error(user, channel)
         if err:
-            await self._reply(dest, content=err, ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Error", err), ephemeral=True)
             return
         if limit < 0 or limit > 99:
-            await self._reply(dest, embed=make_embed("Invalid limit", "Use a number from 0 to 99. 0 means unlimited.", color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Invalid limit", "Use a number from 0 to 99. 0 means unlimited."), ephemeral=True)
             return
         try:
             await channel.edit(user_limit=limit, reason="Temporary voice channel limit")
         except discord.HTTPException as e:
-            await self._reply(dest, embed=make_embed("Couldn't set the limit", str(e), color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Couldn't set the limit", str(e)), ephemeral=True)
             return
         text = "Unlimited" if limit == 0 else str(limit)
-        await self._reply(dest, embed=make_embed("Limit updated", f"{channel.mention} now has a user limit of **{text}**.", color=SUCCESS), ephemeral=True)
+        await self._reply(dest, view=build_game_layout("Limit updated", f"{channel.mention} now has a user limit of **{text}**."), ephemeral=True)
 
     async def rename_channel(self, dest: commands.Context | discord.Interaction, channel: discord.VoiceChannel, name: str) -> None:
         user = dest.user if isinstance(dest, discord.Interaction) else dest.author
         err = await self.owner_error(user, channel)
         if err:
-            await self._reply(dest, content=err, ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Error", err), ephemeral=True)
             return
         name = name.strip()[:100]
         if not name:
-            await self._reply(dest, embed=make_embed("Invalid name", "Give the channel a name.", color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Invalid name", "Give the channel a name."), ephemeral=True)
             return
         try:
             await channel.edit(name=name, reason="Temporary voice channel rename")
         except discord.HTTPException as e:
-            await self._reply(dest, embed=make_embed("Couldn't rename", str(e), color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Couldn't rename", str(e)), ephemeral=True)
             return
-        await self._reply(dest, embed=make_embed("Renamed", f"The channel is now **{name}**.", color=SUCCESS), ephemeral=True)
+        await self._reply(dest, view=build_game_layout("Renamed", f"The channel is now **{name}**."), ephemeral=True)
 
     async def kick_member(self, dest: commands.Context | discord.Interaction, channel: discord.VoiceChannel, target: discord.Member) -> None:
         user = dest.user if isinstance(dest, discord.Interaction) else dest.author
         err = await self.owner_error(user, channel)
         if err:
-            await self._reply(dest, content=err, ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Error", err), ephemeral=True)
             return
         if target.id == user.id:
-            await self._reply(dest, content="You can't kick yourself. Just leave the channel.", ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Kick", "You can't kick yourself. Just leave the channel."), ephemeral=True)
             return
         if target.voice is None or target.voice.channel is None or target.voice.channel.id != channel.id:
-            await self._reply(dest, content=f"{target.mention} isn't in this channel.", ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Kick", f"{target.mention} isn't in this channel."), ephemeral=True)
             return
         try:
             await target.move_to(None, reason=f"Kicked from temporary VC by {user}")
         except discord.Forbidden:
-            await self._reply(dest, embed=make_embed("Couldn't kick", "I need the **Move Members** permission.", color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Couldn't kick", "I need the **Move Members** permission."), ephemeral=True)
             return
         except discord.HTTPException as e:
-            await self._reply(dest, embed=make_embed("Couldn't kick", str(e), color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Couldn't kick", str(e)), ephemeral=True)
             return
-        await self._reply(dest, embed=make_embed("Member kicked", f"{target.mention} was disconnected from {channel.mention}.", color=SUCCESS), ephemeral=True)
+        await self._reply(dest, view=build_game_layout("Member kicked", f"{target.mention} was disconnected from {channel.mention}."), ephemeral=True)
 
     async def permit_member(self, dest: commands.Context | discord.Interaction, channel: discord.VoiceChannel, target: discord.Member) -> None:
         user = dest.user if isinstance(dest, discord.Interaction) else dest.author
         err = await self.owner_error(user, channel)
         if err:
-            await self._reply(dest, content=err, ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Error", err), ephemeral=True)
             return
         overwrites = channel.overwrites
         current = overwrites.get(target) or discord.PermissionOverwrite()
@@ -502,28 +489,28 @@ class Voice(commands.Cog):
         try:
             await channel.edit(overwrites=overwrites, reason=f"Permit {target} in temporary VC")
         except discord.HTTPException as e:
-            await self._reply(dest, embed=make_embed("Couldn't permit", str(e), color=DANGER), ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Couldn't permit", str(e)), ephemeral=True)
             return
-        await self._reply(dest, embed=make_embed("Member permitted", f"{target.mention} can join {channel.mention} even while it's locked.", color=SUCCESS), ephemeral=True)
+        await self._reply(dest, view=build_game_layout("Member permitted", f"{target.mention} can join {channel.mention} even while it's locked."), ephemeral=True)
 
     async def claim_channel(self, dest: commands.Context | discord.Interaction, channel: discord.VoiceChannel) -> None:
         user = dest.user if isinstance(dest, discord.Interaction) else dest.author
         if not isinstance(user, discord.Member):
-            await self._reply(dest, content="Use this in a server.", ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Claim", "Use this in a server."), ephemeral=True)
             return
         row = await self.bot.db.get_temp_voice(channel.id)
         if row is None:
-            await self._reply(dest, content="This isn't a temporary voice channel I created.", ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Claim", "This isn't a temporary voice channel I created."), ephemeral=True)
             return
         if user.id == int(row["owner_id"]):
-            await self._reply(dest, content="You already own this channel.", ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Claim", "You already own this channel."), ephemeral=True)
             return
         if user.voice is None or user.voice.channel is None or user.voice.channel.id != channel.id:
-            await self._reply(dest, content="Join the channel first, then claim it.", ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Claim", "Join the channel first, then claim it."), ephemeral=True)
             return
         owner = channel.guild.get_member(int(row["owner_id"]))
         if owner and owner.voice and owner.voice.channel and owner.voice.channel.id == channel.id:
-            await self._reply(dest, content="The owner is still in the channel.", ephemeral=True)
+            await self._reply(dest, view=build_game_layout("Claim", "The owner is still in the channel."), ephemeral=True)
             return
         # Transfer owner overwrites.
         overwrites = channel.overwrites
@@ -545,13 +532,13 @@ class Voice(commands.Cog):
         except discord.HTTPException:
             pass
         await self.bot.db.set_temp_owner(channel.id, user.id)
-        await self._reply(dest, embed=make_embed("Channel claimed", f"{user.mention} is now the owner of {channel.mention}.", color=SUCCESS), ephemeral=True)
+        await self._reply(dest, view=build_game_layout("Channel claimed", f"{user.mention} is now the owner of {channel.mention}."), ephemeral=True)
 
     @commands.hybrid_group(name="vc", description="Control your temporary voice channel.", invoke_without_command=True)
     @commands.guild_only()
     async def vc(self, ctx: commands.Context) -> None:
         await ctx.send(
-            embed=make_embed(
+            view=build_game_layout(
                 "Voice controls",
                 "These work on the temporary channel you own:\n"
                 "• `.vc lock` / `/vc lock` — only permitted members can join\n"
@@ -616,7 +603,7 @@ class Voice(commands.Cog):
     async def vc_claim(self, ctx: commands.Context) -> None:
         user = ctx.author
         if not isinstance(user, discord.Member) or user.voice is None or not isinstance(user.voice.channel, discord.VoiceChannel):
-            await ctx.send(embed=make_embed("Join first", "Join the temporary voice channel you want to claim.", color=DANGER), ephemeral=True)
+            await ctx.send(view=build_game_layout("Join first", "Join the temporary voice channel you want to claim."), ephemeral=True)
             return
         await self.claim_channel(ctx, user.voice.channel)
 
@@ -640,7 +627,7 @@ class Voice(commands.Cog):
             extra = f" + {len(bots)} bot{'s' if len(bots) != 1 else ''}" if bots else ""
             lines.append(f"• {ch.mention} — **{len(hum)}**{extra}")
         if not lines:
-            await ctx.send(embed=make_embed("Voice stats", "Nobody is in a voice channel right now."))
+            await ctx.send(view=build_game_layout("Voice stats", "Nobody is in a voice channel right now."))
             return
         description = f"**{total_humans}** member{'s' if total_humans != 1 else ''} in voice right now"
         if total_bots:
@@ -648,8 +635,10 @@ class Voice(commands.Cog):
         description += ".\n\n" + "\n".join(lines[:20])
         if len(lines) > 20:
             description += f"\n…and {len(lines) - 20} more channels."
-        await ctx.send(embed=make_embed("Voice stats", description))
+        await ctx.send(view=build_game_layout("Voice stats", description))
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Voice(bot))
+
+
