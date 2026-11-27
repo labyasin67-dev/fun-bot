@@ -1205,11 +1205,11 @@ class CustomRoles(commands.Cog):
             )
         await ctx.send(embed=make_embed("Custom role", body), allowed_mentions=NO_MENTIONS)
 
-    @role.command(name="give", description="Hand a custom role to another member.")
+    @role.command(name="give", description="Hand your custom role to another member.")
     @commands.guild_only()
     @commands.bot_has_guild_permissions(manage_roles=True)
-    @app_commands.describe(member="Who should receive the custom role.", role="The custom role to give.")
-    async def role_give(self, ctx: commands.Context, member: discord.Member, role: discord.Role) -> None:
+    @app_commands.describe(member="Who should receive your custom role.")
+    async def role_give(self, ctx: commands.Context, member: discord.Member) -> None:
         assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
         if member.bot:
             await ctx.send(embed=make_embed("Can't do that", "Bots can't hold a custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
@@ -1217,16 +1217,20 @@ class CustomRoles(commands.Cog):
         if member.id == ctx.author.id:
             await ctx.send(embed=make_embed("Can't do that", "You already have your own custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
-        row = await self.bot.db.get_custom_role_by_role_id(ctx.guild.id, role.id)
+        row = await self.bot.db.get_custom_role(ctx.guild.id, ctx.author.id)
         if row is None:
-            await ctx.send(embed=make_embed("Not a custom role", "You can only give a custom role created with `.role create`.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            await ctx.send(embed=make_embed("No custom role", "You do not have a custom role to give.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
-        owner_id = int(row["user_id"])
-        staff = ctx.author.guild_permissions.manage_roles
-        if not staff and ctx.author.id != owner_id:
-            await ctx.send(embed=make_embed("Not yours", "You can only give your own custom role. Staff with Manage Roles can give any custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+        role_id = int(row["role_id"])
+        role = ctx.guild.get_role(role_id)
+        if role is None:
+            await ctx.send(embed=make_embed("Role missing", "Your custom role no longer exists.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        if holder_id_of(row) == member.id:
+            await ctx.send(embed=make_embed("Already given", f"{role.mention} was already given to {member.mention}.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         settings = await self.bot.db.get_customrole_settings(ctx.guild.id)
+        staff = ctx.author.guild_permissions.manage_roles
         if not staff and not int(settings["give_enabled"] if "give_enabled" in settings.keys() else 1):
             await ctx.send(embed=make_embed("Giving is off", "Staff have turned off `.role give` in this server.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
@@ -1238,9 +1242,6 @@ class CustomRoles(commands.Cog):
             return
         if not staff and await self.bot.db.is_custom_role_give_blocked(ctx.guild.id, ctx.author.id):
             await ctx.send(embed=make_embed("Blocked", "You're blocked from using `.role give`.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
-            return
-        if holder_id_of(row) == member.id:
-            await ctx.send(embed=make_embed("Already holding it", f"{member.mention} already holds that role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         linked = await find_linked_user_ids(self.bot, ctx.guild, member)
         for uid in linked:
@@ -1254,7 +1255,7 @@ class CustomRoles(commands.Cog):
         if err:
             await ctx.send(embed=make_embed("Couldn't give the role", err, color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
-        await ctx.send(embed=make_embed("Custom role given", f"{role.mention} is now held by {member.mention}. The owner can take it back with `.role take`.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
+        await ctx.send(embed=make_embed("Custom role given", f"{role.mention} has been given to {member.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
 
     @role.command(name="take", description="Take a custom role back from a member.")
     @commands.guild_only()
