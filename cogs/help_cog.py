@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import discord
 from discord.ext import commands
 
 from premium import CREDIT
-from cogs.v2 import build_game_layout
+from utils import COLOR, DANGER, SUCCESS, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -35,7 +36,7 @@ HELP_SECTIONS = [
         "Moderation",
         "• `.ban @user [reason]` / `.unban <user_id>`\n"
         "• `.kick @user [reason]`\n"
-        "• `.mute @user 10m|1h|1d [reason]` / `.unmute @user` — `.timeout` and `.untimeout` still work\n"
+        "• `.timeout @user 10m|1h|1d [reason]` / `.untimeout @user`\n"
         "• `.warn @user [reason]` / `.warnings @user` / `.clearwarns @user`\n"
         "• `.purge N` — delete recent messages\n"
         "• `.slowmode <seconds>` — 0 turns it off\n"
@@ -61,10 +62,9 @@ HELP_SECTIONS = [
         "• `.leaderboard` / `/leaderboard`\n"
         "• `.voicetime [@user]` / `/voicetime`\n"
         "• `.voiceleaderboard` / `/voiceleaderboard`\n"
-        "• `.levelup off` / `.levelup #channel` — nothing posted, or post in a channel without pings\n"
-        "• `.setlevelchannel #channel` — same as `.levelup #channel`; omit to turn announcements off\n"
-        "• `.addxp @user amount` / `.removexp @user amount` — adjust XP (manage server)\n"
-        "• `.levelrole add/remove/list` — auto roles at a level (manage roles)",
+"• `.setlevelchannel #channel` — where to announce level-ups (manage server)\n"
+"• `.levelrole add/remove/list` — auto roles at a level (manage roles)\n"
+"• `.addxp @member <amount>`, `.removexp`, `.setxp` — staff XP (manage server)"
     ),
     (
         "Voice",
@@ -80,11 +80,8 @@ HELP_SECTIONS = [
         "• `.role create` — open a form for the name and colours\n"
         "• `.role name <new>` / `.role colour <hex>` / `.role gradient #hex1 #hex2` / `.role delete` / `.role info`\n"
         "• `.role toggle on|off` / `.role minlevel <n>` / `.role list` — (manage roles)\n"
-        "• `.role give @user @role` — hand your custom role to another member, even if they already own one; staff can give any custom role\n"
-        "• `.role take @user` — take your custom role back\n"
         "• `.role restrict @user [reason]` / `.role unrestrict @user`\n"
-        "• `.role remove` — delete your own custom role (and take it off anyone you gave it to)\n"
-        "• `.role remove @user` — (manage roles) take away their custom role; add `@role` for a normal role\n"
+        "• `.role remove @user` — take away their custom role; add `@role` to remove a normal role\n"
         "• `.role add @user @role` — (manage roles)\n"
         "• `.selfrole add/remove/list/panel` — button panel so members can pick roles\n"
         "• `.setwelcome #channel [message]` — greet new members\n"
@@ -194,32 +191,32 @@ class Help(commands.Cog):
         if command:
             cmd = self.bot.get_command(command.lower())
             if cmd is None:
-                await ctx.send(view=build_game_layout("Unknown command", f"I don't have a command called `{command}`. Try `.help`."))
+                await ctx.send(embed=make_embed("Unknown command", f"I don't have a command called `{command}`. Try `.help`.", color=DANGER), ephemeral=True)
                 return
             usage = f".{cmd.qualified_name}"
             if cmd.signature:
                 usage += f" {cmd.signature}"
             desc = cmd.help or cmd.description or "No description."
-            body = f"{desc}\n\nUsage: `{usage}`"
+            e = make_embed(f"Help: .{cmd.qualified_name}", f"{desc}\n\nUsage: `{usage}`", footer=CREDIT)
             if isinstance(cmd, commands.Group) and cmd.commands:
                 subs = "\n".join(f"• `.{c.qualified_name}` — {c.description or c.help or '—'}" for c in sorted(cmd.commands, key=lambda c: c.name))
-                body = f"{body}\n\n**Subcommands**\n{subs}"
-            body = f"{body}\n\n{CREDIT}"
-            await ctx.send(view=build_game_layout(f"Help: .{cmd.qualified_name}", body))
+                e.add_field(name="Subcommands", value=subs, inline=False)
+            await ctx.send(embed=e)
             return
 
-        body = (
-            "Every command works with a `.` prefix or as a slash command, for example `.games` and `/games`."
+        e = make_embed(
+            "Help",
+            "Every command works with a `.` prefix or as a slash command, for example `.games` and `/games`.",
         )
-        for title, body_text in HELP_SECTIONS:
-            body = f"{body}\n\n**{title}**\n{body_text}"
-        body = f"{body}\n\n{CREDIT}"
-        await ctx.send(view=build_game_layout("Help", body))
+        for title, body in HELP_SECTIONS:
+            e.add_field(name=title, value=body, inline=False)
+        e.set_footer(text=CREDIT)
+        await ctx.send(embed=e)
 
     @commands.hybrid_command(name="ping", description="Check that the bot is online.")
     async def ping(self, ctx: commands.Context) -> None:
         latency = round(self.bot.latency * 1000)
-        await ctx.send(view=build_game_layout("Pong", f"Latency: **{latency}ms**."))
+        await ctx.send(embed=make_embed("Pong", f"Latency: **{latency}ms**."))
 
     @commands.hybrid_command(name="sync", description="Resync slash commands (bot owner only).")
     @commands.is_owner()
@@ -227,10 +224,8 @@ class Help(commands.Cog):
         if ctx.interaction:
             await ctx.defer(ephemeral=True)
         synced = await self.bot.tree.sync()
-        await ctx.send(view=build_game_layout("Commands synced", f"Synced **{len(synced)}** slash commands.", phase="win"))
+        await ctx.send(embed=make_embed("Commands synced", f"Synced **{len(synced)}** slash commands.", color=SUCCESS), ephemeral=True)
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Help(bot))
-
-

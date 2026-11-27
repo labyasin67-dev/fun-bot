@@ -1,19 +1,17 @@
-"""Moderation commands: ban, kick, mute, warns, purge, slowmode, lock."""
+"""Moderation commands: ban, kick, timeout, warns, purge, slowmode, lock."""
 
 from __future__ import annotations
 
-import asyncio
 import re
-import time
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from cogs.channels import post_modlog
-from utils import COLOR, DANGER, NO_MENTIONS, SAFE_MENTIONS, SUCCESS, WARNING, embed as make_embed
+from utils import COLOR, DANGER, SUCCESS, WARNING, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -21,14 +19,6 @@ if TYPE_CHECKING:
 DURATION_RE = re.compile(r"^(\d+)\s*([smhd])$", re.IGNORECASE)
 UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 MAX_TIMEOUT = 28 * 24 * 3600
-
-DEFAULT_BAN_DM = "You were banned from {server}.\nReason: {reason}"
-DEFAULT_BAN_ANNOUNCE = "{user} was banned from {server}.\nReason: {reason}"
-BAN_PLACEHOLDERS = "{user} {username} {server} {reason} {moderator}"
-
-
-class ModerationActionError(Exception):
-    """A user-facing reason a staff action could not be completed."""
 
 
 def parse_duration(text: str) -> timedelta | None:
@@ -68,253 +58,19 @@ def hierarchy_error(actor: discord.Member, target: discord.Member, bot_member: d
     return None
 
 
-def render_ban_message(
-    template: str | None,
-    *,
-    user: discord.abc.User,
-    guild: discord.Guild,
-    reason: str,
-    moderator: discord.abc.User | None,
-    default: str = DEFAULT_BAN_DM,
-) -> str:
-    username = getattr(user, "name", None) or str(user)
-    mention = getattr(user, "mention", f"<@{user.id}>")
-    if moderator is None:
-        mod_name = "Unknown"
-    else:
-        mod_name = getattr(moderator, "mention", None) or str(moderator)
-    return (
-        (template or default)
-        .replace("{user}", mention)
-        .replace("{username}", username)
-        .replace("{server}", guild.name)
-        .replace("{reason}", reason or "No reason provided.")
-        .replace("{moderator}", mod_name)
-    )
-
-
 async def try_dm(user: discord.abc.User, embed: discord.Embed) -> bool:
     try:
-        await user.send(embed=embed, allowed_mentions=SAFE_MENTIONS)
+        await user.send(embed=embed)
         return True
     except discord.HTTPException:
         return False
 
 
-async def send_ban_dm(
-    member: discord.abc.User,
-    guild: discord.Guild,
-    reason: str,
-    moderator: discord.abc.User | None,
-    settings: Any,
-) -> bool:
-    why = reason or "No reason provided."
-    enabled = bool(settings and int(settings["ban_dm_enabled"] or 0))
-    if enabled:
-        text = render_ban_message(
-            settings["ban_dm_message"] if settings else None,
-            user=member,
-            guild=guild,
-            reason=why,
-            moderator=moderator,
-            default=DEFAULT_BAN_DM,
-        )
-        return await try_dm(member, make_embed("You were banned", text, color=DANGER))
-    return await try_dm(
-        member,
-        make_embed("You were banned", f"You were banned from **{guild.name}**.\nReason: {why}", color=DANGER),
-    )
-
-
-def _require_bot_member(guild: discord.Guild) -> discord.Member:
-    if guild.me is None:
-        raise ModerationActionError("I'm still starting up in this server. Try again in a moment.")
-    return guild.me
-
-
-def _require_hierarchy(actor: discord.Member, target: discord.Member, guild: discord.Guild) -> None:
-    err = hierarchy_error(actor, target, _require_bot_member(guild))
-    if err:
-        raise ModerationActionError(err)
-
-
-async def perform_ban(
-    bot: Any,
-    guild: discord.Guild,
-    actor: discord.Member,
-    member: discord.Member,
-    reason: str | None,
-    *,
-    recent_bot_bans: dict[tuple[int, int], float] | None = None,
-) -> tuple[bool, str]:
-    _require_hierarchy(actor, member, guild)
-    if not guild.me.guild_permissions.ban_members:
-        raise ModerationActionError("I need the Ban Members permission.")
-    why = reason or "No reason provided."
-    settings = await bot.db.get_settings(guild.id)
-    dm_ok = await send_ban_dm(member, guild, why, actor, settings)
-    if recent_bot_bans is not None:
-        recent_bot_bans[(guild.id, member.id)] = time.time()
-    try:
-        await member.ban(reason=f"{actor} : {why}", delete_message_seconds=0)
-    except discord.Forbidden:
-        if recent_bot_bans is not None:
-            recent_bot_bans.pop((guild.id, member.id), None)
-        raise ModerationActionError("I don't have permission to ban that member.")
-    except discord.HTTPException:
-        if recent_bot_bans is not None:
-            recent_bot_bans.pop((guild.id, member.id), None)
-        raise ModerationActionError("Discord rejected the ban. Try again in a moment.")
-    await post_modlog(
-        bot,
-        guild,
-        "Member banned",
-        f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {actor.mention}\n**Reason:** {why}",
-        color=DANGER,
-        user_id=member.id,
-        moderator_id=actor.id,
-    )
-    extra = "" if dm_ok else " I couldn't DM them."
-    return dm_ok, f"**{member}** was banned. Reason: {why}.{extra}"
-
-
-async def perform_unban(bot: Any, guild: discord.Guild, actor: discord.Member, user_id: int) -> str:
-    if not _require_bot_member(guild).guild_permissions.ban_members:
-        raise ModerationActionError("I need the Ban Members permission.")
-    try:
-        await guild.unban(discord.Object(id=user_id), reason=f"Unbanned by {actor}")
-    except discord.NotFound:
-        raise ModerationActionError("I couldn't find a ban for that user ID.")
-    except discord.Forbidden:
-        raise ModerationActionError("I don't have permission to unban that user.")
-    except discord.HTTPException:
-        raise ModerationActionError("Discord rejected the unban. Try again in a moment.")
-    await post_modlog(
-        bot,
-        guild,
-        "Member unbanned",
-        f"**User:** <@{user_id}> (`{user_id}`)\n**Staff:** {actor.mention}",
-        color=SUCCESS,
-        user_id=user_id,
-        moderator_id=actor.id,
-    )
-    return f"<@{user_id}> (`{user_id}`) can join again."
-
-
-async def perform_kick(
-    bot: Any,
-    guild: discord.Guild,
-    actor: discord.Member,
-    member: discord.Member,
-    reason: str | None,
-) -> str:
-    _require_hierarchy(actor, member, guild)
-    if not guild.me.guild_permissions.kick_members:
-        raise ModerationActionError("I need the Kick Members permission.")
-    why = reason or "No reason provided."
-    dm_ok = await try_dm(
-        member,
-        make_embed("You were kicked", f"You were kicked from **{guild.name}**.\nReason: {why}", color=DANGER),
-    )
-    try:
-        await member.kick(reason=f"{actor} : {why}")
-    except discord.Forbidden:
-        raise ModerationActionError("I don't have permission to kick that member.")
-    except discord.HTTPException:
-        raise ModerationActionError("Discord rejected the kick. Try again in a moment.")
-    created = member.created_at.timestamp() if member.created_at else None
-    await bot.db.add_alt_mod_action(guild.id, member.id, "kick", created)
-    await post_modlog(
-        bot,
-        guild,
-        "Member kicked",
-        f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {actor.mention}\n**Reason:** {why}",
-        color=DANGER,
-        user_id=member.id,
-        moderator_id=actor.id,
-    )
-    extra = "" if dm_ok else " I couldn't DM them."
-    return f"**{member}** was kicked. Reason: {why}.{extra}"
-
-
-async def perform_timeout(
-    bot: Any,
-    guild: discord.Guild,
-    actor: discord.Member,
-    member: discord.Member,
-    duration: str,
-    reason: str | None,
-) -> str:
-    _require_hierarchy(actor, member, guild)
-    if not guild.me.guild_permissions.moderate_members:
-        raise ModerationActionError("I need the Timeout Members permission.")
-    delta = parse_duration(duration)
-    if delta is None:
-        raise ModerationActionError("Use a number followed by s, m, h or d — for example `10m`, `1h`, `1d`. Max 28 days.")
-    why = reason or "No reason provided."
-    dm_ok = await try_dm(
-        member,
-        make_embed(
-            "You were muted",
-            f"You were muted in **{guild.name}** for **{format_delta(delta)}**.\nReason: {why}",
-            color=WARNING,
-        ),
-    )
-    try:
-        await member.timeout(delta, reason=f"{actor} : {why}")
-    except discord.Forbidden:
-        raise ModerationActionError("I don't have permission to mute that member.")
-    except discord.HTTPException:
-        raise ModerationActionError("Discord rejected the mute. Try again in a moment.")
-    await post_modlog(
-        bot,
-        guild,
-        "Member muted",
-        f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {actor.mention}\n**Duration:** {format_delta(delta)}\n**Reason:** {why}",
-        color=WARNING,
-        user_id=member.id,
-        moderator_id=actor.id,
-    )
-    extra = "" if dm_ok else " I couldn't DM them."
-    return f"**{member}** is muted for **{format_delta(delta)}**. Reason: {why}.{extra}"
-
-
-async def perform_warn(
-    bot: Any,
-    guild: discord.Guild,
-    actor: discord.Member,
-    member: discord.Member,
-    reason: str | None,
-) -> str:
-    _require_hierarchy(actor, member, guild)
-    why = reason or "No reason provided."
-    count_before = len(await bot.db.get_warnings(guild.id, member.id))
-    await bot.db.add_warning(guild.id, member.id, actor.id, why)
-    total = count_before + 1
-    await try_dm(member, make_embed("You were warned", f"You were warned in **{guild.name}**.\nReason: {why}", color=WARNING))
-    await post_modlog(
-        bot,
-        guild,
-        "Member warned",
-        f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {actor.mention}\n**Reason:** {why}\n**Warnings:** {total}",
-        color=WARNING,
-        user_id=member.id,
-        moderator_id=actor.id,
-    )
-    return f"**{member}** was warned. Reason: {why}\nThey now have **{total}** warning{'s' if total != 1 else ''}."
-
-
-async def perform_clearwarns(bot: Any, guild: discord.Guild, member_label: str, user_id: int) -> str:
-    removed = await bot.db.clear_warnings(guild.id, user_id)
-    return f"Removed **{removed}** warning{'s' if removed != 1 else ''} from **{member_label}**."
-
-
 class Moderation(commands.Cog):
-    """Staff tools for bans, kicks, mutes, warns and channel cleanup."""
+    """Staff tools for bans, kicks, timeouts, warns and channel cleanup."""
 
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
-        self._recent_bot_bans: dict[tuple[int, int], float] = {}
 
     async def _target_check(self, ctx: commands.Context, member: discord.Member) -> bool:
         assert ctx.guild and ctx.guild.me and isinstance(ctx.author, discord.Member)
@@ -324,61 +80,6 @@ class Moderation(commands.Cog):
             return False
         return True
 
-    async def _ban_audit(
-        self, guild: discord.Guild, user: discord.abc.User
-    ) -> tuple[discord.abc.User | None, str | None]:
-        await asyncio.sleep(0.8)
-        try:
-            async for entry in guild.audit_logs(limit=6, action=discord.AuditLogAction.ban):
-                if entry.target and getattr(entry.target, "id", None) == user.id:
-                    return entry.user, entry.reason
-        except discord.HTTPException:
-            pass
-        return None, None
-
-    @commands.Cog.listener()
-    async def on_member_ban(self, guild: discord.Guild, user: discord.User) -> None:
-        key = (guild.id, user.id)
-        stamped = self._recent_bot_bans.pop(key, 0.0)
-        bot_initiated = (time.time() - stamped) < 30
-        moderator, reason = await self._ban_audit(guild, user)
-        why = reason or "No reason provided."
-        if not bot_initiated:
-            staff = moderator.mention if moderator else "Unknown"
-            await post_modlog(
-                self.bot,
-                guild,
-                "Member banned",
-                f"**User:** {user.mention} (`{user.id}`)\n**Staff:** {staff}\n**Reason:** {why}",
-                color=DANGER,
-                user_id=user.id,
-                moderator_id=getattr(moderator, "id", None),
-            )
-        settings = await self.bot.db.get_settings(guild.id)
-        if not settings or not int(settings["ban_announce_enabled"] or 0):
-            return
-        channel_id = settings["ban_announce_channel_id"]
-        if not channel_id:
-            return
-        channel = guild.get_channel(int(channel_id))
-        if not isinstance(channel, discord.TextChannel):
-            return
-        text = render_ban_message(
-            settings["ban_announce_message"],
-            user=user,
-            guild=guild,
-            reason=why,
-            moderator=moderator,
-            default=DEFAULT_BAN_ANNOUNCE,
-        )
-        try:
-            await channel.send(
-                embed=make_embed("Member banned", text, color=DANGER),
-                allowed_mentions=NO_MENTIONS,
-            )
-        except discord.HTTPException:
-            pass
-
     @commands.hybrid_command(name="ban", description="Ban a member from the server.")
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
@@ -387,15 +88,16 @@ class Moderation(commands.Cog):
     async def ban(self, ctx: commands.Context, member: discord.Member, *, reason: str | None = None) -> None:
         if not await self._target_check(ctx, member):
             return
-        assert ctx.guild and isinstance(ctx.author, discord.Member)
-        try:
-            _dm_ok, summary = await perform_ban(
-                self.bot, ctx.guild, ctx.author, member, reason, recent_bot_bans=self._recent_bot_bans
-            )
-        except ModerationActionError as err:
-            await ctx.send(embed=make_embed("Can't do that", str(err), color=DANGER), ephemeral=True)
-            return
-        await ctx.send(embed=make_embed("Member banned", summary, color=SUCCESS))
+        why = reason or "No reason provided."
+        assert ctx.guild
+        await member.ban(reason=f"{ctx.author} : {why}", delete_message_seconds=0)
+        dm_ok = await try_dm(
+            member,
+            make_embed("You were banned", f"You were banned from **{ctx.guild.name}**.\nReason: {why}", color=DANGER),
+        )
+        extra = "" if dm_ok else " I couldn't DM them."
+        await ctx.send(embed=make_embed("Member banned", f"**{member}** was banned. Reason: {why}.{extra}", color=SUCCESS))
+        await post_modlog(self.bot, ctx.guild, "Member banned", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}", color=DANGER)
 
     @commands.hybrid_command(name="unban", description="Unban a user by their Discord ID.")
     @commands.guild_only()
@@ -403,16 +105,17 @@ class Moderation(commands.Cog):
     @commands.bot_has_permissions(ban_members=True)
     @app_commands.describe(user_id="The numeric Discord ID of the banned user.")
     async def unban(self, ctx: commands.Context, user_id: str) -> None:
-        assert ctx.guild and isinstance(ctx.author, discord.Member)
+        assert ctx.guild
         if not user_id.isdigit():
             await ctx.send(embed=make_embed("Invalid ID", "Give a numeric Discord user ID.", color=DANGER), ephemeral=True)
             return
+        uid = int(user_id)
         try:
-            summary = await perform_unban(self.bot, ctx.guild, ctx.author, int(user_id))
-        except ModerationActionError as err:
-            await ctx.send(embed=make_embed("Can't do that", str(err), color=DANGER), ephemeral=True)
+            await ctx.guild.unban(discord.Object(id=uid), reason=f"Unbanned by {ctx.author}")
+        except discord.NotFound:
+            await ctx.send(embed=make_embed("Not banned", "I couldn't find a ban for that user ID.", color=DANGER), ephemeral=True)
             return
-        await ctx.send(embed=make_embed("User unbanned", summary, color=SUCCESS))
+        await ctx.send(embed=make_embed("User unbanned", f"<@{uid}> (`{uid}`) can join again.", color=SUCCESS))
 
     @commands.hybrid_command(name="kick", description="Kick a member from the server.")
     @commands.guild_only()
@@ -422,40 +125,56 @@ class Moderation(commands.Cog):
     async def kick(self, ctx: commands.Context, member: discord.Member, *, reason: str | None = None) -> None:
         if not await self._target_check(ctx, member):
             return
-        assert ctx.guild and isinstance(ctx.author, discord.Member)
-        try:
-            summary = await perform_kick(self.bot, ctx.guild, ctx.author, member, reason)
-        except ModerationActionError as err:
-            await ctx.send(embed=make_embed("Can't do that", str(err), color=DANGER), ephemeral=True)
-            return
-        await ctx.send(embed=make_embed("Member kicked", summary, color=SUCCESS))
+        why = reason or "No reason provided."
+        assert ctx.guild
+        await member.kick(reason=f"{ctx.author} : {why}")
+        created = member.created_at.timestamp() if member.created_at else None
+        await self.bot.db.add_alt_mod_action(ctx.guild.id, member.id, "kick", created)
+        dm_ok = await try_dm(
+            member,
+            make_embed("You were kicked", f"You were kicked from **{ctx.guild.name}**.\nReason: {why}", color=DANGER),
+        )
+        extra = "" if dm_ok else " I couldn't DM them."
+        await ctx.send(embed=make_embed("Member kicked", f"**{member}** was kicked. Reason: {why}.{extra}", color=SUCCESS))
+        await post_modlog(self.bot, ctx.guild, "Member kicked", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}", color=DANGER)
 
-    @commands.hybrid_command(name="mute", aliases=["timeout"], description="Mute a member. Duration examples: 10m, 1h, 1d.")
+    @commands.hybrid_command(name="timeout", description="Timeout a member. Duration examples: 10m, 1h, 1d.")
     @commands.guild_only()
     @commands.has_permissions(moderate_members=True)
     @commands.bot_has_permissions(moderate_members=True)
-    @app_commands.describe(member="The member to mute.", duration="How long, for example 10m, 1h or 1d.", reason="Optional reason.")
-    async def mute(self, ctx: commands.Context, member: discord.Member, duration: str, *, reason: str | None = None) -> None:
+    @app_commands.describe(member="The member to timeout.", duration="How long, for example 10m, 1h or 1d.", reason="Optional reason.")
+    async def timeout(self, ctx: commands.Context, member: discord.Member, duration: str, *, reason: str | None = None) -> None:
         if not await self._target_check(ctx, member):
             return
-        assert ctx.guild and isinstance(ctx.author, discord.Member)
-        try:
-            summary = await perform_timeout(self.bot, ctx.guild, ctx.author, member, duration, reason)
-        except ModerationActionError as err:
-            await ctx.send(embed=make_embed("Can't do that", str(err), color=DANGER), ephemeral=True)
+        delta = parse_duration(duration)
+        if delta is None:
+            await ctx.send(embed=make_embed("Invalid duration", "Use a number followed by s, m, h or d — for example `10m`, `1h`, `1d`. Max 28 days.", color=DANGER), ephemeral=True)
             return
-        await ctx.send(embed=make_embed("Member muted", summary, color=SUCCESS))
+        why = reason or "No reason provided."
+        assert ctx.guild
+        await member.timeout(delta, reason=f"{ctx.author} : {why}")
+        dm_ok = await try_dm(
+            member,
+            make_embed(
+                "You were timed out",
+                f"You were timed out in **{ctx.guild.name}** for **{format_delta(delta)}**.\nReason: {why}",
+                color=WARNING,
+            ),
+        )
+        extra = "" if dm_ok else " I couldn't DM them."
+        await ctx.send(embed=make_embed("Member timed out", f"**{member}** is timed out for **{format_delta(delta)}**. Reason: {why}.{extra}", color=SUCCESS))
+        await post_modlog(self.bot, ctx.guild, "Member timed out", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Duration:** {format_delta(delta)}\n**Reason:** {why}", color=WARNING)
 
-    @commands.hybrid_command(name="unmute", aliases=["untimeout"], description="Unmute a member.")
+    @commands.hybrid_command(name="untimeout", description="Remove a timeout from a member.")
     @commands.guild_only()
     @commands.has_permissions(moderate_members=True)
     @commands.bot_has_permissions(moderate_members=True)
-    @app_commands.describe(member="The member to unmute.")
-    async def unmute(self, ctx: commands.Context, member: discord.Member) -> None:
+    @app_commands.describe(member="The member to remove the timeout from.")
+    async def untimeout(self, ctx: commands.Context, member: discord.Member) -> None:
         if not await self._target_check(ctx, member):
             return
-        await member.timeout(None, reason=f"Mute removed by {ctx.author}")
-        await ctx.send(embed=make_embed("Mute removed", f"**{member}** can speak again.", color=SUCCESS))
+        await member.timeout(None, reason=f"Timeout removed by {ctx.author}")
+        await ctx.send(embed=make_embed("Timeout removed", f"**{member}** can speak again.", color=SUCCESS))
 
     @commands.hybrid_command(name="warn", description="Warn a member and log the reason.")
     @commands.guild_only()
@@ -464,13 +183,14 @@ class Moderation(commands.Cog):
     async def warn(self, ctx: commands.Context, member: discord.Member, *, reason: str | None = None) -> None:
         if not await self._target_check(ctx, member):
             return
-        assert ctx.guild and isinstance(ctx.author, discord.Member)
-        try:
-            summary = await perform_warn(self.bot, ctx.guild, ctx.author, member, reason)
-        except ModerationActionError as err:
-            await ctx.send(embed=make_embed("Can't do that", str(err), color=DANGER), ephemeral=True)
-            return
-        await ctx.send(embed=make_embed("Member warned", summary, color=SUCCESS))
+        why = reason or "No reason provided."
+        assert ctx.guild
+        count_before = len(await self.bot.db.get_warnings(ctx.guild.id, member.id))
+        await self.bot.db.add_warning(ctx.guild.id, member.id, ctx.author.id, why)
+        total = count_before + 1
+        await try_dm(member, make_embed("You were warned", f"You were warned in **{ctx.guild.name}**.\nReason: {why}", color=WARNING))
+        await ctx.send(embed=make_embed("Member warned", f"**{member}** was warned. Reason: {why}\nThey now have **{total}** warning{'s' if total != 1 else ''}.", color=SUCCESS))
+        await post_modlog(self.bot, ctx.guild, "Member warned", f"**User:** {member.mention} (`{member.id}`)\n**Staff:** {ctx.author.mention}\n**Reason:** {why}\n**Warnings:** {total}", color=WARNING)
 
     @commands.hybrid_command(name="warnings", description="List a member's warnings.")
     @commands.guild_only()
@@ -494,8 +214,8 @@ class Moderation(commands.Cog):
     @app_commands.describe(member="The member whose warnings should be cleared.")
     async def clearwarns(self, ctx: commands.Context, member: discord.Member) -> None:
         assert ctx.guild
-        summary = await perform_clearwarns(self.bot, ctx.guild, str(member), member.id)
-        await ctx.send(embed=make_embed("Warnings cleared", summary, color=SUCCESS))
+        removed = await self.bot.db.clear_warnings(ctx.guild.id, member.id)
+        await ctx.send(embed=make_embed("Warnings cleared", f"Removed **{removed}** warning{'s' if removed != 1 else ''} from **{member}**.", color=SUCCESS))
 
     @commands.hybrid_command(name="purge", description="Delete a number of recent messages in this channel.")
     @commands.guild_only()
@@ -515,15 +235,7 @@ class Moderation(commands.Cog):
         # For prefix commands, the invoke message is included in the purge window; that's intended.
         count = len(deleted)
         await ctx.send(embed=make_embed("Messages deleted", f"Deleted **{count}** message{'s' if count != 1 else ''}.", color=SUCCESS), ephemeral=True, delete_after=5)
-        assert ctx.guild
-        await post_modlog(
-            self.bot,
-            ctx.guild,
-            "Messages purged",
-            f"**Channel:** {ctx.channel.mention}\n**Staff:** {ctx.author.mention}\n**Deleted:** {count}",
-            color=WARNING,
-            moderator_id=ctx.author.id,
-        )
+        await post_modlog(self.bot, ctx.guild, "Messages purged", f"**Channel:** {ctx.channel.mention}\n**Staff:** {ctx.author.mention}\n**Deleted:** {count}", color=WARNING)
 
     @commands.hybrid_command(name="slowmode", description="Set slowmode in this channel, in seconds. 0 turns it off.")
     @commands.guild_only()
@@ -557,10 +269,7 @@ class Moderation(commands.Cog):
         overwrite = target.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = False
         await target.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Locked by {ctx.author}")
-        await ctx.send(
-            embed=make_embed("Channel locked", f"{target.mention} is locked. @everyone can no longer send messages.", color=SUCCESS),
-            allowed_mentions=SAFE_MENTIONS,
-        )
+        await ctx.send(embed=make_embed("Channel locked", f"{target.mention} is locked. @everyone can no longer send messages.", color=SUCCESS))
 
     @commands.hybrid_command(name="unlock", description="Unlock a channel so @everyone can send messages again.")
     @commands.guild_only()
@@ -576,7 +285,7 @@ class Moderation(commands.Cog):
         overwrite = target.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = None
         await target.set_permissions(ctx.guild.default_role, overwrite=overwrite, reason=f"Unlocked by {ctx.author}")
-        await ctx.send(embed=make_embed("Channel unlocked", f"{target.mention} is unlocked.", color=SUCCESS), allowed_mentions=SAFE_MENTIONS)
+        await ctx.send(embed=make_embed("Channel unlocked", f"{target.mention} is unlocked.", color=SUCCESS))
 
 
 async def setup(bot: SocializeBot) -> None:

@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 
 import discord
 
+from cogs.game_ui import clear_countdown
+
 if TYPE_CHECKING:
     from main import SocializeBot
 
@@ -83,23 +85,6 @@ class ChannelGame:
         if getattr(self, "_cleaned", False):
             return
         self._cleaned = True
-        for msg in (getattr(self, "message", None), getattr(self, "menu_message", None)):
-            if msg is None:
-                continue
-            try:
-                await msg.delete()
-            except discord.NotFound:
-                pass
-            except discord.HTTPException:
-                pass
-        self.message = None
-        self.menu_message = None
-        text = result
-        if text:
-            try:
-                await self.channel.send(text, delete_after=15)
-            except discord.HTTPException:
-                pass
 
 
 class GameManager:
@@ -173,8 +158,33 @@ async def refuse_if_busy(ctx: discord.Interaction | Any, bot: SocializeBot) -> b
     return True
 
 
+
 def dest_user(dest: discord.Interaction | Any) -> discord.abc.User:
     return dest.user if isinstance(dest, discord.Interaction) else dest.author
+
+
+async def end_game_message(message, result_embed, view=None) -> None:
+    """Keep the original game embed, disable its controls, and post the result separately."""
+    if view is not None:
+        for child in getattr(view, "children", []):
+            try:
+                child.disabled = True
+            except Exception:
+                pass
+        try:
+            if message.embeds:
+                original = message.embeds[0]
+                clear_countdown(original)
+                await message.edit(embed=original, view=view)
+        except Exception:
+            pass
+    try:
+        image_url = getattr(result_embed.image, "url", None)
+        if image_url and (image_url.startswith("attachment://") or "cdn.discordapp.com" in image_url):
+            result_embed.set_image(url=None)
+        await message.channel.send(embed=result_embed)
+    except Exception:
+        pass
 
 
 async def send_dest(dest: discord.Interaction | Any, **kwargs) -> discord.Message | None:

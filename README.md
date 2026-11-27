@@ -57,7 +57,7 @@ Slash commands can take a minute to appear the first time the bot starts. If the
 | Counting channel | `.setcounting #counting` |
 | Self-role panel | `.selfrole add @Role` then `.selfrole panel` |
 | Welcome messages | `.setwelcome #welcome Welcome to {server}, {mention}!` |
-| Level-up channel | `.levelup #levels` or `.setlevelchannel #levels` (omit or `.levelup off` to post nothing) |
+| Level-up channel | `.setlevelchannel #levels` |
 | Level roles | `.levelrole add 5 @Regular` |
 | Join to Create | `.setupjtc` |
 | Voice stats | `.vcstats` |
@@ -70,7 +70,7 @@ Voice XP and `.voicetime` only count time spent in a voice channel with at least
 
 The bot also serves a web dashboard from the same process (default port `8080`, or the `PORT` environment variable). Sign in with Discord (OAuth2 scopes `identify` and `guilds`). You only see servers where you have **Manage Server**, and the bot is already a member. Servers you can manage but the bot is missing show an **Invite** button.
 
-Panels: Overview, Channels, Levels, Self Roles, Alt Detection (including an Alt Detection Log of flagged joins with filters, search, and Kick / Ban / Mute 1h / Mark Safe actions), Welcome, Games, Moderation, and Billing. Changes apply to the live bot immediately.
+Panels: Overview, Channels, Levels, Self Roles, Alt Detection (including an Alt Detection Log of flagged joins with filters, search, and Kick / Ban / Timeout 1h / Mark Safe actions), Welcome, Games, Moderation, and Billing. Changes apply to the live bot immediately.
 
 To enable login, create an OAuth2 redirect in the [Discord Developer Portal](https://discord.com/developers/applications) for this application:
 
@@ -130,15 +130,3 @@ The bot token can only be connected to Discord once. After you deploy to Render 
 
 SQLite is fine for a single instance. If you later run more than one replica, you would need a shared database; do not point two hosts at copies of the same file.
 
-## Credits / Changelog
-
-These updates were made by WarRaven (Whiskey):
-
-- Custom roles, including gradient colours, the dashboard panel, alt-account enforcement, `.role give` and `.role take`, and owner `.role remove`
-- Custom Roles dashboard colour pickers with a live gradient preview, and staff colour edits for any member
-- The report system, including tickets and closed-tickets channels, approve/deny, and owner-only comments
-- `.mute` and `.unmute` (with `.timeout` and `.untimeout` kept as aliases)
-- Level-up announcements: Off (default; nothing is posted) or a channel, including `.levelup off|#channel`. No level-up DMs.
-- Dashboard website updates: the XP panel, moderation and messages panels, starfield and red theme, and footer Contact / Terms / Privacy pages
-
-Changes by WarRaven

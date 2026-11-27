@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <canvas id="space-bg" aria-hidden="true"></canvas>
   <div class="wrap">
     <header class="topbar">
       <a class="brand" href="{% if user %}/servers{% else %}/{% endif %}">
@@ -44,10 +43,11 @@
         <option value="/servers/{{ guild.id }}/selfroles" {% if active=='selfroles' %}selected{% endif %}>Self roles</option>
         <option value="/servers/{{ guild.id }}/customroles" {% if active=='customroles' %}selected{% endif %}>Custom Roles</option>
         <option value="/servers/{{ guild.id }}/alts" {% if active=='alts' %}selected{% endif %}>Alt detection</option>
-        <option value="/servers/{{ guild.id }}/welcome" {% if active=='welcome' %}selected{% endif %}>Messages</option>
+        <option value="/servers/{{ guild.id }}/welcome" {% if active=='welcome' %}selected{% endif %}>Welcome</option>
         <option value="/servers/{{ guild.id }}/games" {% if active=='games' %}selected{% endif %}>Games</option>
         <option value="/servers/{{ guild.id }}/moderation" {% if active=='moderation' %}selected{% endif %}>Moderation</option>
         <option value="/servers/{{ guild.id }}/reports" {% if active=='reports' %}selected{% endif %}>Reports</option>
+        <option value="/servers/{{ guild.id }}/youtube" {% if active=='youtube' %}selected{% endif %}>YouTube</option>
         <option value="/servers/{{ guild.id }}/billing" {% if active=='billing' %}selected{% endif %}>Billing</option>
         <option value="/servers">All servers</option>
       </select>
@@ -64,10 +64,11 @@
           <a href="/servers/{{ guild.id }}/selfroles" class="{% if active=='selfroles' %}active{% endif %}">Self roles</a>
           <a href="/servers/{{ guild.id }}/customroles" class="{% if active=='customroles' %}active{% endif %}">Custom Roles</a>
           <a href="/servers/{{ guild.id }}/alts" class="{% if active=='alts' %}active{% endif %}">Alt detection</a>
-          <a href="/servers/{{ guild.id }}/welcome" class="{% if active=='welcome' %}active{% endif %}">Messages</a>
+          <a href="/servers/{{ guild.id }}/welcome" class="{% if active=='welcome' %}active{% endif %}">Welcome</a>
           <a href="/servers/{{ guild.id }}/games" class="{% if active=='games' %}active{% endif %}">Games</a>
           <a href="/servers/{{ guild.id }}/moderation" class="{% if active=='moderation' %}active{% endif %}">Moderation</a>
           <a href="/servers/{{ guild.id }}/reports" class="{% if active=='reports' %}active{% endif %}">Reports</a>
+          <a href="/servers/{{ guild.id }}/youtube" class="{% if active=='youtube' %}active{% endif %}">YouTube</a>
           <a href="/servers/{{ guild.id }}/billing" class="{% if active=='billing' %}active{% endif %}">Billing</a>
           <a href="/servers">← All servers</a>
         </nav>
@@ -84,15 +85,12 @@
       </main>
     </div>
     <footer class="site-footer">
-      <nav class="footer-links" aria-label="Site">
-        <a href="/contact">Contact Us</a>
-        <a href="/terms">Terms &amp; Conditions</a>
-        <a href="/privacy">Privacy Policy</a>
-        <a href="/pricing">Pricing</a>
-      </nav>
-      <p>Made by Whiskey/WarRaven</p>
+      <a href="/privacy">Privacy</a>
+      <span class="faint">|</span>
+      <a href="/terms">Terms</a>
+      <span class="faint">|</span>
+      Made by Whiskey/WarRaven
     </footer>
   </div>
-  <script src="/static/space.js" defer></script>
 </body>
 </html>

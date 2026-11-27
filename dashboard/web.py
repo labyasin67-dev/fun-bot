@@ -55,6 +55,6 @@ async def stop_dashboard(bot: Any) -> None:
     task = getattr(bot, "dashboard_task", None)
     if task is not None:
         try:
-            await asyncio.wait_for(task, timeout=4)
+            await asyncio.wait_for(task, timeout=120)
         except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
             task.cancel()

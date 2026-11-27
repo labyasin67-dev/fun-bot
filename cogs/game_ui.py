@@ -124,7 +124,7 @@ def game_embed(
             embed.set_author(name=host)
     if thumbnail:
         embed.set_thumbnail(url=thumbnail)
-    if image:
+    if image and phase not in ("win", "timeout"):
         embed.set_image(url=image)
     for name, value, inline in fields or []:
         embed.add_field(name=_clip(name, MAX_FIELD_NAME), value=_clip(value, MAX_FIELD_VALUE), inline=inline)

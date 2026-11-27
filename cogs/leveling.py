@@ -13,8 +13,8 @@ from discord.ext import commands, tasks
 from utils import (
     COLOR,
     DANGER,
-    NO_MENTIONS,
     SUCCESS,
+    WARNING,
     embed as make_embed,
     format_duration,
     level_from_xp,
@@ -75,78 +75,39 @@ class Leveling(commands.Cog):
         if new_level <= old_level:
             return
         member = guild.get_member(user.id)
-        added: list[discord.Role] = []
         if member:
-            added, _removed = await self._sync_level_roles(member, new_level)
-        role_text = ""
-        if added:
-            role_text = " You earned " + ", ".join(role.mention for role in added) + "."
-        # Only post when mode is channel and a channel is set. Stored 'dm' or no setting is off.
-        if await self.bot.db.get_levelup_mode(guild.id) != "channel":
-            return
+            await self._sync_level_roles(member, new_level)
+        channel: discord.abc.Messageable | None = origin_channel
         levelup_id = await self.bot.db.get_feature_channel(guild.id, "levelups")
-        if not levelup_id:
+        if levelup_id:
+            found = guild.get_channel(levelup_id)
+            if isinstance(found, discord.abc.Messageable):
+                channel = found
+        if channel is None:
             return
-        found = guild.get_channel(levelup_id)
-        if not isinstance(found, discord.abc.Messageable):
-            return
-        mention = member.mention if member else f"**{getattr(user, 'display_name', user.name)}**"
-        e = make_embed(
-            "Level up!",
-            f"{mention} reached **level {new_level}**.{role_text}",
-            color=SUCCESS,
-        )
+        e = make_embed("Level up!", f"{user.mention} reached **level {new_level}**!", color=SUCCESS)
         try:
-            # Mention is in the embed for context; allowed_mentions suppresses pings.
-            await found.send(embed=e, allowed_mentions=NO_MENTIONS)
+            await channel.send(embed=e)
         except discord.HTTPException:
             pass
 
-    async def _sync_level_roles(self, member: discord.Member, level: int) -> tuple[list[discord.Role], list[discord.Role]]:
+    async def _sync_level_roles(self, member: discord.Member, level: int) -> None:
         rows = await self.bot.db.level_roles(member.guild.id)
         if not rows or member.guild.me is None:
-            return [], []
+            return
         to_add: list[discord.Role] = []
-        to_remove: list[discord.Role] = []
         for row in rows:
-            role = member.guild.get_role(int(row["role_id"]))
-            if role is None or role.managed or role >= member.guild.me.top_role:
+            if int(row["level"]) > level:
                 continue
-            if int(row["level"]) <= level:
-                if role not in member.roles:
-                    to_add.append(role)
-            elif role in member.roles:
-                to_remove.append(role)
+            role = member.guild.get_role(int(row["role_id"]))
+            if role is None or role in member.roles or role >= member.guild.me.top_role or role.managed:
+                continue
+            to_add.append(role)
         if to_add:
             try:
                 await member.add_roles(*to_add, reason="Level role")
             except discord.HTTPException:
-                to_add = []
-        if to_remove:
-            try:
-                await member.remove_roles(*to_remove, reason="No longer qualifies for this level role")
-            except discord.HTTPException:
-                to_remove = []
-        return to_add, to_remove
-
-    async def apply_xp_delta(self, guild: discord.Guild, user_id: int, delta: int) -> dict:
-        """Staff XP adjustment: clamp at 0, recompute level, and sync level roles."""
-        if delta == 0:
-            raise ValueError("Enter an amount other than 0.")
-        old_xp, new_xp = await self.bot.db.adjust_xp(guild.id, user_id, delta)
-        new_level = level_from_xp(new_xp)
-        member = guild.get_member(user_id)
-        added, removed = [], []
-        if member is not None:
-            added, removed = await self._sync_level_roles(member, new_level)
-        return {
-            "old_xp": old_xp,
-            "new_xp": new_xp,
-            "level": new_level,
-            "member": member,
-            "added": added,
-            "removed": removed,
-        }
+                pass
 
     def _qualifies_for_voice_xp(self, state: discord.VoiceState) -> bool:
         channel = state.channel
@@ -181,8 +142,7 @@ class Leveling(commands.Cog):
                         continue
                     self._awarding.add(key)
                     try:
-                        old_xp, new_xp = await self.bot.db.add_xp(guild.id, member.id, VOICE_XP_PER_MINUTE)
-                        await self.bot.db.add_voice_seconds(guild.id, member.id, VOICE_TICK_SECONDS)
+                        old_xp, new_xp = await self.bot.db.add_voice_xp_and_seconds(guild.id, member.id, VOICE_XP_PER_MINUTE, VOICE_TICK_SECONDS)
                         await self._handle_level_up(guild, member, None, old_xp, new_xp)
                     except Exception:
                         pass
@@ -273,97 +233,17 @@ class Leveling(commands.Cog):
         e.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else None)
         await ctx.send(embed=e)
 
-    @commands.hybrid_command(name="levelup", description="Set level-up announcements to off, or to a channel.")
+    @commands.hybrid_command(name="setlevelchannel", description="Set the channel for level-up messages, or clear it.")
     @commands.guild_only()
     @commands.has_guild_permissions(manage_guild=True)
-    @app_commands.describe(setting="off, or a #channel")
-    async def levelup(self, ctx: commands.Context, setting: str | None = None) -> None:
-        assert ctx.guild
-        if setting is None:
-            mode = await self.bot.db.get_levelup_mode(ctx.guild.id)
-            if mode == "channel":
-                channel_id = await self.bot.db.get_feature_channel(ctx.guild.id, "levelups")
-                channel = ctx.guild.get_channel(channel_id) if channel_id else None
-                where = channel.mention if channel else "a channel that I can't find"
-                text = f"Level-ups are posted in {where}, without pings."
-            else:
-                text = "Level-up announcements are **off**. Nothing is posted. Members still earn XP and level roles."
-            await ctx.send(embed=make_embed("Level-up announcements", text + "\nUse `.levelup off` or `.levelup #channel` to change this."))
-            return
-        raw = setting.strip()
-        key = raw.lower()
-        if key in {"off", "disable", "disabled", "none", "silent"}:
-            await self.bot.db.set_levelup_mode(ctx.guild.id, "off")
-            await ctx.send(embed=make_embed("Level-ups off", "Nothing is posted when members level up. XP and level roles still work."))
-            return
-        # Accept a channel mention, ID, or name.
-        channel = None
-        if ctx.message and ctx.message.channel_mentions:
-            channel = ctx.message.channel_mentions[0]
-        if channel is None:
-            cleaned = raw.strip("<>#")
-            if cleaned.isdigit():
-                channel = ctx.guild.get_channel(int(cleaned))
-            if channel is None:
-                lowered = raw.lstrip("#").lower()
-                channel = discord.utils.find(
-                    lambda c: isinstance(c, discord.TextChannel) and c.name.lower() == lowered,
-                    ctx.guild.text_channels,
-                )
-        if not isinstance(channel, discord.TextChannel):
-            await ctx.send(embed=make_embed("Use off or a channel", "Try `.levelup off` or `.levelup #channel`.", color=DANGER), ephemeral=True)
-            return
-        await self.bot.db.set_levelup_mode(ctx.guild.id, "channel", channel.id)
-        await ctx.send(embed=make_embed("Level-up channel set", f"Level-ups will be posted in {channel.mention} without pings."))
-
-    @commands.hybrid_command(name="setlevelchannel", description="Set a channel for level-up messages, or turn them off.")
-    @commands.guild_only()
-    @commands.has_guild_permissions(manage_guild=True)
-    @app_commands.describe(channel="Where to announce level-ups. Omit to turn announcements off.")
+    @app_commands.describe(channel="Where to announce level-ups. Omit to announce in the chat that triggered them.")
     async def setlevelchannel(self, ctx: commands.Context, channel: discord.TextChannel | None = None) -> None:
         assert ctx.guild
+        await self.bot.db.set_feature_channel(ctx.guild.id, "levelups", channel.id if channel else None)
         if channel:
-            await self.bot.db.set_levelup_mode(ctx.guild.id, "channel", channel.id)
-            await ctx.send(embed=make_embed("Level-up channel set", f"Level-ups will be posted in {channel.mention} without pings."))
+            await ctx.send(embed=make_embed("Level-up channel set", f"Level-ups will be posted in {channel.mention}."))
         else:
-            await self.bot.db.set_levelup_mode(ctx.guild.id, "off")
-            await ctx.send(embed=make_embed("Level-ups off", "Nothing is posted when members level up. XP and level roles still work."))
-
-    @commands.hybrid_command(name="addxp", description="Add XP to a member.")
-    @commands.guild_only()
-    @commands.has_guild_permissions(manage_guild=True)
-    @app_commands.describe(member="The member to give XP to.", amount="How much XP to add.")
-    async def addxp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
-        assert ctx.guild
-        if amount <= 0:
-            await ctx.send(embed=make_embed("Invalid amount", "Enter a positive number of XP to add.", color=DANGER), ephemeral=True)
-            return
-        result = await self.apply_xp_delta(ctx.guild, member.id, amount)
-        await ctx.send(
-            embed=make_embed(
-                "XP added",
-                f"Added **{amount:,}** XP to **{member.display_name}**. They now have **{result['new_xp']:,}** XP (level **{result['level']}**).",
-                color=SUCCESS,
-            )
-        )
-
-    @commands.hybrid_command(name="removexp", description="Remove XP from a member.")
-    @commands.guild_only()
-    @commands.has_guild_permissions(manage_guild=True)
-    @app_commands.describe(member="The member to take XP from.", amount="How much XP to remove.")
-    async def removexp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
-        assert ctx.guild
-        if amount <= 0:
-            await ctx.send(embed=make_embed("Invalid amount", "Enter a positive number of XP to remove.", color=DANGER), ephemeral=True)
-            return
-        result = await self.apply_xp_delta(ctx.guild, member.id, -amount)
-        await ctx.send(
-            embed=make_embed(
-                "XP removed",
-                f"Removed **{amount:,}** XP from **{member.display_name}**. They now have **{result['new_xp']:,}** XP (level **{result['level']}**).",
-                color=SUCCESS,
-            )
-        )
+            await ctx.send(embed=make_embed("Level-up channel cleared", "Level-ups from chatting will be posted in the same channel."))
 
     @commands.hybrid_group(name="levelrole", description="Assign roles automatically when members reach a level.", invoke_without_command=True)
     @commands.guild_only()
@@ -423,6 +303,61 @@ class Leveling(commands.Cog):
             lines.append(f"Level **{row['level']}** — {mention}")
         await ctx.send(embed=make_embed("Level roles", "\n".join(lines)))
 
+
+    @commands.hybrid_command(name="addxp", description="Add XP to a member.")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def addxp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
+        if member.bot:
+            await ctx.send(embed=make_embed("Can't do that", "Bots don't earn XP.", color=DANGER), ephemeral=True)
+            return
+        if amount <= 0 or amount > 1_000_000:
+            await ctx.send(embed=make_embed("Invalid amount", "Amount must be between 1 and 1,000,000.", color=DANGER), ephemeral=True)
+            return
+        old, new = await self.bot.db.add_xp(ctx.guild.id, member.id, amount)
+        _, _, _, _ = level_progress(new)
+        if new > old:
+            await self._handle_level_up(ctx.guild, member, ctx.channel, old, new)
+        level, _, _, _ = level_progress(new)
+        await ctx.send(embed=make_embed("XP added", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**", color=SUCCESS))
+        from cogs.channels import post_modlog
+        await post_modlog(self.bot, ctx.guild, "XP added", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=SUCCESS)
+
+    @commands.hybrid_command(name="removexp", description="Remove XP from a member.")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def removexp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
+        if member.bot:
+            await ctx.send(embed=make_embed("Can't do that", "Bots don't earn XP.", color=DANGER), ephemeral=True)
+            return
+        if amount <= 0 or amount > 1_000_000:
+            await ctx.send(embed=make_embed("Invalid amount", "Amount must be between 1 and 1,000,000.", color=DANGER), ephemeral=True)
+            return
+        old_xp = int((await self.bot.db.ensure_member(ctx.guild.id, member.id))["xp"])
+        new_xp = max(0, old_xp - amount)
+        old, new = await self.bot.db.set_xp(ctx.guild.id, member.id, new_xp)
+        level, _, _, _ = level_progress(new)
+        await ctx.send(embed=make_embed("XP removed", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**", color=SUCCESS))
+        from cogs.channels import post_modlog
+        await post_modlog(self.bot, ctx.guild, "XP removed", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=WARNING)
+
+    @commands.hybrid_command(name="setxp", description="Set a member's XP to an exact value.")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def setxp(self, ctx: commands.Context, member: discord.Member, amount: int) -> None:
+        if member.bot:
+            await ctx.send(embed=make_embed("Can't do that", "Bots don't earn XP.", color=DANGER), ephemeral=True)
+            return
+        if amount < 0 or amount > 1_000_000:
+            await ctx.send(embed=make_embed("Invalid amount", "Amount must be between 0 and 1,000,000.", color=DANGER), ephemeral=True)
+            return
+        old, new = await self.bot.db.set_xp(ctx.guild.id, member.id, amount)
+        if new > old:
+            await self._handle_level_up(ctx.guild, member, ctx.channel, old, new)
+        level, _, _, _ = level_progress(new)
+        await ctx.send(embed=make_embed("XP set", f"{member.mention}: **{old:,}** → **{new:,}** XP · Level **{level}**", color=SUCCESS))
+        from cogs.channels import post_modlog
+        await post_modlog(self.bot, ctx.guild, "XP set", f"**Staff:** {ctx.author.mention}\n**Target:** {member.mention} (`{member.id}`)\n**Old:** {old:,} → **New:** {new:,}", color=SUCCESS)
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(Leveling(bot))

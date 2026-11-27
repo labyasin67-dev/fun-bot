@@ -11,7 +11,6 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from dashboard import dashboard_url
-from site_pages import CONTACT_KEY, DEFAULTS, PRIVACY_KEY, TERMS_KEY, load_site_page, save_site_page
 from premium import format_renewal, guild_access, owner_ids_from_env, status_label
 from stripe_billing import (
     construct_event,
@@ -265,9 +264,6 @@ def register_billing_routes(app) -> None:
             ]
         else:
             grants, subs = [], []
-        contact_body = await load_site_page(db, CONTACT_KEY)
-        terms_body = await load_site_page(db, TERMS_KEY)
-        privacy_body = await load_site_page(db, PRIVACY_KEY)
         return render(
             request,
             "admin.html",
@@ -275,9 +271,6 @@ def register_billing_routes(app) -> None:
             grants=grants,
             stripe_subs=subs,
             format_renewal=format_renewal,
-            contact_body=contact_body,
-            terms_body=terms_body,
-            privacy_body=privacy_body,
         )
 
     @app.post("/admin")
@@ -332,16 +325,4 @@ def register_billing_routes(app) -> None:
                 flash(request, "ok", "Grant revoked.")
             else:
                 flash(request, "error", "That grant was not found or was already revoked.")
-        elif action == "save_page":
-            key = str(form.get("page_key") or "").strip()
-            labels = {CONTACT_KEY: "Contact Us", TERMS_KEY: "Terms & Conditions", PRIVACY_KEY: "Privacy Policy"}
-            if key not in DEFAULTS:
-                flash(request, "error", "Unknown page.")
-            else:
-                body = str(form.get("body") or "")
-                if not body.strip():
-                    flash(request, "error", "That page cannot be empty. Paste the text you want to publish.")
-                else:
-                    await save_site_page(bot.db, key, body)
-                    flash(request, "ok", f"{labels[key]} page saved and published.")
         return RedirectResponse("/admin", status_code=303)

@@ -76,6 +76,7 @@ def progress_bar(current: int, maximum: int, size: int = 10) -> str:
 SAFE_MENTIONS = discord.AllowedMentions(everyone=False, roles=False, users=True)
 NO_MENTIONS = discord.AllowedMentions.none()
 
+
 USER_ID_RE = re.compile(r"^(?:<@!?(\d{15,20})>|(\d{15,20}))$")
 
 
@@ -86,30 +87,3 @@ def parse_user_id(raw: str) -> int | None:
     if not match:
         return None
     return int(match.group(1) or match.group(2))
-
-
-def resolve_member(guild: discord.Guild, raw: str) -> discord.Member | None:
-    """Find a guild member by ID, mention, username, or display name."""
-    text = (raw or "").strip()
-    if not text:
-        return None
-    user_id = parse_user_id(text)
-    if user_id is not None:
-        return guild.get_member(user_id)
-    needle = text.lstrip("@").lower()
-    exact: list[discord.Member] = []
-    partial: list[discord.Member] = []
-    for member in guild.members:
-        names = {member.name.lower(), member.display_name.lower(), str(member).lower()}
-        global_name = getattr(member, "global_name", None)
-        if global_name:
-            names.add(str(global_name).lower())
-        if needle in names:
-            exact.append(member)
-        elif any(name.startswith(needle) for name in names):
-            partial.append(member)
-    if len(exact) == 1:
-        return exact[0]
-    if not exact and len(partial) == 1:
-        return partial[0]
-    return None

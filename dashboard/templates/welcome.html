@@ -2,14 +2,11 @@
 {% from "_macros.html" import chansel %}
 {% block title %}Welcome · {{ guild.name }}{% endblock %}
 {% block body %}
-<h1>Welcome, leave and ban messages</h1>
-<p class="lede">Greet new members, announce departures, and control what people see when someone is banned. Leave and ban messages stay off until you enable them.</p>
-
+<h1>Welcome</h1>
+<p class="lede">Greet new members in a channel you choose. Placeholders: {mention} {user} {server} {membercount}</p>
 <form method="post" class="card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="action" value="save">
-
-  <h2>Welcome</h2>
   <div class="field">
     <label>Channel</label>
     {{ chansel('channel_id', grouped, selected=channel_id) }}
@@ -17,57 +14,11 @@
   <div class="field">
     <label>Message</label>
     <textarea name="message" maxlength="1800">{{ message }}</textarea>
-    <span class="faint">Placeholders: {mention} {user} {server} {membercount}</span>
   </div>
-
-  <h2 style="margin-top:22px">Leave message</h2>
-  <label class="check">
-    <input type="checkbox" name="leave_enabled" value="1" {% if leave_enabled %}checked{% endif %}>
-    <span>Enable leave messages</span>
-  </label>
-  <div class="field">
-    <label>Channel</label>
-    {{ chansel('leave_channel_id', grouped, selected=leave_channel_id) }}
-  </div>
-  <div class="field">
-    <label>Message</label>
-    <textarea name="leave_message" maxlength="1800">{{ leave_message }}</textarea>
-    <span class="faint">Placeholders: {user} {username} {server} {membercount}</span>
-  </div>
-
-  <h2 style="margin-top:22px">Ban DM</h2>
-  <p class="faint">Sent to the member just before a `.ban` or a dashboard ban, so they can still receive it. If this is off, they still get the bot’s default ban DM.</p>
-  <label class="check">
-    <input type="checkbox" name="ban_dm_enabled" value="1" {% if ban_dm_enabled %}checked{% endif %}>
-    <span>Use a custom ban DM</span>
-  </label>
-  <div class="field">
-    <label>Message</label>
-    <textarea name="ban_dm_message" maxlength="1800">{{ ban_dm_message }}</textarea>
-    <span class="faint">Placeholders: {user} {username} {server} {reason} {moderator}</span>
-  </div>
-
-  <h2 style="margin-top:22px">Public ban announcement</h2>
-  <p class="faint">Posted in the channel you choose, including when someone is banned manually in Discord. These never ping @everyone or roles.</p>
-  <label class="check">
-    <input type="checkbox" name="ban_announce_enabled" value="1" {% if ban_announce_enabled %}checked{% endif %}>
-    <span>Enable public ban announcements</span>
-  </label>
-  <div class="field">
-    <label>Channel</label>
-    {{ chansel('ban_announce_channel_id', grouped, selected=ban_announce_channel_id) }}
-  </div>
-  <div class="field">
-    <label>Message</label>
-    <textarea name="ban_announce_message" maxlength="1800">{{ ban_announce_message }}</textarea>
-    <span class="faint">Placeholders: {user} {username} {server} {reason} {moderator}</span>
-  </div>
-
   <div class="row">
     <button class="btn" type="submit">Save</button>
   </div>
 </form>
-
 <form method="post" style="margin-top:12px">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="action" value="test">

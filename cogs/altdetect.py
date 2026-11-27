@@ -14,8 +14,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.moderation import hierarchy_error, try_dm
-from cogs.v2 import build_game_layout, build_report_layout
-from utils import DANGER, SUCCESS, WARNING
+from utils import DANGER, SUCCESS, WARNING, embed as make_embed
 
 if TYPE_CHECKING:
     from main import SocializeBot
@@ -110,14 +109,14 @@ def build_alert_view(user_id: int) -> discord.ui.View:
     view = discord.ui.View(timeout=None)
     view.add_item(AltActionButton("kick", user_id, "Kick", discord.ButtonStyle.secondary))
     view.add_item(AltActionButton("ban", user_id, "Ban", discord.ButtonStyle.danger))
-    view.add_item(AltActionButton("timeout", user_id, "Mute 1h", discord.ButtonStyle.secondary))
+    view.add_item(AltActionButton("timeout", user_id, "Timeout 1h", discord.ButtonStyle.secondary))
     view.add_item(AltActionButton("safe", user_id, "Mark Safe", discord.ButtonStyle.success))
     return view
 
 
 class AltActionButton(discord.ui.DynamicItem[discord.ui.Button], template=r"alt:(?P<action>kick|ban|timeout|safe):(?P<user_id>[0-9]+)"):
     def __init__(self, action: str, user_id: int, label: str | None = None, style: discord.ButtonStyle | None = None) -> None:
-        labels = {"kick": "Kick", "ban": "Ban", "timeout": "Mute 1h", "safe": "Mark Safe"}
+        labels = {"kick": "Kick", "ban": "Ban", "timeout": "Timeout 1h", "safe": "Mark Safe"}
         styles = {
             "kick": discord.ButtonStyle.secondary,
             "ban": discord.ButtonStyle.danger,
@@ -224,7 +223,7 @@ async def apply_alt_review(
     try:
         if action == "kick":
             assert target is not None
-            await try_dm(target, build_game_layout("You were kicked", f"You were kicked from **{guild.name}**.\nReason: Suspected alt account."))
+            await try_dm(target, make_embed("You were kicked", f"You were kicked from **{guild.name}**.\nReason: Suspected alt account.", color=DANGER))
             await target.kick(reason=reason)
             created = target.created_at.timestamp() if target.created_at else None
             await bot.db.add_alt_mod_action(guild.id, user_id, "kick", created)
@@ -233,7 +232,7 @@ async def apply_alt_review(
         elif action == "ban":
             user = target or await bot.fetch_user(user_id)
             if target:
-                await try_dm(target, build_game_layout("You were banned", f"You were banned from **{guild.name}**.\nReason: Suspected alt account."))
+                await try_dm(target, make_embed("You were banned", f"You were banned from **{guild.name}**.\nReason: Suspected alt account.", color=DANGER))
             created = user.created_at.timestamp() if getattr(user, "created_at", None) else None
             await guild.ban(discord.Object(id=user_id), reason=reason, delete_message_seconds=0)
             await bot.db.add_alt_mod_action(guild.id, user_id, "ban", created)
@@ -243,7 +242,7 @@ async def apply_alt_review(
             assert target is not None
             await try_dm(
                 target,
-                build_game_layout("You were timed out", f"You were timed out in **{guild.name}** for **1 hour**.\nReason: Suspected alt account."),
+                make_embed("You were timed out", f"You were timed out in **{guild.name}** for **1 hour**.\nReason: Suspected alt account.", color=WARNING),
             )
             await target.timeout(timedelta(hours=1), reason=reason)
             status = "timed_out"
@@ -283,7 +282,7 @@ async def apply_alt_review(
     )
     if action in {"kick", "ban", "timeout"} and not automatic:
         from cogs.channels import post_modlog
-        label = {"kick": "Kicked", "ban": "Banned", "timeout": "Muted for 1 hour"}[action]
+        label = {"kick": "Kicked", "ban": "Banned", "timeout": "Timed out for 1 hour"}[action]
         color = DANGER if action in {"kick", "ban"} else WARNING
         staff = actor.mention if actor is not None else "Dashboard"
         await post_modlog(
@@ -308,11 +307,24 @@ async def handle_alert_action(interaction: discord.Interaction, action: str, use
     if not ok:
         await interaction.response.send_message(summary, ephemeral=True)
         return
-    updated = build_game_layout(
-        f"Alt action — {action}",
-        f"**Action:** {action}\n**Review:** {summary}",
-    )
-    await interaction.response.edit_message(view=updated)
+    color = SUCCESS
+    if action in {"kick", "ban"}:
+        color = DANGER
+    elif action == "timeout":
+        color = WARNING
+    embed = None
+    if interaction.message and interaction.message.embeds:
+        embed = interaction.message.embeds[0].copy()
+        embed.color = color
+        found = False
+        for i, field in enumerate(embed.fields):
+            if field.name == "Review":
+                embed.set_field_at(i, name="Review", value=summary, inline=False)
+                found = True
+                break
+        if not found:
+            embed.add_field(name="Review", value=summary, inline=False)
+    await interaction.response.edit_message(embed=embed, view=None if action in {"kick", "ban", "safe"} else build_alert_view(user_id))
 
 
 class AltDetect(commands.Cog):
@@ -406,14 +418,27 @@ class AltDetect(commands.Cog):
             return f"{hours}h {minutes}m"
         return f"{minutes}m"
 
-    def build_report_embed(self, user: discord.abc.User, assessment: AltAssessment, *, title: str | None = None):
-        return build_report_layout(
-            user,
-            assessment,
-            title=title,
-            age_label=self._age_label(assessment.age),
-            accent=verdict_color(assessment.verdict),
+    def build_report_embed(self, user: discord.abc.User, assessment: AltAssessment, *, title: str | None = None) -> discord.Embed:
+        created_ts = int(assessment.created_at.timestamp())
+        joined = (
+            f"<t:{int(assessment.joined_at.timestamp())}:D> (<t:{int(assessment.joined_at.timestamp())}:R>)"
+            if assessment.joined_at
+            else "Unknown"
         )
+        reasons = "\n".join(f"• {reason}" for reason in assessment.reasons)
+        e = make_embed(
+            title or f"Alt check — {assessment.verdict}",
+            f"**User:** {user.mention} `{user}` (`{user.id}`)\n"
+            f"**Account created:** <t:{created_ts}:D> (<t:{created_ts}:R>)\n"
+            f"**Joined server:** {joined}\n"
+            f"**Account age:** {self._age_label(assessment.age)}\n"
+            f"**Default avatar:** {'Yes' if assessment.default_avatar else 'No'}\n"
+            f"**Score:** **{assessment.score}**/100 — **{assessment.verdict}**",
+            color=verdict_color(assessment.verdict),
+        )
+        e.add_field(name="Signals", value=reasons[:1024], inline=False)
+        e.set_thumbnail(url=user.display_avatar.url)
+        return e
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
@@ -459,17 +484,18 @@ class AltDetect(commands.Cog):
         if isinstance(log_channel, discord.TextChannel):
             e = self.build_report_embed(member, assessment, title=f"Suspicious join — {assessment.verdict}")
             try:
-                message = await log_channel.send(view=e)
+                message = await log_channel.send(embed=e, view=build_alert_view(member.id))
             except discord.HTTPException:
                 message = None
-        if assessment.verdict != "High risk":
+        if assessment.verdict == "Low risk":
             return
         auto_note = await self._apply_auto_action(member, action, int(cfg["quarantine_role_id"]) if cfg["quarantine_role_id"] else None, flag_id=flag_id)
         if auto_note and message is not None:
+            e = message.embeds[0].copy() if message.embeds else self.build_report_embed(member, assessment)
+            e.add_field(name="Auto action", value=auto_note, inline=False)
             try:
-                current = e.body_td.content or ""
-                e.body_td.content = f"{current}\n\n**Auto action:** {auto_note}"
-                await message.edit(view=e)
+                keep_view = None if action == "kick" else build_alert_view(member.id)
+                await message.edit(embed=e, view=keep_view)
             except discord.HTTPException:
                 pass
 
@@ -537,19 +563,19 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         await self.bot.db.set_feature_channel(ctx.guild.id, "alts", channel.id if channel else None)
         if channel:
-            await ctx.send(view=build_game_layout("Alt log channel set", f"Alerts will be posted in {channel.mention}."))
+            await ctx.send(embed=make_embed("Alt log channel set", f"Alerts will be posted in {channel.mention}.", color=SUCCESS))
         else:
-            await ctx.send(view=build_game_layout("Alt log channel cleared", "I won't post alt alerts until you set a channel again."))
+            await ctx.send(embed=make_embed("Alt log channel cleared", "I won't post alt alerts until you set a channel again."))
 
     @altconfig.command(name="minage", description="Set the minimum account age in days.")
     @app_commands.describe(days="Accounts younger than this many days score as too new. Default 7.")
     async def altconfig_minage(self, ctx: commands.Context, days: int) -> None:
         assert ctx.guild
         if days < 0 or days > 365:
-            await ctx.send(view=build_game_layout("Invalid age", "Use a number of days from 0 to 365."), ephemeral=True)
+            await ctx.send(embed=make_embed("Invalid age", "Use a number of days from 0 to 365.", color=DANGER), ephemeral=True)
             return
         await self.bot.db.set_alt_config(ctx.guild.id, min_age_days=days)
-        await ctx.send(view=build_game_layout("Minimum age updated", f"Accounts newer than **{days}** day{'s' if days != 1 else ''} will be treated as young."))
+        await ctx.send(embed=make_embed("Minimum age updated", f"Accounts newer than **{days}** day{'s' if days != 1 else ''} will be treated as young.", color=SUCCESS))
 
     @altconfig.command(name="action", description="What to do when a high-risk account joins.")
     @app_commands.describe(action="none, log, timeout, kick, or quarantine")
@@ -558,17 +584,17 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         choice = action.strip().lower()
         if choice not in ACTIONS:
-            await ctx.send(view=build_game_layout("Invalid action", "Use `none`, `log`, `timeout`, `kick`, or `quarantine`."), ephemeral=True)
+            await ctx.send(embed=make_embed("Invalid action", "Use `none`, `log`, `timeout`, `kick`, or `quarantine`.", color=DANGER), ephemeral=True)
             return
         await self.bot.db.set_alt_config(ctx.guild.id, action=choice)
         notes = {
             "none": "Joins will still be scored, but I won't post alerts or take action.",
             "log": "I'll post an alert in the alt log channel for medium and high risk joins.",
-            "timeout": "High-risk joins will be muted for 1 hour, and I'll still post an alert.",
+            "timeout": "High-risk joins will be timed out for 1 hour, and I'll still post an alert.",
             "kick": "High-risk joins will be kicked, and I'll still post an alert.",
             "quarantine": "High-risk joins will be given the quarantine role. Set it with `.altconfig role @role`.",
         }
-        await ctx.send(view=build_game_layout("Alt action updated", notes[choice]))
+        await ctx.send(embed=make_embed("Alt action updated", notes[choice], color=SUCCESS))
 
     @altconfig.command(name="role", description="Set the quarantine role given on a high-risk join.")
     @app_commands.describe(role="Role to grant when the action is quarantine. Omit to clear.")
@@ -576,28 +602,28 @@ class AltDetect(commands.Cog):
         assert ctx.guild and ctx.guild.me and isinstance(ctx.author, discord.Member)
         if role is not None:
             if role.is_default() or role.managed:
-                await ctx.send(view=build_game_layout("Can't use that role", "Pick a normal role, not @everyone or a managed role."), ephemeral=True)
+                await ctx.send(embed=make_embed("Can't use that role", "Pick a normal role, not @everyone or a managed role.", color=DANGER), ephemeral=True)
                 return
             if role >= ctx.guild.me.top_role:
-                await ctx.send(view=build_game_layout("Role too high", "That role is above or equal to me, so I couldn't assign it."), ephemeral=True)
+                await ctx.send(embed=make_embed("Role too high", "That role is above or equal to me, so I couldn't assign it.", color=DANGER), ephemeral=True)
                 return
         await self.bot.db.set_alt_config(ctx.guild.id, quarantine_role_id=role.id if role else None)
         if role:
-            await ctx.send(view=build_game_layout("Quarantine role set", f"High-risk joins will receive {role.mention} when the action is `quarantine`."))
+            await ctx.send(embed=make_embed("Quarantine role set", f"High-risk joins will receive {role.mention} when the action is `quarantine`.", color=SUCCESS))
         else:
-            await ctx.send(view=build_game_layout("Quarantine role cleared", "No quarantine role is configured."))
+            await ctx.send(embed=make_embed("Quarantine role cleared", "No quarantine role is configured."))
 
     @altconfig.command(name="on", description="Enable alt-account detection.")
     async def altconfig_on(self, ctx: commands.Context) -> None:
         assert ctx.guild
         await self.bot.db.set_alt_config(ctx.guild.id, enabled=1)
-        await ctx.send(view=build_game_layout("Alt detection enabled", "New joins will be scored. Use `.altconfig show` to review settings."))
+        await ctx.send(embed=make_embed("Alt detection enabled", "New joins will be scored. Use `.altconfig show` to review settings.", color=SUCCESS))
 
     @altconfig.command(name="off", description="Disable alt-account detection.")
     async def altconfig_off(self, ctx: commands.Context) -> None:
         assert ctx.guild
         await self.bot.db.set_alt_config(ctx.guild.id, enabled=0)
-        await ctx.send(view=build_game_layout("Alt detection disabled", "I won't score or act on new joins until you turn it back on."))
+        await ctx.send(embed=make_embed("Alt detection disabled", "I won't score or act on new joins until you turn it back on.", color=SUCCESS))
 
     @altconfig.command(name="show", description="Show the current alt-detection settings.")
     async def altconfig_show(self, ctx: commands.Context) -> None:
@@ -609,7 +635,7 @@ class AltDetect(commands.Cog):
         role = ctx.guild.get_role(int(role_id)) if role_id else None
         enabled = "On" if int(cfg["enabled"] or 0) else "Off"
         await ctx.send(
-            view=build_game_layout(
+            embed=make_embed(
                 "Alt detection settings",
                 f"**Status:** {enabled}\n"
                 f"**Log channel:** {log_ch.mention if log_ch else 'Not set'}\n"
@@ -634,8 +660,8 @@ class AltDetect(commands.Cog):
         assessment = await self.assess(ctx.guild, user, joined_at=user.joined_at, min_age_days=int(cfg["min_age_days"] or 7))
         e = self.build_report_embed(user, assessment)
         if await self.bot.db.is_alt_whitelisted(ctx.guild.id, user.id):
-            e.body_td.content = f"{e.body_td.content}\n\n**Whitelist:** This user is marked safe."
-        await ctx.send(view=e)
+            e.add_field(name="Whitelist", value="This user is marked safe.", inline=False)
+        await ctx.send(embed=e)
 
     @commands.hybrid_command(name="altlist", description="List recent joins flagged by alt detection.")
     @commands.guild_only()
@@ -649,7 +675,7 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         rows = await self.bot.db.recent_alt_flags(ctx.guild.id, 15)
         if not rows:
-            await ctx.send(view=build_game_layout("Recent alt flags", "No joins have been flagged yet."))
+            await ctx.send(embed=make_embed("Recent alt flags", "No joins have been flagged yet."))
             return
         lines = []
         for row in rows:
@@ -657,7 +683,7 @@ class AltDetect(commands.Cog):
             lines.append(
                 f"• <@{row['user_id']}> (`{row['user_id']}`) — **{row['score']}**, {row['verdict']} — <t:{ts}:R>"
             )
-        await ctx.send(view=build_game_layout("Recent alt flags", "\n".join(lines)))
+        await ctx.send(embed=make_embed("Recent alt flags", "\n".join(lines)))
 
     @commands.hybrid_group(name="altwhitelist", description="Mark a user as safe so they aren't flagged.", fallback="add")
     @commands.guild_only()
@@ -667,9 +693,9 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         added = await self.bot.db.add_alt_whitelist(ctx.guild.id, user.id, ctx.author.id)
         if added:
-            await ctx.send(view=build_game_layout("User whitelisted", f"{user.mention} (`{user.id}`) is marked safe and won't be flagged."))
+            await ctx.send(embed=make_embed("User whitelisted", f"{user.mention} (`{user.id}`) is marked safe and won't be flagged.", color=SUCCESS))
         else:
-            await ctx.send(view=build_game_layout("Already whitelisted", f"{user.mention} is already marked safe."))
+            await ctx.send(embed=make_embed("Already whitelisted", f"{user.mention} is already marked safe."))
 
     @altwhitelist.command(name="remove", description="Remove a user from the alt whitelist.")
     @app_commands.describe(user="The user to remove from the whitelist.")
@@ -677,12 +703,10 @@ class AltDetect(commands.Cog):
         assert ctx.guild
         removed = await self.bot.db.remove_alt_whitelist(ctx.guild.id, user.id)
         if removed:
-            await ctx.send(view=build_game_layout("Whitelist removed", f"{user.mention} (`{user.id}`) can be flagged again."))
+            await ctx.send(embed=make_embed("Whitelist removed", f"{user.mention} (`{user.id}`) can be flagged again.", color=SUCCESS))
         else:
-            await ctx.send(view=build_game_layout("Not whitelisted", f"{user.mention} wasn't on the whitelist."), ephemeral=True)
+            await ctx.send(embed=make_embed("Not whitelisted", f"{user.mention} wasn't on the whitelist.", color=DANGER), ephemeral=True)
 
 
 async def setup(bot: SocializeBot) -> None:
     await bot.add_cog(AltDetect(bot))
-
-

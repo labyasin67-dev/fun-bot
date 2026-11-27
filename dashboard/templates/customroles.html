@@ -1,12 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Custom roles · {{ guild.name }}{% endblock %}
-
 {% block body %}
 <h1>Custom Roles</h1>
-<p class="lede">Members at or above the minimum level can create one custom role. You can turn the feature off, set the level, control whether members can give their role to someone else, and restrict anyone who abuses it. Staff can also set or edit a role's colours and gradients below.</p>
-{% if not gradients_supported %}
-<p class="faint">This server doesn't have enhanced role colours (extra boosts), so Discord will only use the first colour. A second hex is still saved here and will apply if the server later gets gradients.</p>
-{% endif %}
+<p class="lede">Members at or above the minimum level can create one custom role. You can turn the feature off, set the level, and restrict anyone who abuses it.</p>
 
 <div class="card">
   <h2>Settings</h2>
@@ -24,13 +20,6 @@
       <label>Minimum level</label>
       <input type="number" name="min_level" min="0" max="1000" value="{{ min_level }}" required>
     </div>
-    <div class="field" style="flex:0 0 160px">
-      <label>.role give</label>
-      <select name="give_enabled">
-        <option value="1" {% if give_enabled %}selected{% endif %}>On</option>
-        <option value="0" {% if not give_enabled %}selected{% endif %}>Off</option>
-      </select>
-    </div>
     <div class="field">
       <label>Anchor role (optional)</label>
       <select name="anchor_role_id">
@@ -42,45 +31,20 @@
     </div>
     <button class="btn" type="submit">Save</button>
   </form>
-  <p class="faint">New custom roles are placed just below the bot's highest role, or just below the anchor role if you pick one. They have no permissions and never ping. When .role give is on, a member can hand their custom role to someone else, including members who already own a custom role. A member can hold their own role plus roles given to them. The same role can't be given twice. The owner can take it back with .role take. Staff with Manage Roles can give any custom role, even if this toggle is off.</p>
+  <p class="faint">New custom roles are placed just below the bot's highest role, or just below the anchor role if you pick one. They have no permissions and never ping.</p>
 </div>
 
 <div class="card" style="margin-top:14px">
   <h2>Current custom roles</h2>
   {% if roles %}
   <table class="table">
-    <tr><th>Owner</th><th>Held by</th><th>Role</th><th colspan="2">Colours / gradient</th><th></th></tr>
+    <tr><th>Member</th><th>Role</th><th>Colour</th><th>Created</th><th></th></tr>
     {% for item in roles %}
       <tr>
         <td>{{ item.member_name }}<br><span class="muted">{{ item.user_id }}</span></td>
-        <td>{% if item.holder_id and item.holder_id != item.user_id %}{{ item.holder_name }}<br><span class="muted">{{ item.holder_id }}</span>{% else %}—{% endif %}</td>
         <td>{% if item.role %}@{{ item.role.name }}{% else %}<span class="muted">deleted ({{ item.role_id }})</span>{% endif %}</td>
-        <td colspan="2">
-          <form method="post" class="colour-edit" data-colour-form>
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="action" value="colours">
-            <input type="hidden" name="user_id" value="{{ item.user_id }}">
-            <div class="grad-preview" data-preview style="height:22px;border-radius:6px;margin-bottom:8px;border:1px solid var(--border);background:{% if item.colour2 %}linear-gradient(90deg, {{ item.colour }}, {{ item.colour2 }}){% elif item.colour %}{{ item.colour }}{% else %}#808080{% endif %}"></div>
-            <div class="row" style="gap:8px;align-items:flex-end;margin:0">
-              <div class="field" style="flex:1;min-width:120px">
-                <label>Colour 1</label>
-                <div style="display:flex;gap:6px;align-items:center">
-                  <input type="color" data-picker="1" value="{{ item.colour or '#5865f2' }}" aria-label="Colour 1 picker">
-                  <input type="text" name="colour" data-hex="1" value="{{ item.colour or '' }}" placeholder="#ff0000" maxlength="8" style="flex:1">
-                </div>
-              </div>
-              <div class="field" style="flex:1;min-width:120px">
-                <label>Colour 2 (gradient)</label>
-                <div style="display:flex;gap:6px;align-items:center">
-                  <input type="color" data-picker="2" value="{{ item.colour2 or item.colour or '#0000ff' }}" aria-label="Colour 2 picker">
-                  <input type="text" name="colour2" data-hex="2" value="{{ item.colour2 or '' }}" placeholder="#0000ff" maxlength="8" style="flex:1">
-                </div>
-              </div>
-              <button class="btn" type="submit">Save colours</button>
-            </div>
-          </form>
-          <div class="muted" style="margin-top:4px">Created {{ item.created }}</div>
-        </td>
+        <td>{% if item.colour %}<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:{{ item.colour }};vertical-align:middle;margin-right:6px"></span>{{ item.colour }}{% if item.colour2 %} → <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:{{ item.colour2 }};vertical-align:middle;margin-right:6px;margin-left:4px"></span>{{ item.colour2 }}{% endif %}{% else %}—{% endif %}</td>
+        <td>{{ item.created }}</td>
         <td>
           <form method="post" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -147,88 +111,4 @@
     <p class="muted">Nobody is restricted.</p>
   {% endif %}
 </div>
-
-<div class="card" style="margin-top:14px">
-  <h2>Block from .role give</h2>
-  <p class="faint">This only stops a member from giving their custom role away. It is separate from a full restriction, which also blocks creating or receiving a custom role.</p>
-  <form method="post" class="row">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <input type="hidden" name="action" value="give_block">
-    <div class="field">
-      <label>Discord user ID</label>
-      <input type="text" name="user_id" placeholder="User ID or @mention" required>
-    </div>
-    <div class="field">
-      <label>Reason (optional)</label>
-      <input type="text" name="reason" maxlength="200" placeholder="Why they're blocked from giving">
-    </div>
-    <button class="btn danger" type="submit">Block give</button>
-  </form>
-  {% if give_blocks %}
-  <table class="table">
-    <tr><th>Member</th><th>Reason</th><th>By</th><th>When</th><th></th></tr>
-    {% for item in give_blocks %}
-      <tr>
-        <td>{{ item.member_name }}<br><span class="muted">{{ item.user_id }}</span></td>
-        <td>{{ item.reason or "—" }}</td>
-        <td>{{ item.by_name }}</td>
-        <td>{{ item.at }}</td>
-        <td>
-          <form method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="action" value="give_unblock">
-            <input type="hidden" name="user_id" value="{{ item.user_id }}">
-            <button class="btn" type="submit">Allow give</button>
-          </form>
-        </td>
-      </tr>
-    {% endfor %}
-  </table>
-  {% else %}
-    <p class="muted">Nobody is blocked from .role give.</p>
-  {% endif %}
-</div>
-
-<script>
-(function () {
-  function norm(v) {
-    v = (v || "").trim();
-    if (!v) return "";
-    if (v.charAt(0) !== "#") v = "#" + v;
-    return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : "";
-  }
-  function bind(form) {
-    var p1 = form.querySelector('[data-picker="1"]');
-    var p2 = form.querySelector('[data-picker="2"]');
-    var h1 = form.querySelector('[data-hex="1"]');
-    var h2 = form.querySelector('[data-hex="2"]');
-    var prev = form.querySelector("[data-preview]");
-    function paint() {
-      var a = norm(h1.value) || "#808080";
-      var b = norm(h2.value);
-      prev.style.background = b ? "linear-gradient(90deg, " + a + ", " + b + ")" : a;
-    }
-    function fromPicker(picker, hex) {
-      picker.addEventListener("input", function () {
-        hex.value = picker.value;
-        paint();
-      });
-    }
-    function fromHex(hex, picker) {
-      hex.addEventListener("input", function () {
-        var n = norm(hex.value);
-        if (n) picker.value = n;
-        paint();
-      });
-    }
-    fromPicker(p1, h1);
-    fromPicker(p2, h2);
-    fromHex(h1, p1);
-    fromHex(h2, p2);
-    paint();
-  }
-  document.querySelectorAll("[data-colour-form]").forEach(bind);
-})();
-</script>
 {% endblock %}
-

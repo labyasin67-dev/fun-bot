@@ -106,7 +106,7 @@
         <td><span class="pill {% if item.status_key in ['banned','kicked'] %}bad{% elif item.status_key in ['whitelisted','in_server'] %}on{% endif %}">{{ item.status }}</span></td>
         <td class="log-actions">
           {% if item.status_key != 'whitelisted' %}
-          {% for review, label in [('kick','Kick'),('ban','Ban'),('timeout','Mute 1h'),('safe','Mark Safe')] %}
+          {% for review, label in [('kick','Kick'),('ban','Ban'),('timeout','Timeout 1h'),('safe','Mark Safe')] %}
             {% if not (review in ['kick','timeout'] and item.status_key in ['banned','kicked','left']) %}
             {% if not (review == 'ban' and item.status_key == 'banned') %}
             <form method="post">
