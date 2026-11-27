@@ -359,6 +359,7 @@ class FunCommands(commands.Cog):
     def __init__(self, bot: SocializeBot) -> None:
         self.bot = bot
         self._session: aiohttp.ClientSession | None = None
+        self._last_gif: dict[str, str] = {}
 
     @property
     def session(self) -> aiohttp.ClientSession:
@@ -373,7 +374,15 @@ class FunCommands(commands.Cog):
         return self._session
 
     def _random_gif(self, action: str) -> str:
-        return random.choice(ACTION_GIFS[action])
+        options = ACTION_GIFS[action]
+        if len(options) > 1:
+            excluded = self._last_gif.get(action)
+            choices = [url for url in options if url != excluded]
+            gif = random.choice(choices)
+        else:
+            gif = options[0]
+        self._last_gif[action] = gif
+        return gif
 
     async def _do_action(
         self,
