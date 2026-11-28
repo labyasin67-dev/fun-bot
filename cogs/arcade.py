@@ -171,22 +171,20 @@ def build_menu_embed(games: list) -> discord.Embed:
 
     # Split lines across fields so each value stays under 1024 characters.
     field_value = ""
-    field_index = 0
     for line in lines:
         candidate = (field_value + "\n" + line) if field_value else line
         if len(candidate) > 1024:
             embed.add_field(
-                name=f"Games ({field_index + 1})" if field_index else "Games",
+                name="",
                 value=field_value,
                 inline=False,
             )
             field_value = line
-            field_index += 1
         else:
             field_value = candidate
     if field_value:
         embed.add_field(
-            name=f"Games ({field_index + 1})" if field_index else "Games",
+            name="",
             value=field_value,
             inline=False,
         )
