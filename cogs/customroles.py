@@ -1396,30 +1396,26 @@ class CustomRoles(commands.Cog):
     async def role_remove(self, ctx: commands.Context, member: discord.Member) -> None:
         assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
         if member.id == ctx.author.id:
-            await ctx.send(embed=make_embed("Can't do that", "You can't remove your own custom role with this command. Use `.role purge` instead.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            await ctx.send(embed=make_embed("Can't do that", "You can't remove your own custom role with this command. Use `.role delete` instead.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
-        held = await self.bot.db.get_custom_role_held(ctx.guild.id, member.id)
-        if held is None:
-            await ctx.send(embed=make_embed("Not holding one", f"{member.mention} isn't holding a custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+        row = await self.bot.db.get_custom_role(ctx.guild.id, ctx.author.id)
+        if row is None:
+            await ctx.send(embed=make_embed("No custom role", "You do not have a custom role to remove from someone.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
-        owner_id = int(held["user_id"])
-        if owner_id != ctx.author.id:
-            await ctx.send(embed=make_embed("Not yours", "You can only remove a custom role that you gave to this member.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
-            return
-        role_id = int(held["role_id"])
+        role_id = int(row["role_id"])
         role = ctx.guild.get_role(role_id)
         if role is None:
-            await ctx.send(embed=make_embed("Role missing", "That custom role no longer exists.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            await ctx.send(embed=make_embed("Role missing", "Your custom role no longer exists.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         if role not in member.roles:
-            await ctx.send(embed=make_embed("Doesn't have it", f"{member.mention} doesn't have {role.mention}.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            await ctx.send(embed=make_embed("Already removed", f"{member.mention} already does not have {role.mention}.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         try:
             await member.remove_roles(role, reason=f"Removed by {ctx.author}")
         except discord.HTTPException:
             await ctx.send(embed=make_embed("Couldn't remove the role", "Check my permissions and try again.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
-        await self.bot.db.set_custom_role_holder(ctx.guild.id, owner_id, owner_id)
+        await self.bot.db.set_custom_role_holder(ctx.guild.id, ctx.author.id, ctx.author.id)
         await ctx.send(embed=make_embed("Role removed", f"Removed {role.mention} from {member.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
 
     @role.command(name="toggle", description="Turn custom roles on or off for this server.")
