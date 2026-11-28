@@ -149,27 +149,48 @@ def command_for_title(title: str) -> str:
     return ".games"
 
 
-def short_emoji(emoji: str) -> str:
-    """Strip the ID from a custom emoji reference for short embed field values."""
-    import re
-    m = re.match(r"<a?:([a-z_]+):[0-9]+>", emoji)
-    return f":{m.group(1)}:" if m else emoji
-
-
 def build_menu_embed(games: list) -> discord.Embed:
-    """Compact menu: one line per game, stacked alphabetically."""
+    """Compact menu: one line per game, stacked alphabetically across multiple fields.
+
+    Custom emoji references (``<:name:id>``) are used so they render as images.
+    Games are split across fields so each field stays under Discord's 1024-char
+    limit for field values.
+    """
     ordered = sorted(games, key=lambda g: g[2])
     embed = game_embed("Choose a game to drop", emoji="🎮", phase="play")
+
     lines = [
         game_menu_line(
-            short_emoji(emoji),
+            emoji,
             game_title,
             command_name(key),
             players=GAME_META.get(key, {}).get("players", DEFAULT_PLAYERS),
         )
         for key, emoji, game_title, _blurb in ordered
     ]
-    embed.add_field(name="Games", value="\n".join(lines), inline=False)
+
+    # Split lines across fields so each value stays under 1024 characters.
+    field_value = ""
+    field_index = 0
+    for line in lines:
+        candidate = (field_value + "\n" + line) if field_value else line
+        if len(candidate) > 1024:
+            embed.add_field(
+                name=f"Games ({field_index + 1})" if field_index else "Games",
+                value=field_value,
+                inline=False,
+            )
+            field_value = line
+            field_index += 1
+        else:
+            field_value = candidate
+    if field_value:
+        embed.add_field(
+            name=f"Games ({field_index + 1})" if field_index else "Games",
+            value=field_value,
+            inline=False,
+        )
+
     return embed
 
 
