@@ -63,26 +63,26 @@ def flag_emoji(code: str) -> str | None:
 
 # key, emoji, title, blurb, command name
 MENU_GAMES = [
-    ("buttonhunt", "<:red_button_lens:1576250129172795402>", "Button Hunt", "A grid of buttons — first to hit the right one wins."),
-    ("diceduel", "<:two_dices:1576250140862193755>", "Dice Roll Duel", "The first two to join roll; highest roll wins."),
-    ("backwards", "<:word_reversed:1576250146562383892>", "Word Backwards", "Type the word shown, but reversed."),
-    ("scramble", "<:scrambled_tiles:1576250132306067567>", "Word Scramble", "Unscramble the letters to make a word."),
-    ("celebrity", "<:star_shades:1576250135464382544>", "Guess the Celebrity", "Name the famous person in the photo."),
-    ("landmark", "<:eiffel_question:1576250102052560976>", "Guess the Landmark", "Name the famous landmark in the photo."),
-    ("pattern", "<:puzzle_pieces:1576250119203066018>", "Pattern Puzzle", "Work out the next item in the sequence."),
-    ("capital", "<:capitol_tiles:1576250093097459822>", "Capital Scramble", "Unscramble the capital city. Hint: the country."),
-    ("redlight", "<:traffic_signal:1576250138089754765>", "Red Light Green Light", "Type on green to score; typing on red is out."),
-    ("missingemoji", "<:puzzle_smiley:1576250122625618101>", "Missing Emoji", "Spot which emoji was removed from the line."),
-    ("sequencehunt", "<:one_two_three:1576250113628700843>", "Sequence Hunt", "Remember the order, then tap it back."),
-    ("colorhunt", "<:palette_lens:1576250116288024867>", "Color Hunt", "Click the colour you're asked for — labels try to trick you."),
-    ("emojieq", "<:circle_hex_rect:1576250098982064360>", "Emoji Equation", "Solve the emoji maths puzzle."),
-    ("flag", "<:checkered_flag:1576250096373207260>", "Flag", "Name the country from its flag."),
-    ("reaction", "<:react_burst:1576250125850771688>", "Reaction", "Wait for GO, then be first to click or type."),
-    ("language", "<:lang_bubbles:1576250107819593890>", "Language", "Guess which language the phrase is written in."),
-    ("word", "<:word_blocks:1576250143571972276>", "Word", "Be first to type a word that fits the rule."),
-    ("nickname", "<:nick_nametag:1576250110684303530>", "Nickname", "Guess the person or team from their nickname."),
-    ("trivia", "<:bulb_question:1576250089524171054>", "Trivia", "A multiple-choice question for the channel."),
-    ("hilo", "<:hilo_cards:1576250104757878814>", "HILO", "Will the next number be higher or lower?"),
+    ("buttonhunt", "<:red_button_lens:1576260006414786720>", "Button Hunt", "A grid of buttons — first to hit the right one wins."),
+    ("diceduel", "<:two_dices:1576260018741842052>", "Dice Roll Duel", "The first two to join roll; highest roll wins."),
+    ("backwards", "<:word_reversed:1576260024035057754>", "Word Backwards", "Type the word shown, but reversed."),
+    ("scramble", "<:scrambled_tiles:1576260009543864430>", "Word Scramble", "Unscramble the letters to make a word."),
+    ("celebrity", "<:star_shades:1576260012743983115>", "Guess the Celebrity", "Name the famous person in the photo."),
+    ("landmark", "<:eiffel_question:1576259978908405982>", "Guess the Landmark", "Name the famous landmark in the photo."),
+    ("pattern", "<:puzzle_pieces:1576259997589831720>", "Pattern Puzzle", "Work out the next item in the sequence."),
+    ("capital", "<:capitol_tiles:1576259970217812090>", "Capital Scramble", "Unscramble the capital city. Hint: the country."),
+    ("redlight", "<:traffic_signal:1576260016040575047>", "Red Light Green Light", "Type on green to score; typing on red is out."),
+    ("missingemoji", "<:puzzle_smiley:1576260000383508541>", "Missing Emoji", "Spot which emoji was removed from the line."),
+    ("sequencehunt", "<:one_two_three:1576259991067693299>", "Sequence Hunt", "Remember the order, then tap it back."),
+    ("colorhunt", "<:palette_lens:1576259994947690506>", "Color Hunt", "Click the colour you're asked for — labels try to trick you."),
+    ("emojieq", "<:circle_hex_rect:1576259976245157989>", "Emoji Equation", "Solve the emoji maths puzzle."),
+    ("flag", "<:checkered_flag:1576259973418197172>", "Flag", "Name the country from its flag."),
+    ("reaction", "<:react_burst:1576260003331965160>", "Reaction", "Wait for GO, then be first to click or type."),
+    ("language", "<:lang_bubbles:1576259984835219628>", "Language", "Guess which language the phrase is written in."),
+    ("word", "<:word_blocks:1576260021572862112>", "Word", "Be first to type a word that fits the rule."),
+    ("nickname", "<:nick_nametag:1576259987821301991>", "Nickname", "Guess the person or team from their nickname."),
+    ("trivia", "<:bulb_question:1576259967554556066>", "Trivia", "A multiple-choice question for the channel."),
+    ("hilo", "<:hilo_cards:1576259981890818109>", "HILO", "Will the next number be higher or lower?"),
     ("uno", "🃏", "UNO", "Multiplayer UNO for 2–10 players."),
 ]
 
@@ -426,7 +426,7 @@ class WordRuleGame(ChannelGame):
         return game_embed(
             "Word",
             f"{self.prompt}\n\nFirst valid English word wins.",
-            emoji="<:word_blocks:1576250143571972276>",
+            emoji="<:word_blocks:1576260021572862112>",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -452,7 +452,7 @@ class WordRuleGame(ChannelGame):
                 e = result_embed(
                     "Word",
                     "Nobody found a word that fits.",
-                    emoji="<:word_blocks:1576250143571972276>",
+                    emoji="<:word_blocks:1576260021572862112>",
                     phase="timeout",
                     play_again=f"Play again with `{command_for_title('Word')}`.",
                     host=self.host_name,
@@ -480,7 +480,7 @@ class WordRuleGame(ChannelGame):
         e = result_embed(
             "Word",
             f"{message.author.mention} played **{word}**",
-            emoji="<:word_blocks:1576250143571972276>",
+            emoji="<:word_blocks:1576260021572862112>",
             phase="win",
             xp=DEFAULT_WIN_XP,
             play_again=f"Play again with `{command_for_title('Word')}`.",
@@ -549,7 +549,7 @@ class ButtonHuntGame(ChannelGame):
         return game_embed(
             "Button Hunt",
             "One of these buttons is the winner. First to press it wins. A wrong press puts you out.",
-            emoji="<:red_button_lens:1576250129172795402>",
+            emoji="<:red_button_lens:1576260006414786720>",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -601,7 +601,7 @@ class ButtonHuntGame(ChannelGame):
         e = result_embed(
             "Button Hunt",
             f"{interaction.user.mention} found the right button!",
-            emoji="<:red_button_lens:1576250129172795402>",
+            emoji="<:red_button_lens:1576260006414786720>",
             phase="win",
             xp=DEFAULT_WIN_XP,
             play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
@@ -624,7 +624,7 @@ class ButtonHuntGame(ChannelGame):
             e = result_embed(
                 "Button Hunt",
                 "Nobody found the right button.",
-                emoji="<:red_button_lens:1576250129172795402>",
+                emoji="<:red_button_lens:1576260006414786720>",
                 phase="timeout",
                 play_again=f"Play again with `{command_for_title('Button Hunt')}`.",
                 host=self.host_name,
@@ -642,7 +642,7 @@ class DiceJoinView(discord.ui.View):
     async def on_timeout(self) -> None:
         await self.game.timed_out()
 
-    @discord.ui.button(label="<:two_dices:1576250140862193755> Join", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="<:two_dices:1576260018741842052> Join", style=discord.ButtonStyle.primary)
     async def join(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self.game.join(interaction)
 
@@ -667,7 +667,7 @@ class DiceDuelGame(ChannelGame):
         return game_embed(
             "Dice Roll Duel",
             "First two players to join will each roll a d6. Highest roll wins.",
-            emoji="<:two_dices:1576250140862193755>",
+            emoji="<:two_dices:1576260018741842052>",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -714,7 +714,7 @@ class DiceDuelGame(ChannelGame):
         e = result_embed(
             "Dice Roll Duel",
             f"{a.mention} rolled **{ra}**.\n{b.mention} rolled **{rb}**.\n\n{winner.mention} wins!",
-            emoji="<:two_dices:1576250140862193755>",
+            emoji="<:two_dices:1576260018741842052>",
             phase="win",
             xp=DEFAULT_WIN_XP,
             play_again=f"Play again with `{command_for_title('Dice Roll Duel')}`.",
@@ -737,7 +737,7 @@ class DiceDuelGame(ChannelGame):
             e = result_embed(
                 "Dice Roll Duel",
                 "Not enough players joined.",
-                emoji="<:two_dices:1576250140862193755>",
+                emoji="<:two_dices:1576260018741842052>",
                 phase="timeout",
                 play_again=f"Play again with `{command_for_title('Dice Roll Duel')}`.",
                 host=self.host_name,
@@ -813,7 +813,7 @@ class ColorHuntGame(ChannelGame):
         return game_embed(
             "Color Hunt",
             f"Click the **{target}** button.\nThat's the actual button colour, not the word written on it.",
-            emoji="<:palette_lens:1576250116288024867>",
+            emoji="<:palette_lens:1576259994947690506>",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -863,7 +863,7 @@ class ColorHuntGame(ChannelGame):
         e = result_embed(
             "Color Hunt",
             f"{interaction.user.mention} clicked the right colour!",
-            emoji="<:palette_lens:1576250116288024867>",
+            emoji="<:palette_lens:1576259994947690506>",
             phase="win",
             xp=DEFAULT_WIN_XP,
             play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
@@ -886,7 +886,7 @@ class ColorHuntGame(ChannelGame):
             e = result_embed(
                 "Color Hunt",
                 "Nobody clicked the right colour.",
-                emoji="<:palette_lens:1576250116288024867>",
+                emoji="<:palette_lens:1576259994947690506>",
                 phase="timeout",
                 play_again=f"Play again with `{command_for_title('Color Hunt')}`.",
                 host=self.host_name,
@@ -937,7 +937,7 @@ class ReactionGame(ChannelGame):
         return game_embed(
             "Reaction",
             description,
-            emoji="<:react_burst:1576250125850771688>",
+            emoji="<:react_burst:1576260003331965160>",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -996,7 +996,7 @@ class ReactionGame(ChannelGame):
                     e = result_embed(
                         "Reaction",
                         "Nobody reacted in time.",
-                        emoji="<:react_burst:1576250125850771688>",
+                        emoji="<:react_burst:1576260003331965160>",
                         phase="timeout",
                         play_again=f"Play again with `{command_for_title('Reaction')}`.",
                         host=self.host_name,
@@ -1036,7 +1036,7 @@ class ReactionGame(ChannelGame):
         e = result_embed(
             "Reaction",
             f"{user.mention} was first!",
-            emoji="<:react_burst:1576250125850771688>",
+            emoji="<:react_burst:1576260003331965160>",
             phase="win",
             xp=DEFAULT_WIN_XP,
             play_again=f"Play again with `{command_for_title('Reaction')}`.",
@@ -1125,7 +1125,7 @@ class SequenceHuntGame(ChannelGame):
         return game_embed(
             "Sequence Hunt",
             description,
-            emoji="<:one_two_three:1576250113628700843>",
+            emoji="<:one_two_three:1576259991067693299>",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -1211,7 +1211,7 @@ class SequenceHuntGame(ChannelGame):
         e = result_embed(
             "Sequence Hunt",
             f"{interaction.user.mention} repeated the sequence!",
-            emoji="<:one_two_three:1576250113628700843>",
+            emoji="<:one_two_three:1576259991067693299>",
             phase="win",
             answer=self._seq_text(),
             xp=DEFAULT_WIN_XP,
@@ -1235,7 +1235,7 @@ class SequenceHuntGame(ChannelGame):
             e = result_embed(
                 "Sequence Hunt",
                 "Time's up!",
-                emoji="<:one_two_three:1576250113628700843>",
+                emoji="<:one_two_three:1576259991067693299>",
                 phase="timeout",
                 answer=self._seq_text(),
                 play_again=f"Play again with `{command_for_title('Sequence Hunt')}`.",
@@ -1299,7 +1299,7 @@ class HiLoGame(ChannelGame):
             return game_embed(
                 title or "HILO over",
                 body,
-                emoji="<:hilo_cards:1576250104757878814>",
+                emoji="<:hilo_cards:1576259981890818109>",
                 phase=phase or ("win" if self.streak else "lose"),
                 host=self.host_name,
                 host_avatar=self.host_avatar,
@@ -1311,7 +1311,7 @@ class HiLoGame(ChannelGame):
         return game_embed(
             "HILO",
             f"The number is **{self.current}**.\nWill the next number (1–100) be higher or lower?\n\nStreak: **{self.streak}**",
-            emoji="<:hilo_cards:1576250104757878814>",
+            emoji="<:hilo_cards:1576259981890818109>",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -1361,7 +1361,7 @@ class HiLoGame(ChannelGame):
             e = result_embed(
                 "HILO",
                 f"{interaction.user.mention} got it right!\n**{self.current}** → **{self.next_number}**\nStreak of **{self.streak}** — that's the limit.",
-                emoji="<:hilo_cards:1576250104757878814>",
+                emoji="<:hilo_cards:1576259981890818109>",
                 phase="win",
                 xp=10,
                 play_again=f"Play again with `{command_for_title('HILO')}`.",
@@ -1451,7 +1451,7 @@ class TriviaGame(ChannelGame):
         return game_embed(
             "Trivia",
             self.question,
-            emoji="<:bulb_question:1576250089524171054>",
+            emoji="<:bulb_question:1576259967554556066>",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -1492,7 +1492,7 @@ class TriviaGame(ChannelGame):
         e = result_embed(
             "Trivia",
             f"{interaction.user.mention} answered correctly!",
-            emoji="<:bulb_question:1576250089524171054>",
+            emoji="<:bulb_question:1576259967554556066>",
             phase="win",
             answer=self.correct,
             xp=DEFAULT_WIN_XP,
@@ -1518,7 +1518,7 @@ class TriviaGame(ChannelGame):
             e = result_embed(
                 "Trivia",
                 "Time's up!",
-                emoji="<:bulb_question:1576250089524171054>",
+                emoji="<:bulb_question:1576259967554556066>",
                 phase="timeout",
                 answer=self.correct,
                 play_again=f"Play again with `{command_for_title('Trivia')}`.",
@@ -1558,7 +1558,7 @@ class RedLightGame(ChannelGame):
         return game_embed(
             "Red Light Green Light",
             body,
-            emoji="<:traffic_signal:1576250138089754765>",
+            emoji="<:traffic_signal:1576260016040575047>",
             phase="play",
             host=self.host_name,
             host_avatar=self.host_avatar,
@@ -1621,7 +1621,7 @@ class RedLightGame(ChannelGame):
             e = result_embed(
                 "Red Light Green Light",
                 "Nobody scored this time.",
-                emoji="<:traffic_signal:1576250138089754765>",
+                emoji="<:traffic_signal:1576260016040575047>",
                 phase="timeout",
                 play_again=f"Play again with `{command_for_title('Red Light Green Light')}`.",
                 host=self.host_name,
@@ -1644,7 +1644,7 @@ class RedLightGame(ChannelGame):
             e = result_embed(
                 "Red Light Green Light",
                 f"{label}: {mentions} with **{best}** point{'s' if best != 1 else ''}!",
-                emoji="<:traffic_signal:1576250138089754765>",
+                emoji="<:traffic_signal:1576260016040575047>",
                 phase="win",
                 xp=DEFAULT_WIN_XP,
                 play_again=f"Play again with `{command_for_title('Red Light Green Light')}`.",
