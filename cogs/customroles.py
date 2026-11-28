@@ -992,10 +992,11 @@ class CustomRoles(commands.Cog):
         held = await self.bot.db.get_custom_role_held(guild.id, member.id)
         if held is not None and int(held["user_id"]) != member.id:
             return "You're already holding someone else's custom role. They can take it back with `.role take`, or wait until you no longer hold one."
-        min_level = int(settings["min_level"] or 0)
+        global_settings = await self.bot.db.get_custom_role_global_settings(guild.id)
+        global_min_level = int(global_settings["min_level"]) if global_settings else 0
         level = await member_level(self.bot.db, guild.id, member.id)
-        if level < min_level:
-            return f"You need to be at least level **{min_level}**. You're level **{level}**."
+        if level < global_min_level:
+            return f"The minimum level to create a custom role is level {global_min_level}. You're level {level}."
         blocked = await refuse_if_flagged_alt(self.bot, member)
         if blocked:
             return blocked
