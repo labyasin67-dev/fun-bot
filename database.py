@@ -245,6 +245,18 @@ CREATE TABLE IF NOT EXISTS custom_role_perm_list (
     PRIMARY KEY (guild_id, user_id, permission)
 );
 
+CREATE TABLE IF NOT EXISTS custom_role_global_settings (
+    guild_id INTEGER PRIMARY KEY,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    min_level INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS custom_role_global_perms (
+    guild_id INTEGER NOT NULL,
+    permission TEXT NOT NULL,
+    PRIMARY KEY (guild_id, permission)
+);
+
 CREATE TABLE IF NOT EXISTS report_settings (
     guild_id INTEGER PRIMARY KEY,
     enabled INTEGER NOT NULL DEFAULT 0,
@@ -1582,6 +1594,24 @@ class Database:
             )
             """
         )
+        await self.db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS custom_role_global_settings (
+                guild_id INTEGER PRIMARY KEY,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                min_level INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        await self.db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS custom_role_global_perms (
+                guild_id INTEGER NOT NULL,
+                permission TEXT NOT NULL,
+                PRIMARY KEY (guild_id, permission)
+            )
+            """
+        )
         await self.db.commit()
 
     # --- custom roles ---
@@ -1874,6 +1904,81 @@ class Database:
             (int(guild_id),),
         )
         return await cur.fetchall()
+
+    # --- custom role global config (single panel, not per-owner) ---
+
+    async def get_custom_role_global_settings(self, guild_id: int) -> aiosqlite.Row | None:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_role_global_settings WHERE guild_id = ?",
+            (int(guild_id),),
+        )
+        return await cur.fetchone()
+
+    async def set_custom_role_global_settings(
+        self, guild_id: int, *, enabled: int | None = None, min_level: int | None = None
+    ) -> None:
+        await self.db.execute(
+            """
+            INSERT INTO custom_role_global_settings (guild_id, enabled, min_level)
+            VALUES (?, 1, 0)
+            ON CONFLICT(guild_id) DO NOTHING
+            """,
+            (int(guild_id),),
+        )
+        fields = []
+        values: list = []
+        if enabled is not None:
+            fields.append("enabled = ?")
+            values.append(int(enabled))
+        if min_level is not None:
+            fields.append("min_level = ?")
+            values.append(int(min_level))
+        if fields:
+            values.append(int(guild_id))
+            await self.db.execute(
+                f"UPDATE custom_role_global_settings SET {', '.join(fields)} WHERE guild_id = ?",
+                values,
+            )
+        await self.db.commit()
+
+    async def get_custom_role_global_permissions(self, guild_id: int) -> list[str]:
+        cur = await self.db.execute(
+            "SELECT permission FROM custom_role_global_perms WHERE guild_id = ? ORDER BY permission",
+            (int(guild_id),),
+        )
+        return [str(row["permission"]) for row in await cur.fetchall()]
+
+    async def set_custom_role_global_permission(
+        self, guild_id: int, permission: str, enabled: bool
+    ) -> None:
+        if enabled:
+            await self.db.execute(
+                """
+                INSERT OR IGNORE INTO custom_role_global_perms (guild_id, permission)
+                VALUES (?, ?)
+                """,
+                (int(guild_id), permission),
+            )
+        else:
+            await self.db.execute(
+                "DELETE FROM custom_role_global_perms WHERE guild_id = ? AND permission = ?",
+                (int(guild_id), permission),
+            )
+        await self.db.commit()
+
+    async def has_custom_role_global_permission(self, guild_id: int, permission: str) -> bool:
+        cur = await self.db.execute(
+            "SELECT 1 FROM custom_role_global_perms WHERE guild_id = ? AND permission = ?",
+            (int(guild_id), permission),
+        )
+        return await cur.fetchone() is not None
+
+    async def clear_custom_role_global_permissions(self, guild_id: int) -> None:
+        await self.db.execute(
+            "DELETE FROM custom_role_global_perms WHERE guild_id = ?",
+            (int(guild_id),),
+        )
+        await self.db.commit()
 
     async def alt_flag_created_times(self, guild_id: int) -> list[aiosqlite.Row]:
         cur = await self.db.execute(
