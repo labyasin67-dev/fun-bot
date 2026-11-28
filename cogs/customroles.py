@@ -1389,9 +1389,8 @@ class CustomRoles(commands.Cog):
             await self.bot.db.delete_custom_role(ctx.guild.id, member.id)
         await ctx.send(embed=make_embed("Role purged", f"Purged {role.mention} from {member.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
 
-    @role.command(name="remove", description="Remove a custom role you gave to another member.")
+    @role.command(name="remove", description="Remove your custom role from another member who holds it.")
     @commands.guild_only()
-    @commands.has_guild_permissions(manage_roles=True)
     @commands.bot_has_guild_permissions(manage_roles=True)
     @app_commands.describe(member="The member who holds your custom role.")
     async def role_remove(self, ctx: commands.Context, member: discord.Member) -> None:
