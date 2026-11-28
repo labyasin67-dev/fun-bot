@@ -49,6 +49,7 @@ EXTENSIONS = (
     "cogs.channels",
     "cogs.roles",
     "cogs.customroles",
+    "cogs.permpanel",
     "cogs.reports",
     "cogs.leveling",
     "cogs.welcome",

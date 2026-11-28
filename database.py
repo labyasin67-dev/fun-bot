@@ -230,6 +230,21 @@ CREATE TABLE IF NOT EXISTS profile_hidden_roles (
     PRIMARY KEY (guild_id, user_id, role_id)
 );
 
+CREATE TABLE IF NOT EXISTS custom_role_perms (
+    guild_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    min_level INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS custom_role_perm_list (
+    guild_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    permission TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, permission)
+);
+
 CREATE TABLE IF NOT EXISTS report_settings (
     guild_id INTEGER PRIMARY KEY,
     enabled INTEGER NOT NULL DEFAULT 0,
@@ -1546,6 +1561,27 @@ class Database:
             )
             """
         )
+        await self.db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS custom_role_perms (
+                guild_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                min_level INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (guild_id, user_id)
+            )
+            """
+        )
+        await self.db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS custom_role_perm_list (
+                guild_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                permission TEXT NOT NULL,
+                PRIMARY KEY (guild_id, user_id, permission)
+            )
+            """
+        )
         await self.db.commit()
 
     # --- custom roles ---
@@ -1757,6 +1793,87 @@ class Database:
         )
         return await cur.fetchall()
 
+    # --- custom role permissions (per owner, not server roles) ---
+
+    async def get_custom_role_perms(self, guild_id: int, user_id: int) -> aiosqlite.Row | None:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_role_perms WHERE guild_id = ? AND user_id = ?",
+            (int(guild_id), int(user_id)),
+        )
+        return await cur.fetchone()
+
+    async def set_custom_role_perms(
+        self, guild_id: int, user_id: int, *, enabled: int | None = None, min_level: int | None = None
+    ) -> None:
+        await self.db.execute(
+            """
+            INSERT INTO custom_role_perms (guild_id, user_id, enabled, min_level)
+            VALUES (?, ?, 1, 0)
+            ON CONFLICT(guild_id, user_id) DO NOTHING
+            """,
+            (int(guild_id), int(user_id)),
+        )
+        fields = []
+        values: list = []
+        if enabled is not None:
+            fields.append("enabled = ?")
+            values.append(int(enabled))
+        if min_level is not None:
+            fields.append("min_level = ?")
+            values.append(int(min_level))
+        if fields:
+            values.extend([int(guild_id), int(user_id)])
+            await self.db.execute(
+                f"UPDATE custom_role_perms SET {', '.join(fields)} WHERE guild_id = ? AND user_id = ?",
+                values,
+            )
+        await self.db.commit()
+
+    async def get_custom_role_permissions(self, guild_id: int, user_id: int) -> list[str]:
+        cur = await self.db.execute(
+            "SELECT permission FROM custom_role_perm_list WHERE guild_id = ? AND user_id = ? ORDER BY permission",
+            (int(guild_id), int(user_id)),
+        )
+        return [str(row["permission"]) for row in await cur.fetchall()]
+
+    async def set_custom_role_permission(
+        self, guild_id: int, user_id: int, permission: str, enabled: bool
+    ) -> None:
+        if enabled:
+            await self.db.execute(
+                """
+                INSERT OR IGNORE INTO custom_role_perm_list (guild_id, user_id, permission)
+                VALUES (?, ?, ?)
+                """,
+                (int(guild_id), int(user_id), permission),
+            )
+        else:
+            await self.db.execute(
+                "DELETE FROM custom_role_perm_list WHERE guild_id = ? AND user_id = ? AND permission = ?",
+                (int(guild_id), int(user_id), permission),
+            )
+        await self.db.commit()
+
+    async def clear_custom_role_permissions(self, guild_id: int, user_id: int) -> None:
+        await self.db.execute(
+            "DELETE FROM custom_role_perm_list WHERE guild_id = ? AND user_id = ?",
+            (int(guild_id), int(user_id)),
+        )
+        await self.db.commit()
+
+    async def has_custom_role_permission(self, guild_id: int, user_id: int, permission: str) -> bool:
+        cur = await self.db.execute(
+            "SELECT 1 FROM custom_role_perm_list WHERE guild_id = ? AND user_id = ? AND permission = ?",
+            (int(guild_id), int(user_id), permission),
+        )
+        return await cur.fetchone() is not None
+
+    async def list_custom_role_perms_rows(self, guild_id: int) -> list[aiosqlite.Row]:
+        cur = await self.db.execute(
+            "SELECT * FROM custom_role_perms WHERE guild_id = ? ORDER BY user_id",
+            (int(guild_id),),
+        )
+        return await cur.fetchall()
 
     async def alt_flag_created_times(self, guild_id: int) -> list[aiosqlite.Row]:
         cur = await self.db.execute(
