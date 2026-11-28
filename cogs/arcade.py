@@ -157,7 +157,7 @@ def build_menu_embed(games: list) -> discord.Embed:
     limit for field values.
     """
     ordered = sorted(games, key=lambda g: g[2])
-    embed = game_embed("Choose a game to drop", emoji="🎮", phase="play")
+    embed = game_embed("Choose a game to drop", emoji="<:gamepad_drop:1576266559029125270>", phase="play")
 
     lines = [
         game_menu_line(
