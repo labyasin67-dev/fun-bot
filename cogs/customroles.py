@@ -1320,35 +1320,35 @@ class CustomRoles(commands.Cog):
         await member.add_roles(role, reason=f"Added by {ctx.author}")
         await ctx.send(embed=make_embed("Role added", f"Gave {role.mention} to {member.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
 
-    @role.command(name="remove", description="Delete your custom role, or (staff) remove a member's role.")
+    @role.command(name="purge", description="Delete your custom role, or (staff) purge a member's custom role entirely.")
     @commands.guild_only()
     @commands.bot_has_guild_permissions(manage_roles=True)
-    @app_commands.describe(member="Leave empty to delete your own custom role. Staff can name a member.", role="Staff only: a specific role to remove from that member.")
-    async def role_remove(self, ctx: commands.Context, member: discord.Member | None = None, role: discord.Role | None = None) -> None:
+    @app_commands.describe(member="Leave empty to delete your own custom role. Staff can name a member.")
+    async def role_purge(self, ctx: commands.Context, member: discord.Member | None = None, role: discord.Role | None = None) -> None:
         assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
         staff = ctx.author.guild_permissions.manage_roles
 
         if member is None and role is None:
             existing = await self.bot.db.get_custom_role(ctx.guild.id, ctx.author.id)
             if existing is None:
-                await ctx.send(embed=make_embed("No custom role", "You don't have a custom role to remove. Staff can use `.role remove @member`.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+                await ctx.send(embed=make_embed("No custom role", "You don't have a custom role to purge. Staff can use `.role purge @member`.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
                 return
             discord_role = ctx.guild.get_role(int(existing["role_id"]))
             name, primary, secondary = role_colour_snapshot(discord_role, existing)
             holder = holder_id_of(existing)
             also = holder if holder != ctx.author.id else None
-            await remove_stored_custom_role(self.bot, ctx.guild, ctx.author.id, reason=f"Deleted by owner {ctx.author}")
+            await remove_stored_custom_role(self.bot, ctx.guild, ctx.author.id, reason=f"Purged by owner {ctx.author}")
             body = describe_removed_role(name, primary, secondary, holder_id=also)
-            embed = make_embed("Custom role removed", body, color=SUCCESS)
+            embed = make_embed("Custom role purged", body, color=SUCCESS)
             file = attach_colour_preview(embed, primary, secondary) if primary is not None else None
             await reply(ctx, embed, file=file)
             return
 
         if not staff:
-            await ctx.send(embed=make_embed("Staff only", "To delete your own custom role, use `.role remove` with no one mentioned. Removing someone else's role needs Manage Roles.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            await ctx.send(embed=make_embed("Staff only", "To delete your own custom role, use `.role purge` with no one mentioned. Removing someone else's role needs Manage Roles.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         if member is None:
-            await ctx.send(embed=make_embed("Who?", "Mention a member, or use `.role remove` with no arguments to delete your own custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            await ctx.send(embed=make_embed("Who?", "Mention a member, or use `.role purge` with no arguments to delete your own custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
         if role is None:
             existing = await self.bot.db.get_custom_role(ctx.guild.id, member.id)
@@ -1359,16 +1359,16 @@ class CustomRoles(commands.Cog):
             name, primary, secondary = role_colour_snapshot(discord_role, existing)
             holder = holder_id_of(existing)
             also = holder if holder != member.id else None
-            await remove_stored_custom_role(self.bot, ctx.guild, member.id, reason=f"Removed by {ctx.author}")
+            await remove_stored_custom_role(self.bot, ctx.guild, member.id, reason=f"Purged by {ctx.author}")
             body = describe_removed_role(name, primary, secondary, holder_id=also)
-            embed = make_embed("Custom role removed", f"Removed **{name}** from {member.mention}.\n" + body, color=SUCCESS)
+            embed = make_embed("Custom role purged", f"Purged **{name}** from {member.mention}.\n" + body, color=SUCCESS)
             file = attach_colour_preview(embed, primary, secondary) if primary is not None else None
             await reply(ctx, embed, file=file)
             try:
                 await member.send(
                     embed=make_embed(
-                        "Custom role removed",
-                        f"Your custom role **{name}** was removed in **{ctx.guild.name}**.",
+                        "Custom role purged",
+                        f"Your custom role **{name}** was purged in **{ctx.guild.name}**.",
                         color=WARNING,
                     ),
                     allowed_mentions=NO_MENTIONS,
@@ -1383,10 +1383,44 @@ class CustomRoles(commands.Cog):
         if role not in member.roles:
             await ctx.send(embed=make_embed("Doesn't have it", f"{member.mention} doesn't have {role.mention}."), ephemeral=True, allowed_mentions=NO_MENTIONS)
             return
-        await member.remove_roles(role, reason=f"Removed by {ctx.author}")
+        await member.remove_roles(role, reason=f"Purged by {ctx.author}")
         stored = await self.bot.db.get_custom_role(ctx.guild.id, member.id)
         if stored is not None and int(stored["role_id"]) == role.id:
             await self.bot.db.delete_custom_role(ctx.guild.id, member.id)
+        await ctx.send(embed=make_embed("Role purged", f"Purged {role.mention} from {member.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
+
+    @role.command(name="remove", description="Remove a custom role you gave to another member.")
+    @commands.guild_only()
+    @commands.has_guild_permissions(manage_roles=True)
+    @commands.bot_has_guild_permissions(manage_roles=True)
+    @app_commands.describe(member="The member who holds your custom role.")
+    async def role_remove(self, ctx: commands.Context, member: discord.Member) -> None:
+        assert ctx.guild and isinstance(ctx.author, discord.Member) and ctx.guild.me
+        if member.id == ctx.author.id:
+            await ctx.send(embed=make_embed("Can't do that", "You can't remove your own custom role with this command. Use `.role purge` instead.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        held = await self.bot.db.get_custom_role_held(ctx.guild.id, member.id)
+        if held is None:
+            await ctx.send(embed=make_embed("Not holding one", f"{member.mention} isn't holding a custom role.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        owner_id = int(held["user_id"])
+        if owner_id != ctx.author.id:
+            await ctx.send(embed=make_embed("Not yours", "You can only remove a custom role that you gave to this member.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        role_id = int(held["role_id"])
+        role = ctx.guild.get_role(role_id)
+        if role is None:
+            await ctx.send(embed=make_embed("Role missing", "That custom role no longer exists.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        if role not in member.roles:
+            await ctx.send(embed=make_embed("Doesn't have it", f"{member.mention} doesn't have {role.mention}.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        try:
+            await member.remove_roles(role, reason=f"Removed by {ctx.author}")
+        except discord.HTTPException:
+            await ctx.send(embed=make_embed("Couldn't remove the role", "Check my permissions and try again.", color=DANGER), ephemeral=True, allowed_mentions=NO_MENTIONS)
+            return
+        await self.bot.db.set_custom_role_holder(ctx.guild.id, owner_id, owner_id)
         await ctx.send(embed=make_embed("Role removed", f"Removed {role.mention} from {member.mention}.", color=SUCCESS), allowed_mentions=NO_MENTIONS)
 
     @role.command(name="toggle", description="Turn custom roles on or off for this server.")
