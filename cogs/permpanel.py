@@ -267,13 +267,40 @@ class PermPanel(commands.Cog):
     def db(self):
         return self.bot.db
 
-    @commands.hybrid_command(name="permpanel", description="Manage custom role owner privileges (global config panel).")
+    @commands.hybrid_group(name="permpanel", description="Manage custom role owner privileges (admin panel).", invoke_without_command=True)
     @commands.guild_only()
     @commands.has_guild_permissions(manage_roles=True)
     async def permpanel(self, ctx: commands.Context) -> None:
+        await ctx.send(
+            embed=make_embed(
+                "Custom Role Permission Panel",
+                "Use `.permpanel custom role` to open the global config form.",
+                color=COLOR,
+            ),
+            ephemeral=True,
+            allowed_mentions=NO_MENTIONS,
+        )
+
+    @permpanel.group(name="custom", description="Manage custom role permissions.", invoke_without_command=True)
+    @commands.guild_only()
+    @commands.has_guild_permissions(manage_roles=True)
+    async def permpanel_custom(self, ctx: commands.Context) -> None:
+        await ctx.send(
+            embed=make_embed(
+                "Custom Role Permissions",
+                "Use `.permpanel custom role` to open the global config form.",
+                color=COLOR,
+            ),
+            ephemeral=True,
+            allowed_mentions=NO_MENTIONS,
+        )
+
+    @permpanel_custom.command(name="role", description="Open the custom role permission panel (global config).")
+    @commands.guild_only()
+    @commands.has_guild_permissions(manage_roles=True)
+    async def permpanel_custom_role(self, ctx: commands.Context) -> None:
         assert ctx.guild
         view = PermFormView(self, ctx.guild)
-        # Build initial embed synchronously-free by doing a refresh-like load.
         row = await self.db.get_custom_role_global_settings(ctx.guild.id)
         enabled = int(row["enabled"]) if row else 1
         min_level = int(row["min_level"]) if row else 0
@@ -296,7 +323,6 @@ class PermPanel(commands.Cog):
         )
         embed.set_footer(text="Global default config for custom role owners. Does not touch server roles.")
 
-        # Attach buttons matching current state.
         toggle_label = f"Feature: {'Off' if enabled else 'On'}"
         toggle_btn = discord.ui.Button(label=toggle_label, style=perm_button_style(enabled), custom_id="form:toggle")
         toggle_btn.callback = view._on_toggle
